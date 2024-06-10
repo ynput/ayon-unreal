@@ -8,7 +8,6 @@ import time
 
 import semver
 import pyblish.api
-import ayon_api
 
 from ayon_core.pipeline import (
     register_loader_plugin_path,

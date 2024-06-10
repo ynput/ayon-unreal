@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 """Load camera from FBX."""
-from pathlib import Path
-
 from ayon_api import (
     get_folder_by_name,
     get_folder_by_path,
