@@ -71,7 +71,7 @@ class CollectRenderInstances(pyblish.api.InstancePlugin):
                     new_data["productType"] = product_type
                     new_data["family"] = product_type
                     new_data["families"] = [product_type, "review"]
-                    new_data["parent"] = data.get("parent")
+                    new_data["version_id"] = data.get("version_id")
                     new_data["level"] = data.get("level")
                     new_data["output"] = s.get('output')
                     new_data["fps"] = seq.get_display_rate().numerator

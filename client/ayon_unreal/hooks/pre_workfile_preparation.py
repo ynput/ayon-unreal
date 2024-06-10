@@ -9,6 +9,7 @@ from pathlib import Path
 from qtpy import QtCore
 
 from ayon_core import resources
+from ayon_core.lib import get_ayon_launcher_args
 from ayon_applications import (
     PreLaunchHook,
     ApplicationLaunchFailed,
@@ -248,6 +249,20 @@ class UnrealPrelaunchHook(PreLaunchHook):
                     )) from e
 
         self.launch_context.env["AYON_UNREAL_VERSION"] = engine_version
+
+        # Prepare new launch arguments
+        new_launch_args = get_ayon_launcher_args(
+            "run", self.launch_script_path(), executable,
+        )
+
+        # Append as whole list as these arguments should not be separated
+        self.launch_context.launch_args = new_launch_args
+
         # Append project file to launch arguments
         self.launch_context.launch_args.append(
             f"\"{project_file.as_posix()}\"")
+
+    def launch_script_path(self):
+        from ayon_unreal.addon import get_launch_script_path
+
+        return get_launch_script_path()
