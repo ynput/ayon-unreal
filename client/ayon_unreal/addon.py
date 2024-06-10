@@ -7,6 +7,14 @@ from .version import __version__
 UNREAL_ADDON_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
+def get_launch_script_path():
+    return os.path.join(
+        UNREAL_ADDON_ROOT,
+        "api",
+        "launch_script.py"
+    )
+
+
 class UnrealAddon(AYONAddon, IHostAddon):
     name = "unreal"
     version = __version__

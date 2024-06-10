@@ -1,8 +1,7 @@
+# -*- coding: utf-8 -*-
+"""Loader for apply layout to already existing assets."""
 import json
 from pathlib import Path
-
-import unreal
-from unreal import EditorLevelLibrary
 import ayon_api
 
 from ayon_core.pipeline import (
@@ -12,11 +11,14 @@ from ayon_core.pipeline import (
     get_representation_path,
     AYON_CONTAINER_ID,
 )
-from ayon_unreal.api import plugin
-from ayon_unreal.api import pipeline as upipeline
+from ayon_unreal.api.plugin import UnrealBaseLoader
+from ayon_unreal.api.pipeline import (
+    send_request,
+    containerise,
+)
 
 
-class ExistingLayoutLoader(plugin.Loader):
+class ExistingLayoutLoader(UnrealBaseLoader):
     """
     Load Layout for an existing scene, and match the existing assets.
     """
@@ -27,7 +29,6 @@ class ExistingLayoutLoader(plugin.Loader):
     label = "Load Layout on Existing Scene"
     icon = "code-fork"
     color = "orange"
-    ASSET_ROOT = "/Game/Ayon"
 
     delete_unmatched_assets = True
 
@@ -41,135 +42,72 @@ class ExistingLayoutLoader(plugin.Loader):
         )
 
     @staticmethod
-    def _create_container(
-        asset_name,
-        asset_dir,
-        folder_path,
-        representation,
-        version_id,
-        product_type
-    ):
-        container_name = f"{asset_name}_CON"
-
-        if not unreal.EditorAssetLibrary.does_asset_exist(
-            f"{asset_dir}/{container_name}"
-        ):
-            container = upipeline.create_container(container_name, asset_dir)
-        else:
-            ar = unreal.AssetRegistryHelpers.get_asset_registry()
-            obj = ar.get_asset_by_object_path(
-                f"{asset_dir}/{container_name}.{container_name}")
-            container = obj.get_asset()
-
-        data = {
-            "schema": "ayon:container-2.0",
-            "id": AYON_CONTAINER_ID,
-            "folder_path": folder_path,
-            "namespace": asset_dir,
-            "container_name": container_name,
-            "asset_name": asset_name,
-            # "loader": str(self.__class__.__name__),
-            "representation": representation,
-            "parent": version_id,
-            "product_type": product_type,
-            # TODO these shold be probably removed
-            "asset": folder_path,
-            "family": product_type,
-        }
-
-        upipeline.imprint(
-            "{}/{}".format(asset_dir, container_name), data)
-
-        return container.get_path_name()
-
-    @staticmethod
-    def _get_current_level():
-        ue_version = unreal.SystemLibrary.get_engine_version().split('.')
-        ue_major = ue_version[0]
-
-        if ue_major == '4':
-            return EditorLevelLibrary.get_editor_world()
-        elif ue_major == '5':
-            return unreal.LevelEditorSubsystem().get_current_level()
-
-        raise NotImplementedError(
-            f"Unreal version {ue_major} not supported")
-
-    def _transform_from_basis(self, transform, basis):
-        """Transform a transform from a basis to a new basis."""
-        # Get the basis matrix
-        basis_matrix = unreal.Matrix(
-            basis[0],
-            basis[1],
-            basis[2],
-            basis[3]
-        )
-        transform_matrix = unreal.Matrix(
-            transform[0],
-            transform[1],
-            transform[2],
-            transform[3]
-        )
-
-        new_transform = (
-            basis_matrix.get_inverse() * transform_matrix * basis_matrix)
-
-        return new_transform.transform()
-
-    def _spawn_actor(self, obj, lasset):
-        actor = EditorLevelLibrary.spawn_actor_from_object(
-            obj, unreal.Vector(0.0, 0.0, 0.0)
-        )
-
-        actor.set_actor_label(lasset.get('instance_name'))
-
-        transform = lasset.get('transform_matrix')
-        basis = lasset.get('basis')
-
-        computed_transform = self._transform_from_basis(transform, basis)
-
-        actor.set_actor_transform(computed_transform, False, True)
-
-    @staticmethod
     def _get_fbx_loader(loaders, family):
         name = ""
-        if family == 'rig':
-            name = "SkeletalMeshFBXLoader"
-        elif family == 'model' or family == 'staticMesh':
-            name = "StaticMeshFBXLoader"
-        elif family == 'camera':
+        if family == 'camera':
             name = "CameraLoader"
-
-        if name == "":
-            return None
-
-        for loader in loaders:
-            if loader.__name__ == name:
-                return loader
-
-        return None
+        elif family == 'model':
+            name = "StaticMeshFBXLoader"
+        elif family == 'rig':
+            name = "SkeletalMeshFBXLoader"
+        return (
+            next(
+                (
+                    loader for loader in loaders if loader.__name__ == name
+                ),
+                None
+            )
+            if name
+            else None
+        )
 
     @staticmethod
     def _get_abc_loader(loaders, family):
         name = ""
-        if family == 'rig':
-            name = "SkeletalMeshAlembicLoader"
-        elif family == 'model':
+        if family == 'model':
             name = "StaticMeshAlembicLoader"
+        elif family == 'rig':
+            name = "SkeletalMeshAlembicLoader"
+        return (
+            next(
+                (
+                    loader for loader in loaders if loader.__name__ == name
+                ),
+                None
+            )
+            if name
+            else None
+        )
 
-        if name == "":
-            return None
+    def _get_representation(self, element, repre_entities_by_version_id):
+        representation = None
+        repr_format = None
+        if element.get('representation'):
+            version_id = element.get("version")
+            repre_entities = repre_entities_by_version_id[version_id]
+            if not repre_entities:
+                self.log.error(
+                    f"No valid representation found for version "
+                    f"{version_id}")
+                return None, None
+            repre_entity = repre_entities[0]
+            representation = str(repre_entity["_id"])
+            repr_format = repre_entity["name"]
 
-        for loader in loaders:
-            if loader.__name__ == name:
-                return loader
+        # This is to keep compatibility with old versions of the
+        # json format.
+        elif element.get('reference_fbx'):
+            representation = element.get('reference_fbx')
+            repr_format = 'fbx'
+        elif element.get('reference_abc'):
+            representation = element.get('reference_abc')
+            repr_format = 'abc'
 
-        return None
+        return representation, repr_format
 
-    def _load_asset(self, repr_data, representation, instance_name, family):
-        repr_format = repr_data.get('name')
-
-        all_loaders = discover_loader_plugins()
+    def _load_representation(
+        self, family, representation, repr_format, instance_name, all_loaders
+    ):
         loaders = loaders_from_representation(
             all_loaders, representation)
 
@@ -181,27 +119,14 @@ class ExistingLayoutLoader(plugin.Loader):
             loader = self._get_abc_loader(loaders, family)
 
         if not loader:
-            self.log.error(f"No valid loader found for {representation}")
+            self.log.error(
+                f"No valid loader found for {representation}")
             return []
 
-        # This option is necessary to avoid importing the assets with a
-        # different conversion compared to the other assets. For ABC files,
-        # it is in fact impossible to access the conversion settings. So,
-        # we must assume that the Maya conversion settings have been applied.
-        options = {
-            "default_conversion": True
-        }
+        return load_container(loader, representation, namespace=instance_name)
 
-        assets = load_container(
-            loader,
-            representation,
-            namespace=instance_name,
-            options=options
-        )
-
-        return assets
-
-    def _get_valid_repre_entities(self, project_name, version_ids):
+    @staticmethod
+    def _get_valid_repre_entities(project_name, version_ids):
         valid_formats = ['fbx', 'abc']
 
         repre_entities = list(ayon_api.get_representations(
@@ -209,20 +134,13 @@ class ExistingLayoutLoader(plugin.Loader):
             representation_names=valid_formats,
             version_ids=version_ids
         ))
-        repre_entities_by_version_id = {}
-        for repre_entity in repre_entities:
-            version_id = repre_entity["versionId"]
-            repre_entities_by_version_id[version_id] = repre_entity
-        return repre_entities_by_version_id
 
-    def _process(self, lib_path, project_name):
-        ar = unreal.AssetRegistryHelpers.get_asset_registry()
+        return {
+            str(repre_entity["parent"]):
+                repre_entity for repre_entity in repre_entities}
 
-        actors = EditorLevelLibrary.get_all_level_actors()
-
-        with open(lib_path, "r") as fp:
-            data = json.load(fp)
-
+    @staticmethod
+    def _get_layout_data(data, project_name):
         elements = []
         repre_ids = set()
         # Get all the representations in the JSON from the database.
@@ -261,47 +179,48 @@ class ExistingLayoutLoader(plugin.Loader):
             project_name, repre_entities_by_id.keys()
         )
 
+        return layout_data, version_ids, repre_parents_by_id
+
+    def _process(self, lib_path, project_name):
+        with open(lib_path, "r") as fp:
+            data = json.load(fp)
+
+        all_loaders = discover_loader_plugins()
+
+        layout_data, version_ids, repre_parents_by_id = (
+            self._get_layout_data(data, project_name))
+
         # Prequery valid repre documents for all elements at once
-        valid_repre_entities_by_version_id = self._get_valid_repre_entities(
+        valid_repre_doc_by_version_id = self._get_valid_repre_entities(
             project_name, version_ids)
+
         containers = []
         actors_matched = []
 
         for (repre_entity, lasset) in layout_data:
-            # For every actor in the scene, check if it has a representation in
-            # those we got from the JSON. If so, create a container for it.
+            # For every actor in the scene, check if it has a representation
+            # in those we got from the JSON. If so, create a container for it.
             # Otherwise, remove it from the scene.
-            found = False
-            repre_id = repre_entity["id"]
-            repre_parents = repre_parents_by_id[repre_id]
-            folder_path = repre_parents.folder["path"]
-            folder_name = repre_parents.folder["name"]
-            product_name = repre_parents.product["name"]
-            product_type = repre_parents.product["productType"]
 
-            for actor in actors:
-                if not actor.get_class().get_name() == 'StaticMeshActor':
-                    continue
-                if actor in actors_matched:
-                    continue
+            matched, mesh_path = send_request(
+                "match_actor",
+                params={
+                    "actors_matched": actors_matched,
+                    "lasset": lasset,
+                    "repr_data": repre_entity})
 
-                # Get the original path of the file from which the asset has
-                # been imported.
-                smc = actor.get_editor_property('static_mesh_component')
-                mesh = smc.get_editor_property('static_mesh')
-                import_data = mesh.get_editor_property('asset_import_data')
-                filename = import_data.get_first_filename()
-                path = Path(filename)
+            # If an actor has not been found for this representation,
+            # we check if it has been loaded already by checking all the
+            # loaded containers. If so, we add it to the scene. Otherwise,
+            # we load it.
+            if matched:
+                repre_id = repre_entity["id"]
+                repre_parents = repre_parents_by_id[repre_id]
+                folder_path = repre_parents.folder["path"]
+                folder_name = repre_parents.folder["name"]
+                product_name = repre_parents.product["name"]
+                product_type = repre_parents.product["productType"]
 
-                if (not path.name or
-                        path.name not in repre_entity["attrib"]["path"]):
-                    continue
-
-                actor.set_actor_label(lasset.get('instance_name'))
-
-                mesh_path = Path(mesh.get_path_name()).parent.as_posix()
-
-                # Create the container for the asset.
                 container = self._create_container(
                     f"{folder_name}_{product_name}",
                     mesh_path,
@@ -312,92 +231,68 @@ class ExistingLayoutLoader(plugin.Loader):
                 )
                 containers.append(container)
 
-                # Set the transform for the actor.
-                transform = lasset.get('transform_matrix')
-                basis = lasset.get('basis')
-
-                computed_transform = self._transform_from_basis(
-                    transform, basis)
-                actor.set_actor_transform(computed_transform, False, True)
-
-                actors_matched.append(actor)
-                found = True
-                break
-
-            # If an actor has not been found for this representation,
-            # we check if it has been loaded already by checking all the
-            # loaded containers. If so, we add it to the scene. Otherwise,
-            # we load it.
-            if found:
                 continue
 
-            all_containers = upipeline.ls()
+            loaded = send_request(
+                "spawn_existing_actors",
+                params={
+                    "repre_entity": repre_entity,
+                    "lasset": lasset})
 
-            loaded = False
-
-            for container in all_containers:
-                repre_id = container.get('representation')
-
-                if not repre_id == repre_entity["id"]:
-                    continue
-
-                asset_dir = container.get('namespace')
-
-                arfilter = unreal.ARFilter(
-                    class_names=["StaticMesh"],
-                    package_paths=[asset_dir],
-                    recursive_paths=False)
-                assets = ar.get_assets(arfilter)
-
-                for asset in assets:
-                    obj = asset.get_asset()
-                    self._spawn_actor(obj, lasset)
-
-                loaded = True
-                break
-
-            # If the asset has not been loaded yet, we load it.
             if loaded:
+                # The asset was already loaded, and we spawned it in the scene,
+                # so we can continue.
                 continue
 
-            version_id = lasset.get('version')
-            assets = self._load_asset(
-                valid_repre_entities_by_version_id.get(version_id),
-                lasset.get('representation'),
-                lasset.get('instance_name'),
-                lasset.get('family')
-            )
+            # If we get here, it means that the asset was not loaded yet,
+            # so we load it and spawn it in the scene.
+            representation, repr_format = self._get_representation(
+                lasset, valid_repre_doc_by_version_id)
 
-            for asset in assets:
-                obj = ar.get_asset_by_object_path(asset).get_asset()
-                if not obj.get_class().get_name() == 'StaticMesh':
-                    continue
-                self._spawn_actor(obj, lasset)
+            family = lasset.get('family')
+            instance_name = lasset.get('instance_name')
 
-                break
+            assets = self._load_representation(
+                family, representation, repr_format, instance_name,
+                all_loaders)
 
-        # Check if an actor was not matched to a representation.
-        # If so, remove it from the scene.
-        for actor in actors:
-            if not actor.get_class().get_name() == 'StaticMeshActor':
-                continue
-            if actor not in actors_matched:
-                self.log.warning(f"Actor {actor.get_name()} not matched.")
-                if self.delete_unmatched_assets:
-                    EditorLevelLibrary.destroy_actor(actor)
+            send_request(
+                "spawn_actors",
+                params={
+                    "assets": assets, "lasset": lasset})
+
+        # Remove not matched actors, if the option is set.
+        if self.delete_unmatched_assets:
+            send_request(
+                "remove_unmatched_actors",
+                params={"actors_matched": actors_matched})
 
         return containers
 
     def load(self, context, name, namespace, options):
-        print("Loading Layout and Match Assets")
+        """Load and containerise representation into Content Browser.
 
+        Load and apply layout to already existing assets in Unreal.
+        It will create a container for each asset in the scene, and a
+        container for the layout.
+
+        Args:
+            context (dict): application context
+            name (str): subset name
+            namespace (str): in Unreal this is basically path to container.
+                             This is not passed here, so namespace is set
+                             by `containerise()` because only then we know
+                             real path.
+            options (dict): Those would be data to be imprinted. This is not
+                            used now, data are imprinted by `containerise()`.
+        """
         folder_name = context["folder"]["name"]
         folder_path = context["folder"]["path"]
         product_type = context["product"]["productType"]
         asset_name = f"{folder_name}_{name}" if folder_name else name
         container_name = f"{folder_name}_{name}_CON"
 
-        curr_level = self._get_current_level()
+        curr_level = send_request("get_current_level")
 
         if not curr_level:
             raise AssertionError("Current level not saved")
@@ -406,14 +301,7 @@ class ExistingLayoutLoader(plugin.Loader):
         path = self.filepath_from_context(context)
         containers = self._process(path, project_name)
 
-        curr_level_path = Path(
-            curr_level.get_outer().get_path_name()).parent.as_posix()
-
-        if not unreal.EditorAssetLibrary.does_asset_exist(
-            f"{curr_level_path}/{container_name}"
-        ):
-            upipeline.create_container(
-                container=container_name, path=curr_level_path)
+        curr_level_path = Path(curr_level).parent.as_posix()
 
         data = {
             "schema": "ayon:container-2.0",
@@ -431,10 +319,12 @@ class ExistingLayoutLoader(plugin.Loader):
             "asset": folder_path,
             "family": product_type,
         }
-        upipeline.imprint(f"{curr_level_path}/{container_name}", data)
+
+        containerise(curr_level_path, container_name, data)
 
     def update(self, container, context):
         asset_dir = container.get('namespace')
+        container_name = container['objectName']
 
         project_name = context["project"]["name"]
         repre_entity = context["representation"]
@@ -447,5 +337,5 @@ class ExistingLayoutLoader(plugin.Loader):
             "loaded_assets": containers,
             "parent": repre_entity["versionId"],
         }
-        upipeline.imprint(
-            "{}/{}".format(asset_dir, container.get('container_name')), data)
+
+        containerise(asset_dir, container_name, data)
