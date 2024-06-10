@@ -4,25 +4,25 @@ import json
 import logging
 from typing import List
 from contextlib import contextmanager
+import semver
 import time
 
-import semver
 import pyblish.api
-import ayon_api
 
+from ayon_core.client import get_asset_by_name, get_assets
 from ayon_core.pipeline import (
+    AYON_CONTAINER_ID,
     register_loader_plugin_path,
     register_creator_plugin_path,
     register_inventory_action_path,
     deregister_loader_plugin_path,
     deregister_creator_plugin_path,
     deregister_inventory_action_path,
-    AYON_CONTAINER_ID,
     get_current_project_name,
 )
 from ayon_core.tools.utils import host_tools
+import ayon_unreal
 from ayon_core.host import HostBase, ILoadHost, IPublishHost
-from ayon_unreal import UNREAL_ADDON_ROOT
 
 import unreal  # noqa
 
@@ -36,7 +36,7 @@ UNREAL_VERSION = semver.VersionInfo(
     *os.getenv("AYON_UNREAL_VERSION").split(".")
 )
 
-PLUGINS_DIR = os.path.join(UNREAL_ADDON_ROOT, "plugins")
+PLUGINS_DIR = os.path.join(ayon_unreal.UNREAL_ADDON_ROOT, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
 LOAD_PATH = os.path.join(PLUGINS_DIR, "load")
 CREATE_PATH = os.path.join(PLUGINS_DIR, "create")
@@ -521,6 +521,18 @@ def get_subsequences(sequence: unreal.LevelSequence):
 def set_sequence_hierarchy(
     seq_i, seq_j, max_frame_i, min_frame_j, max_frame_j, map_paths
 ):
+    """
+    Sets the sequence hierarchy by creating or retrieving sequencer tracks and
+    adding subscene and visibility sections.
+
+    Args:
+        seq_i (unreal.MovieSceneSequence): The parent sequence.
+        seq_j (unreal.MovieSceneSequence): The sub-sequence to be added.
+        max_frame_i (int): The maximum frame of the parent sequence.
+        min_frame_j (int): The minimum frame of the sub-sequence.
+        max_frame_j (int): The maximum frame of the sub-sequence.
+        map_paths (list): List of map paths.
+    """
     # Get existing sequencer tracks or create them if they don't exist
     tracks = seq_i.get_master_tracks()
     subscene_track = None
@@ -589,48 +601,66 @@ def set_sequence_hierarchy(
         hid_section.set_level_names(maps)
 
 
-def generate_sequence(h, h_dir):
+def generate_sequence(name, hierarchy_dir):
+    """
+    Creates a new sequence for the given hierarchy. The sequence is created
+    with the specified name and is saved in the specified directory.
+
+    Args:
+        name (str): The name of the sequence.
+        hierarchy_dir (str): The directory where the sequence will be created.
+
+    Returns:
+        tuple: A tuple containing the generated sequence object and the range
+        of frames (min_frame, max_frame).
+    """
     tools = unreal.AssetToolsHelpers().get_asset_tools()
 
     sequence = tools.create_asset(
-        asset_name=h,
-        package_path=h_dir,
+        asset_name=name,
+        package_path=hierarchy_dir,
         asset_class=unreal.LevelSequence,
         factory=unreal.LevelSequenceFactoryNew()
     )
 
+    # Get frame range and fps data to apply to the sequence
     project_name = get_current_project_name()
-    # TODO Fix this does not return folder path
-    folder_path = h_dir.split('/')[-1]
-    folder_entity = ayon_api.get_folder_by_path(
+    asset_data = get_asset_by_name(
         project_name,
-        folder_path,
-        fields={"id", "attrib.fps"}
+        name,
+        fields=["_id", "data.fps", "data.clipIn", "data.clipOut"]
     )
     start_frames = []
     end_frames = []
     if folder_entity:
         unreal.log("Found folder entity data: {}".format(folder_entity))
 
-        elements = list(ayon_api.get_folders(
+    elements = list(get_assets(
+        project_name,
+        parent_ids=[asset_data["_id"]],
+        fields=["_id", "data.clipIn", "data.clipOut"]
+    ))
+    for e in elements:
+        start_frames.append(e.get('data').get('clipIn'))
+        end_frames.append(e.get('data').get('clipOut'))
+
+        elements.extend(get_assets(
             project_name,
-            parent_ids=[folder_entity["id"]],
-            fields={"id", "attrib.clipIn", "attrib.clipOut"}
+            parent_ids=[e["_id"]],
+            fields=["_id", "data.clipIn", "data.clipOut"]
         ))
         for e in elements:
             start_frames.append(e["attrib"].get("clipIn"))
             end_frames.append(e["attrib"].get("clipOut"))
 
-            elements.extend(ayon_api.get_folders(
-                project_name,
-                parent_ids=[e["id"]],
-                fields={"id", "attrib.clipIn", "attrib.clipOut"}
-            ))
+    if elements:
+        min_frame = min(start_frames)
+        max_frame = max(end_frames)
+    else:
+        min_frame = asset_data.get('data').get("clipIn")
+        max_frame = asset_data.get('data').get("clipOut")
 
-    min_frame = min(start_frames, default=sequence.get_playback_start())
-    max_frame = max(end_frames, default=sequence.get_playback_end())
-
-    fps = folder_entity["attrib"].get("fps") or 30.0
+    fps = asset_data.get('data').get("fps")
 
     sequence.set_display_rate(
         unreal.FrameRate(fps, 1.0))
@@ -642,6 +672,7 @@ def generate_sequence(h, h_dir):
     sequence.set_view_range_start(min_frame / fps)
     sequence.set_view_range_end(max_frame / fps)
 
+    # Check if the sequence has a camera cut track and if not, create one
     tracks = sequence.get_master_tracks()
     track = None
     for t in tracks:
