@@ -1,22 +1,18 @@
 # -*- coding: utf-8 -*-
 """Load FBX with animations."""
-import os
 import json
-
-import unreal
-from unreal import EditorAssetLibrary
-from unreal import MovieSceneSkeletalAnimationTrack
-from unreal import MovieSceneSkeletalAnimationSection
+import os
 
 import ayon_api
+import unreal
+from ayon_core.pipeline import (AYON_CONTAINER_ID, get_current_project_name,
+                                get_representation_path)
 from ayon_core.pipeline.context_tools import get_current_folder_entity
-from ayon_core.pipeline import (
-    get_representation_path,
-    get_current_project_name,
-    AYON_CONTAINER_ID
-)
-from ayon_unreal.api import plugin
+from ayon_core.pipeline.load import LoadError
 from ayon_unreal.api import pipeline as unreal_pipeline
+from ayon_unreal.api import plugin
+from unreal import (EditorAssetLibrary, MovieSceneSkeletalAnimationSection,
+                    MovieSceneSkeletalAnimationTrack)
 
 
 class AnimationFBXLoader(plugin.Loader):
@@ -45,7 +41,7 @@ class AnimationFBXLoader(plugin.Loader):
 
         # set import options here
         task.options.set_editor_property(
-            'automated_import_should_detect_type', False)
+            'automated_import_should_detect_type', True)
         task.options.set_editor_property(
             'original_import_type', unreal.FBXImportType.FBXIT_SKELETAL_MESH)
         task.options.set_editor_property(
@@ -73,6 +69,8 @@ class AnimationFBXLoader(plugin.Loader):
             'remove_redundant_keys', False)
         task.options.anim_sequence_import_data.set_editor_property(
             'convert_scene', True)
+        task.options.anim_sequence_import_data.set_editor_property(
+            'force_front_x_axis', False)
 
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
 
@@ -93,7 +91,7 @@ class AnimationFBXLoader(plugin.Loader):
                     actor = a
                     break
             if not actor:
-                raise Exception(f"Could not find actor {instance_name}")
+                raise LoadError(f"Could not find actor {instance_name}")
             skeleton = actor.skeletal_mesh_component.skeletal_mesh.skeleton
 
         if not actor:
@@ -167,6 +165,10 @@ class AnimationFBXLoader(plugin.Loader):
                     for s in sections:
                         s.params.set_editor_property('animation', animation)
 
+    @staticmethod
+    def is_skeleton(asset):
+        return asset.get_class() == unreal.Skeleton.static_class()
+
     def _load_standalone_animation(
         self, path, asset_dir, asset_name, version_id
     ):
@@ -174,45 +176,53 @@ class AnimationFBXLoader(plugin.Loader):
         skeleton = None
         if selection:
             skeleton = selection[0]
-        else:
-            # If no skeleton is selected, we try to find the skeleton by
-            # checking linked rigs.
-            project_name = get_current_project_name()
-            server = ayon_api.get_server_api_connection()
+            if not self.is_skeleton(skeleton):
+                self.log.warning(
+                    f"Selected asset {skeleton.get_name()} is not "
+                    f"a skeleton. It is {skeleton.get_class().get_name()}")
+                skeleton = None
 
-            v_links = server.get_version_links(
-                project_name, version_id=version_id)
-            entities = [v_link["entityId"] for v_link in v_links]
-            linked_versions = list(server.get_versions(project_name, entities))
+        print("Trying to find original rig with links.")
+        # If no skeleton is selected, we try to find the skeleton by
+        # checking linked rigs.
+        project_name = get_current_project_name()
+        server = ayon_api.get_server_api_connection()
 
-            rigs = [
-                version["id"] for version in linked_versions
-                if "rig" in version["attrib"]["families"]]
+        v_links = server.get_version_links(
+            project_name, version_id=version_id)
+        entities = [v_link["entityId"] for v_link in v_links]
+        linked_versions = list(server.get_versions(project_name, entities))
 
-            containers = unreal_pipeline.ls()
+        rigs = [
+            version["id"] for version in linked_versions
+            if "rig" in version["attrib"]["families"]]
 
-            ar = unreal.AssetRegistryHelpers.get_asset_registry()
+        self.log.debug(f"Found rigs: {rigs}")
 
-            for container in containers:
-                if container["representation"] in rigs:
-                    namespace = container["namespace"]
+        containers = unreal_pipeline.ls()
 
-                    _filter = unreal.ARFilter(
-                        class_names=["Skeleton"],
-                        package_paths=[namespace],
-                        recursive_paths=False)
-                    skeletons = ar.get_assets(_filter)
+        ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
-                    if skeletons:
-                        skeleton = skeletons[0].get_asset()
-                        break
+        for container in containers:
+            self.log.debug(f"Checking container: {container}")
+            if container["parent"] in rigs:
+                # we found loaded version of the linked rigs
+                namespace = container["namespace"]
+
+                _filter = unreal.ARFilter(
+                    class_names=["Skeleton"],
+                    package_paths=[namespace],
+                    recursive_paths=False)
+                if skeletons := ar.get_assets(_filter):
+                    skeleton = skeletons[0].get_asset()
+                    break
 
         if not skeleton:
-            raise ValueError("No skeleton found.")
+            raise LoadError("No skeleton found..")
+        if not self.is_skeleton(skeleton):
+            raise LoadError("Selected asset is not a skeleton.")
 
-        if skeleton.get_class() != unreal.Skeleton.static_class():
-            raise ValueError("Selected asset is not a skeleton.")
-
+        self.log.info(f"Using skeleton: {skeleton.get_name()}")
         self._import_animation(
             path, asset_dir, asset_name, skeleton, True)
 
@@ -317,8 +327,15 @@ class AnimationFBXLoader(plugin.Loader):
         imported_content = EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=False)
 
-        for a in imported_content:
-            EditorAssetLibrary.save_asset(a)
+        for asset in imported_content:
+            loaded_asset = EditorAssetLibrary.load_asset(asset)
+            # Enable root motion for animations so they are oriented correctly
+            if loaded_asset.get_class() == unreal.AnimSequence.static_class():
+                loaded_asset.set_editor_property("enable_root_motion", True)
+                loaded_asset.set_editor_property(
+                    "root_motion_root_lock",
+                    unreal.RootMotionRootLock.ANIM_FIRST_FRAME)
+            EditorAssetLibrary.save_asset(asset)
 
         if master_level:
             unreal.EditorLevelLibrary.save_current_level()
