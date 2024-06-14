@@ -25,7 +25,7 @@ class AnimationFBXLoader(plugin.Loader):
     color = "orange"
 
     def _import_animation(
-        self, path, asset_dir, asset_name, skeleton, automated
+        self, path, asset_dir, asset_name, skeleton, automated, replace=False
     ):
         task = unreal.AssetImportTask()
         task.options = unreal.FbxImportUI()
@@ -35,7 +35,7 @@ class AnimationFBXLoader(plugin.Loader):
         task.set_editor_property('filename', path)
         task.set_editor_property('destination_path', asset_dir)
         task.set_editor_property('destination_name', asset_name)
-        task.set_editor_property('replace_existing', False)
+        task.set_editor_property('replace_existing', replace)
         task.set_editor_property('automated', automated)
         task.set_editor_property('save', False)
 
@@ -352,7 +352,7 @@ class AnimationFBXLoader(plugin.Loader):
         skeleton = skeletal_mesh.get_editor_property('skeleton')
 
         self._import_animation(
-            source_path, destination_path, folder_name, skeleton, True)
+            source_path, destination_path, folder_name, skeleton, True, True)
 
         container_path = f'{container["namespace"]}/{container["objectName"]}'
         # update metadata
