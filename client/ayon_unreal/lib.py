@@ -475,7 +475,7 @@ def check_plugin_existence(engine_path: Path, env: dict = None) -> bool:
     env = env or os.environ
     integration_plugin_path: Path = Path(env.get("AYON_UNREAL_PLUGIN", ""))
 
-    if not os.path.isdir(integration_plugin_path):
+    if not integration_plugin_path.is_dir():
         raise RuntimeError("Path to the integration plugin is null!")
 
     # Create a path to the plugin in the engine

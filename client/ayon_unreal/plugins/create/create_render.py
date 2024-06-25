@@ -15,7 +15,8 @@ from ayon_core.lib import (
     UILabelDef,
     UISeparatorDef,
     BoolDef,
-    NumberDef
+    NumberDef,
+    EnumDef
 )
 
 
@@ -236,6 +237,10 @@ class CreateRender(UnrealAssetCreator):
                 product_name, instance_data, pre_create_data)
 
     def get_pre_create_attr_defs(self):
+        rendering_targets = {
+            "local": "Local machine rendering",
+            "farm": "Farm rendering",
+        }
         return [
             UILabelDef(
                 "Select a Level Sequence to render or create a new one."
@@ -248,6 +253,10 @@ class CreateRender(UnrealAssetCreator):
             UILabelDef(
                 "WARNING: If you create a new Level Sequence, the current\n"
                 "level will be saved and a new Master Level will be created."
+            ),
+
+            EnumDef(
+                "render_target", items=rendering_targets, label="Render target"
             ),
             NumberDef(
                 "start_frame",
@@ -272,5 +281,17 @@ class CreateRender(UnrealAssetCreator):
                 "use_hierarchy",
                 label="Use Hierarchy",
                 default=False
+            ),
+        ]
+
+    def get_instance_attr_defs(self):
+        rendering_targets = {
+            "local": "Local machine rendering",
+            "farm": "Farm rendering",
+        }
+        return [
+            EnumDef(
+                "render_target", items=rendering_targets,
+                label="Render target"
             ),
         ]
