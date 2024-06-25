@@ -601,7 +601,7 @@ def generate_sequence(h, h_dir):
 
     project_name = get_current_project_name()
     # TODO Fix this does not return folder path
-    folder_path = h_dir.split('/')[-1],
+    folder_path = h_dir.split('/')[-1]
     folder_entity = ayon_api.get_folder_by_path(
         project_name,
         folder_path,
