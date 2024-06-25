@@ -34,7 +34,7 @@ class SplashScreen(QtWidgets.QDialog):
             window_icon (str | bytes | None: A resource (pic) which is used for
                 the window's icon
         """
-        super(SplashScreen, self).__init__()
+        super().__init__()
 
         if splash_icon is None:
             splash_icon = resources.get_ayon_icon_filepath()
@@ -46,6 +46,12 @@ class SplashScreen(QtWidgets.QDialog):
         self.setWindowIcon(QtGui.QIcon(window_icon))
         self.setWindowTitle(window_title)
         self.init_ui()
+
+        show_timer = QtCore.QTimer()
+        show_timer.timeout.connect(self._on_show_timer)
+
+        self._first_show = True
+        self._show_timer = show_timer
 
     def was_proc_successful(self) -> bool:
         return self.thread_return_code == 0
@@ -84,7 +90,6 @@ class SplashScreen(QtWidgets.QDialog):
                                "has not finished it's execution!.")
         self.close()
 
-
     @QtCore.Slot()
     def toggle_log(self):
         if self.is_log_visible:
@@ -98,6 +103,21 @@ class SplashScreen(QtWidgets.QDialog):
             self.resize(self.width(), 300)
 
         self.is_log_visible = not self.is_log_visible
+
+    def showEvent(self, event: QtGui.QShowEvent):
+        super().showEvent(event)
+        if self._first_show:
+            self._first_show = False
+            self._show_timer.start()
+
+    def _on_show_timer(self):
+        screen = self.screen()
+        screen_geo = screen.geometry()
+        center = screen_geo.center()
+        self.move(
+            center.x() - int(self.width() * 0.5),
+            center.y() - int(self.height() * 0.5)
+        )
 
     def show_ui(self):
         """Shows the splash screen. BEWARE THAT THIS FUNCTION IS BLOCKING
@@ -189,13 +209,6 @@ class SplashScreen(QtWidgets.QDialog):
             | QtCore.Qt.CustomizeWindowHint
             | QtCore.Qt.WindowTitleHint
             | QtCore.Qt.WindowMinimizeButtonHint
-        )
-
-        desktop_rect = QtWidgets.QApplication.desktop().availableGeometry(self)
-        center = desktop_rect.center()
-        self.move(
-            center.x() - (self.width() * 0.5),
-            center.y() - (self.height() * 0.5)
         )
 
     @QtCore.Slot(int)
