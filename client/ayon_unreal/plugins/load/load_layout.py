@@ -69,12 +69,13 @@ class LayoutLoader(plugin.Loader):
         name = ""
         if family == 'rig':
             name = "SkeletalMeshFBXLoader"
-        elif family == 'model':
+        elif family in ['model', 'staticMesh']:
             name = "StaticMeshFBXLoader"
         elif family == 'camera':
             name = "CameraLoader"
 
         if name == "":
+
             return None
 
         for loader in loaders:
@@ -88,7 +89,7 @@ class LayoutLoader(plugin.Loader):
         name = ""
         if family == 'rig':
             name = "SkeletalMeshAlembicLoader"
-        elif family == 'model':
+        elif family in ['model', 'staticMesh']:
             name = "StaticMeshAlembicLoader"
 
         if name == "":
@@ -387,7 +388,9 @@ class LayoutLoader(plugin.Loader):
 
                 if not loader:
                     self.log.error(
-                        f"No valid loader found for {repre_id}")
+                        f"No valid loader found for {repre_id} "
+                        f"({repr_format}) "
+                        f"{product_type}")
                     continue
 
                 options = {
@@ -427,7 +430,7 @@ class LayoutLoader(plugin.Loader):
 
                     actors = []
 
-                    if product_type == 'model':
+                    if product_type in ['model', 'staticMesh']:
                         actors, _ = self._process_family(
                             assets, 'StaticMesh', transform, basis,
                             sequence, inst
@@ -489,7 +492,7 @@ class LayoutLoader(plugin.Loader):
                 asset_container.get_asset(), "family")
             assets = EditorAssetLibrary.list_assets(
                 str(package_path), recursive=False)
-            if family == 'model':
+            if family in ['model', 'staticMesh']:
                 self._remove_family(
                     assets, static_meshes_comp, 'StaticMesh', 'static_mesh')
             elif family == 'rig':
