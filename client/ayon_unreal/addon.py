@@ -43,7 +43,7 @@ class UnrealAddon(AYONAddon, IHostAddon):
 
         ue_version = app.name.replace("-", ".")
         unreal_plugin_path = os.path.join(
-            UNREAL_ADDON_ROOT, "integration", f"UE_{ue_version}".format(ue_version), "Ayon"
+            UNREAL_ADDON_ROOT, "integration", f"UE_{ue_version}", "Ayon"
         )
         if not Path(unreal_plugin_path).exists():
             if compatible_versions := get_compatible_integration(
