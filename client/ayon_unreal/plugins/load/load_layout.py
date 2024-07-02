@@ -67,7 +67,7 @@ class LayoutLoader(plugin.Loader):
     @staticmethod
     def _get_fbx_loader(loaders, family):
         name = ""
-        if family == 'rig':
+        if family in ['rig', 'skeletalMesh']:
             name = "SkeletalMeshFBXLoader"
         elif family in ['model', 'staticMesh']:
             name = "StaticMeshFBXLoader"
@@ -87,7 +87,7 @@ class LayoutLoader(plugin.Loader):
     @staticmethod
     def _get_abc_loader(loaders, family):
         name = ""
-        if family == 'rig':
+        if family in ['rig', 'skeletalMesh']:
             name = "SkeletalMeshAlembicLoader"
         elif family in ['model', 'staticMesh']:
             name = "StaticMeshAlembicLoader"
@@ -435,7 +435,7 @@ class LayoutLoader(plugin.Loader):
                             assets, 'StaticMesh', transform, basis,
                             sequence, inst
                         )
-                    elif product_type == 'rig':
+                    elif product_type in ['rig', 'skeletalMesh']:
                         actors, bindings = self._process_family(
                             assets, 'SkeletalMesh', transform, basis,
                             sequence, inst
@@ -495,7 +495,7 @@ class LayoutLoader(plugin.Loader):
             if family in ['model', 'staticMesh']:
                 self._remove_family(
                     assets, static_meshes_comp, 'StaticMesh', 'static_mesh')
-            elif family == 'rig':
+            elif family in ['rig', 'skeletalMesh']:
                 self._remove_family(
                     assets, skel_meshes_comp, 'SkeletalMesh', 'skeletal_mesh')
 
