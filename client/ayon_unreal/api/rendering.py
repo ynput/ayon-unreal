@@ -51,7 +51,14 @@ def start_rendering():
     instances = [
         a for a in assets
         if a.get_class().get_name() == "AyonPublishInstance"]
-
+    if not instances:
+        show_message_dialog(
+            title="No AyonPublishInstance selected",
+            message="No AyonPublishInstance selected. Select render instance data asset.",      # noqa
+            level="warning"
+        )
+        raise RuntimeError(
+            "No AyonPublishInstance selected. Select render instance data asset.")
     inst_data = []
 
     for i in instances:
@@ -84,9 +91,12 @@ def start_rendering():
         unreal.log("Found saved render configuration")
         config = ar.get_asset_by_object_path(config_path).get_asset()
 
+    les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
+    current_level = les.get_current_level()
+    current_level_name = current_level.get_outer().get_path_name()
+
     for i in inst_data:
         sequence = ar.get_asset_by_object_path(i["sequence"]).get_asset()
-
         sequences = [{
             "sequence": sequence,
             "output": f"{i['output']}",
@@ -115,6 +125,13 @@ def start_rendering():
                 # Avoid rendering camera sequences
                 if "_camera" not in seq.get('sequence').get_name():
                     render_list.append(seq)
+
+        if i["master_level"] != current_level_name:
+            unreal.log_warning(
+                "{} is not the persistent level, use {} for rendering".format(
+                i["master_level"], current_level_name)
+            )
+            i["master_level"] = current_level_name
 
         # Create the rendering jobs and add them to the queue.
         for render_setting in render_list:
@@ -178,3 +195,10 @@ def start_rendering():
         executor.on_individual_job_finished_delegate.add_callable_unique(
             _job_finish_callback)  # Only available on PIE Executor
         executor.execute(queue)
+
+
+
+
+# import unreal
+# les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
+# current_level = les.get_current_level()
