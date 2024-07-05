@@ -97,6 +97,7 @@ def start_rendering():
 
     for i in inst_data:
         sequence = ar.get_asset_by_object_path(i["sequence"]).get_asset()
+
         sequences = [{
             "sequence": sequence,
             "output": f"{i['output']}",
@@ -195,10 +196,3 @@ def start_rendering():
         executor.on_individual_job_finished_delegate.add_callable_unique(
             _job_finish_callback)  # Only available on PIE Executor
         executor.execute(queue)
-
-
-
-
-# import unreal
-# les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
-# current_level = les.get_current_level()
