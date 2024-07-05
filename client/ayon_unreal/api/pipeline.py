@@ -607,13 +607,14 @@ def generate_sequence(h, h_dir):
         folder_path,
         fields={"id", "attrib.fps"}
     )
-
+    if folder_entity:
+        unreal.log("Found folder entity data: {}".format(folder_entity))
     start_frames = []
     end_frames = []
 
     elements = list(ayon_api.get_folders(
         project_name,
-        parent_ids=[folder_entity["id"]],
+        parent_ids=[folder_entity.get("id", "")],
         fields={"id", "attrib.clipIn", "attrib.clipOut"}
     ))
     for e in elements:
