@@ -627,8 +627,8 @@ def generate_sequence(h, h_dir):
                 fields={"id", "attrib.clipIn", "attrib.clipOut"}
             ))
 
-    min_frame = min(start_frames) or sequence.get_playback_start()
-    max_frame = max(end_frames) or sequence.get_playback_end()
+    min_frame = min(start_frames, default=sequence.get_playback_start())
+    max_frame = max(end_frames, default=sequence.get_playback_end())
 
     fps = folder_entity["attrib"].get("fps")
 
