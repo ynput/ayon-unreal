@@ -614,7 +614,7 @@ def generate_sequence(h, h_dir):
 
         elements = list(ayon_api.get_folders(
             project_name,
-            parent_ids=[folder_entity.get("id", "")],
+            parent_ids=[folder_entity["id"]],
             fields={"id", "attrib.clipIn", "attrib.clipOut"}
         ))
         for e in elements:
