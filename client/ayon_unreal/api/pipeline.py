@@ -609,26 +609,26 @@ def generate_sequence(h, h_dir):
     )
     if folder_entity:
         unreal.log("Found folder entity data: {}".format(folder_entity))
-    start_frames = []
-    end_frames = []
+        start_frames = []
+        end_frames = []
 
-    elements = list(ayon_api.get_folders(
-        project_name,
-        parent_ids=[folder_entity.get("id", "")],
-        fields={"id", "attrib.clipIn", "attrib.clipOut"}
-    ))
-    for e in elements:
-        start_frames.append(e["attrib"].get("clipIn"))
-        end_frames.append(e["attrib"].get("clipOut"))
-
-        elements.extend(ayon_api.get_folders(
+        elements = list(ayon_api.get_folders(
             project_name,
-            parent_ids=[e["id"]],
+            parent_ids=[folder_entity.get("id", "")],
             fields={"id", "attrib.clipIn", "attrib.clipOut"}
         ))
+        for e in elements:
+            start_frames.append(e["attrib"].get("clipIn"))
+            end_frames.append(e["attrib"].get("clipOut"))
 
-    min_frame = min(start_frames)
-    max_frame = max(end_frames)
+            elements.extend(ayon_api.get_folders(
+                project_name,
+                parent_ids=[e["id"]],
+                fields={"id", "attrib.clipIn", "attrib.clipOut"}
+            ))
+
+    min_frame = min(start_frames) or sequence.get_playback_start()
+    max_frame = max(end_frames) or sequence.get_playback_end()
 
     fps = folder_entity["attrib"].get("fps")
 
