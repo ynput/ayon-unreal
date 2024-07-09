@@ -155,8 +155,12 @@ class StaticMeshAlembicLoader(plugin.Loader):
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             f"{self.root}/{folder_name}/{name_version}", suffix="")
+
+        container_name += suffix
+
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             path = self.filepath_from_context(context)
+
             self.import_and_containerize(path, asset_dir, asset_name,
             container_name, loaded_options)
 
