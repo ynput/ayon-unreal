@@ -162,7 +162,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
             path = self.filepath_from_context(context)
 
             self.import_and_containerize(path, asset_dir, asset_name,
-            container_name, loaded_options)
+                                         container_name, loaded_options)
 
         product_type = context["product"]["productType"]
         self.imprint(
