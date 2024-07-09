@@ -71,7 +71,7 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             else:
                 conversion_settings = unreal.AbcConversionSettings(
                     preset=unreal.AbcConversionPreset.CUSTOM,
-                    flip_u=False, flip_v=True,
+                    flip_u=False, flip_v=False,
                     rotation=[0.0, 0.0, 0.0],
                     scale=[1.0, 1.0, 1.0])
             options.conversion_settings = conversion_settings
