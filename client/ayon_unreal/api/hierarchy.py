@@ -13,7 +13,7 @@ from ayon_core.tools.utils import (
     PlaceholderLineEdit,
     SquareButton,
 )
-from ayon_core.tools.ayon_utils import SimpleFoldersWidget
+from ayon_core.tools.utils import SimpleFoldersWidget
 
 from ayon_unreal.api.pipeline import (
     generate_sequence,
