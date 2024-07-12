@@ -32,15 +32,15 @@ class UnrealSettings(BaseSettingsModel):
         False,
         title="Delete assets that are not matched"
     )
-    asset_path: str = Field(
+    asset_path: str = SettingsField(
         "Ayon/Assets/",
         title="Assets Path"
     )
-    sequence_path: str = Field(
+    sequence_path: str = SettingsField(
         "Ayon/Sequences/",
         title="Sequences Path"
     )
-    render_config_path: str = Field(
+    render_config_path: str = SettingsField(
         "",
         title="Render Config Path"
     )
