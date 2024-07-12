@@ -63,7 +63,8 @@ class StaticMeshAlembicLoader(plugin.Loader):
 
         if not loaded_options.get("default_conversion"):
             conversion_settings = None
-            abc_conversion_preset = loaded_options.get("abc_conversion_preset")
+            abc_conversion_preset = loaded_options.get(
+                "abc_conversion_preset", "maya")
             if abc_conversion_preset == "maya":
                 conversion_settings = unreal.AbcConversionSettings(
                     preset= unreal.AbcConversionPreset.MAYA)
@@ -210,9 +211,9 @@ class StaticMeshAlembicLoader(plugin.Loader):
 
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             path = get_representation_path(repre_entity)
-
+            loaded_options = {"default_conversion": False}
             self.import_and_containerize(path, asset_dir, asset_name,
-                                         container_name)
+                                         container_name, loaded_options)
 
         self.imprint(
             folder_path,
