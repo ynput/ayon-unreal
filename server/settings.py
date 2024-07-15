@@ -32,10 +32,6 @@ class UnrealSettings(BaseSettingsModel):
         False,
         title="Delete assets that are not matched"
     )
-    asset_path: str = SettingsField(
-        "Ayon/Assets/",
-        title="Assets Path"
-    )
     sequence_path: str = SettingsField(
         "Ayon/Sequences/",
         title="Sequences Path"
@@ -62,7 +58,6 @@ class UnrealSettings(BaseSettingsModel):
 DEFAULT_VALUES = {
     "level_sequences_for_layouts": True,
     "delete_unmatched_assets": False,
-    "asset_path": "Ayon/Assets/",
     "sequence_path": "Ayon/Sequences/",
     "render_config_path": "",
     "preroll_frames": 0,
