@@ -630,7 +630,7 @@ def generate_sequence(h, h_dir):
     min_frame = min(start_frames, default=sequence.get_playback_start())
     max_frame = max(end_frames, default=sequence.get_playback_end())
 
-    fps = folder_entity["attrib"].get("fps")
+    fps = folder_entity["attrib"].get("fps") or 30.0
 
     sequence.set_display_rate(
         unreal.FrameRate(fps, 1.0))
