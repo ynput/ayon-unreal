@@ -256,9 +256,8 @@ class ExistingLayoutLoader(plugin.Loader):
 
             layout_data.append((repre_entity, element))
             version_ids.add(repre_entity["versionId"])
-
         repre_parents_by_id = ayon_api.get_representation_parents(
-            project_name, repre_entities_by_id.keys()
+            project_name, next((rep_id for rep_id in repre_entities_by_id.keys()), None)
         )
 
         # Prequery valid repre documents for all elements at once
@@ -272,7 +271,6 @@ class ExistingLayoutLoader(plugin.Loader):
             # those we got from the JSON. If so, create a container for it.
             # Otherwise, remove it from the scene.
             found = False
-            repre_id = repre_entity["id"]
             repre_parents = repre_parents_by_id[repre_id]
             folder_path = repre_parents.folder["path"]
             folder_name = repre_parents.folder["name"]
