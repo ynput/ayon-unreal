@@ -256,9 +256,10 @@ class ExistingLayoutLoader(plugin.Loader):
 
             layout_data.append((repre_entity, element))
             version_ids.add(repre_entity["versionId"])
-        repre_parents_by_id = ayon_api.get_representation_parents(
-            project_name, next((rep_id for rep_id in repre_entities_by_id.keys()), None)
+        repre_parents_by_id = ayon_api.get_representations_parents(
+            project_name, list(repre_entities_by_id.keys())
         )
+        unreal.log(repre_parents_by_id)
 
         # Prequery valid repre documents for all elements at once
         valid_repre_entities_by_version_id = self._get_valid_repre_entities(
@@ -293,6 +294,7 @@ class ExistingLayoutLoader(plugin.Loader):
 
                 if (not path.name or
                         path.name not in repre_entity["attrib"]["path"]):
+                    unreal.log("Path is not found in representation entity")
                     continue
 
                 actor.set_actor_label(lasset.get('instance_name'))

@@ -860,15 +860,12 @@ class LayoutLoader(plugin.Loader):
                 if subscene_track:
                     sections = subscene_track.get_sections()
                     for ss in sections:
-                        try:
-                            if (ss.get_sequence().get_name() ==
-                                    container.get('asset')):
-                                parent = s
-                                subscene_track.remove_section(ss)
-                                break
-                            sequences.append(ss.get_sequence())
-                        except AttributeError:
-                            unreal.log("Cannot get the level sequences")
+                        if (ss.get_sequence().get_name() ==
+                                container.get('folder')):
+                            parent = s
+                            subscene_track.remove_section(ss)
+                            break
+                        sequences.append(ss.get_sequence())
                     # Update subscenes indexes.
                     i = 0
                     for ss in sections:
