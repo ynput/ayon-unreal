@@ -12,7 +12,7 @@ from ayon_unreal.api.pipeline import (
     create_container,
     imprint,
 )
-from ayon_core.lib import EnumDef
+from ayon_core.lib import EnumDef, BoolDef
 import unreal  # noqa
 
 
@@ -38,6 +38,16 @@ class StaticMeshAlembicLoader(plugin.Loader):
                     "maya": "maya"
                 },
                 default="maya"
+            ),
+            BoolDef(
+                "create_materials",
+                label="Create Materials",
+                default=False
+            ),
+            BoolDef(
+                "find_materials",
+                label="Find Materials",
+                default=False
             )
         ]
 
@@ -46,6 +56,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
         task = unreal.AssetImportTask()
         options = unreal.AbcImportSettings()
         sm_settings = unreal.AbcStaticMeshSettings()
+        mat_settings = unreal.AbcMaterialSettings()
 
         task.set_editor_property('filename', filename)
         task.set_editor_property('destination_path', asset_dir)
@@ -61,12 +72,17 @@ class StaticMeshAlembicLoader(plugin.Loader):
 
         sm_settings.set_editor_property('merge_meshes', True)
 
+        mat_settings.set_editor_property(
+            "create_materials", loaded_options.get("create_materials"))
+        mat_settings.set_editor_property(
+            "find_materials", loaded_options.get("find_materials"))
+
         if not loaded_options.get("default_conversion"):
             conversion_settings = None
             abc_conversion_preset = loaded_options.get("abc_conversion_preset")
             if abc_conversion_preset == "maya":
                 conversion_settings = unreal.AbcConversionSettings(
-                    preset= unreal.AbcConversionPreset.MAYA)
+                    preset=unreal.AbcConversionPreset.MAYA)
             else:
                 conversion_settings = unreal.AbcConversionSettings(
                     preset=unreal.AbcConversionPreset.CUSTOM,
@@ -76,6 +92,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
             options.conversion_settings = conversion_settings
 
         options.static_mesh_settings = sm_settings
+        options.material_settings = mat_settings
         task.options = options
 
         return task
@@ -149,7 +166,9 @@ class StaticMeshAlembicLoader(plugin.Loader):
             name_version = f"{name}_v{version:03d}"
         loaded_options = {
             "default_conversion": options.get("default_conversion", False),
-            "abc_conversion_preset": options.get("abc_conversion_preset", "maya")
+            "abc_conversion_preset": options.get("abc_conversion_preset", "maya"),
+            "create_materials": options.get("abc_conversion_preset", False),
+            "find_materials": options.get("find_materials", False)
         }
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
@@ -210,9 +229,9 @@ class StaticMeshAlembicLoader(plugin.Loader):
 
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             path = get_representation_path(repre_entity)
-
+            loaded_options = {"default_conversion": False}
             self.import_and_containerize(path, asset_dir, asset_name,
-                                         container_name)
+                                         container_name, loaded_options)
 
         self.imprint(
             folder_path,

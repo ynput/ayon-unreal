@@ -6,7 +6,7 @@ from ayon_core.pipeline import (
     get_representation_path,
     AYON_CONTAINER_ID
 )
-from ayon_core.lib import EnumDef
+from ayon_core.lib import EnumDef, BoolDef
 from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
     AYON_ASSET_DIR,
@@ -38,6 +38,16 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
                     "maya": "maya"
                 },
                 default="maya"
+            ),
+            BoolDef(
+                "create_materials",
+                label="Create Materials",
+                default=False
+            ),
+            BoolDef(
+                "find_materials",
+                label="Find Materials",
+                default=False
             )
         ]
 
@@ -46,6 +56,7 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
     def get_task(filename, asset_dir, asset_name, replace, loaded_options):
         task = unreal.AssetImportTask()
         options = unreal.AbcImportSettings()
+        mat_settings = unreal.AbcMaterialSettings()
         conversion_settings = unreal.AbcConversionSettings(
             preset=unreal.AbcConversionPreset.CUSTOM,
             flip_u=False, flip_v=False,
@@ -62,6 +73,11 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
         options.set_editor_property(
             'import_type', unreal.AlembicImportType.SKELETAL)
 
+        mat_settings.set_editor_property(
+            "create_materials", loaded_options.get("create_materials"))
+        mat_settings.set_editor_property(
+            "find_materials", loaded_options.get("find_materials"))
+
         if not loaded_options.get("default_conversion"):
             conversion_settings = None
             abc_conversion_preset = loaded_options.get("abc_conversion_preset")
@@ -75,6 +91,8 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
                     rotation=[0.0, 0.0, 0.0],
                     scale=[1.0, 1.0, 1.0])
             options.conversion_settings = conversion_settings
+
+            options.material_settings = mat_settings
 
         task.options = options
 
@@ -149,7 +167,9 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
 
         loaded_options = {
             "default_conversion": options.get("default_conversion", False),
-            "abc_conversion_preset": options.get("abc_conversion_preset", "maya")
+            "abc_conversion_preset": options.get("abc_conversion_preset", "maya"),
+            "create_materials": options.get("abc_conversion_preset", False),
+            "find_materials": options.get("find_materials", False)
         }
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
@@ -209,9 +229,9 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
 
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             path = get_representation_path(repre_entity)
-
+            loaded_options = {"default_conversion": False}
             self.import_and_containerize(path, asset_dir, asset_name,
-                                         container_name)
+                                         container_name, loaded_options)
 
         self.imprint(
             folder_path,
