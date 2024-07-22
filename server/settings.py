@@ -1,7 +1,7 @@
 from ayon_server.settings import BaseSettingsModel, SettingsField
 
 from .imageio import UnrealImageIOModel
-from .import_settings import U_importModel
+from .import_settings import UnrealImportModel
 
 
 class ProjectSetup(BaseSettingsModel):
