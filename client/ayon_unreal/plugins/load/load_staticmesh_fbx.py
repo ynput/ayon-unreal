@@ -28,21 +28,31 @@ class StaticMeshFBXLoader(plugin.Loader):
 
     root = AYON_ASSET_DIR
 
-    global settings, use_interchange, use_nanite, show_dialog, pipeline_path
-    settings = get_project_settings(get_current_project_name())
-    
-    if(str(settings.get("unreal", {}).get("import_settings", {})) == "{}"):
-        print(settings)
-        print("Settings were not found, make sure u use the right Ayon Addon in the bundle. Settings will be default.")
+    use_interchange = False
+    use_nanite = True
+    show_dialog = False
+    pipeline_path = ""
 
+    @classmethod  
+    def apply_settings(cls, project_settings):  
+        super(StaticMeshFBXLoader, cls).apply_settings(project_settings)  
+        
+        # Apply import settings  
+        import_settings = (  
+            project_settings.get("unreal", {}).get("import_settings", {})  
+        )  
+        cls.use_interchange = import_settings.get("use_interchange", 
+                                                  cls.use_interchange)  
+        cls.show_dialog = import_settings.get("show_dialog", 
+                                                  cls.show_dialog)  
+        cls.use_nanite = import_settings.get("use_nanite", 
+                                                  cls.use_nanite)  
+        cls.pipeline_path = import_settings.get("interchange", {}).get(  
+            "pipeline_path_static_mesh", cls.pipeline_path  
+        )  
 
-    use_interchange = bool(settings.get("unreal", {}).get("import_settings", {}).get("interchange", {}).get("enabled", {})) or False
-    use_nanite = bool(settings.get("unreal", {}).get("import_settings", {}).get("use_nanite", {})) or True
-    show_dialog = bool(settings.get("unreal", {}).get("import_settings", {}).get("show_dialog", {})) or False
-    pipeline_path = str(settings.get("unreal", {}).get("import_settings", {}).get("interchange", {}).get("pipeline_path_static_mesh", {})) or ""
-
-    @staticmethod
-    def get_task(filename, asset_dir, asset_name, replace):
+    @classmethod
+    def get_task(cls, filename, asset_dir, asset_name, replace):
         task = unreal.AssetImportTask()
         options = unreal.FbxImportUI()
         import_data = unreal.FbxStaticMeshImportData()
@@ -51,7 +61,7 @@ class StaticMeshFBXLoader(plugin.Loader):
         task.set_editor_property('destination_path', asset_dir)
         task.set_editor_property('destination_name', asset_name)
         task.set_editor_property('replace_existing', replace)
-        task.set_editor_property('automated', not show_dialog)
+        task.set_editor_property('automated', not cls.show_dialog)
         task.set_editor_property('save', True)
 
         # set import options here
@@ -61,44 +71,47 @@ class StaticMeshFBXLoader(plugin.Loader):
 
         import_data.set_editor_property('combine_meshes', True)
         import_data.set_editor_property('remove_degenerates', False)
-        import_data.set_editor_property('build_nanite', use_nanite) #nanite
+        import_data.set_editor_property('build_nanite', cls.use_nanite) #nanite
 
         options.static_mesh_import_data = import_data
         task.options = options
 
         return task
 
+    @classmethod
     def import_and_containerize(
-        self, filepath, asset_dir, asset_name, container_name
+        cls, filepath, asset_dir, asset_name, container_name
     ):
         unreal.EditorAssetLibrary.make_directory(asset_dir)
 
-        if use_interchange:
-            print("Import using interchange method")
+        if cls.use_interchange:
+            unreal.log("Import using interchange method")
             unreal.SystemLibrary.execute_console_command(None, "Interchange.FeatureFlags.Import.FBX 1")
 
             import_assetparameters = unreal.ImportAssetParameters()
             editor_asset_subsystem = unreal.EditorAssetSubsystem()
-            import_assetparameters.is_automated = not show_dialog
+            import_assetparameters.is_automated = not cls.show_dialog
 
             tmp_pipeline_path = "/Game/tmp"
-            pipeline = editor_asset_subsystem.duplicate_asset(pipeline_path, tmp_pipeline_path) # the path to the Interchange asset
+            pipeline = editor_asset_subsystem.duplicate_asset(cls.pipeline_path, tmp_pipeline_path) # the path to the Interchange asset
 
             # interchange settings here
             pipeline.asset_name = asset_name
 
-            import_assetparameters.override_pipelines.append(unreal.SoftObjectPath(f"{tmp_pipeline_path}.tmp"))
+            import_assetparameters.override_pipelines.append(
+                unreal.SoftObjectPath(f"{tmp_pipeline_path}.tmp"))
 
             source_data = unreal.InterchangeManager.create_source_data(filepath)
             interchange_manager = unreal.InterchangeManager.get_interchange_manager_scripted()
-            interchange_manager.import_asset(asset_dir, source_data, import_assetparameters)
+            interchange_manager.import_asset(asset_dir, source_data, 
+                                             import_assetparameters)
 
             
             editor_asset_subsystem.delete_asset(tmp_pipeline_path) # remove temp file
 
         else:
-            print("Import using defered method")
-            task = self.get_task(filepath, asset_dir, asset_name, False)
+            unreal.log("Import using defered method")
+            task = cls.get_task(filepath, asset_dir, asset_name, False)
             unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
 
         # Create Asset Container

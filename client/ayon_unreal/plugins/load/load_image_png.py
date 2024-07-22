@@ -30,44 +30,52 @@ class TexturePNGLoader(plugin.Loader):
 
     root = AYON_ASSET_DIR
     
-    global settings, use_interchange, show_dialog, pipeline_path
-    settings = get_project_settings(get_current_project_name())
-    
-    if(str(settings.get("unreal", {}).get("import_settings", {})) == "{}"):
-        print(settings)
-        print("Settings were not found, make sure u use the right Ayon Addon in the bundle. Settings will be default.")
 
-    use_interchange = bool(settings.get("unreal", {}).get("import_settings", {}).get("interchange", {}).get("enabled", {})) or False
-    show_dialog = bool(settings.get("unreal", {}).get("import_settings", {}).get("show_dialog", {})) or False
-    pipeline_path = str(settings.get("unreal", {}).get("import_settings", {}).get("interchange", {}).get("pipeline_path_textures", {})) or ""
+    use_interchange = False
+    show_dialog = False
+    pipeline_path = ""
 
-    print(f"Loading PNG file. Interchange: {use_interchange} Show dialog: {show_dialog}")
+    @classmethod  
+    def apply_settings(cls, project_settings):  
+        super(TexturePNGLoader, cls).apply_settings(project_settings)  
+        
+        # Apply import settings  
+        import_settings = (  
+            project_settings.get("unreal", {}).get("import_settings", {})  
+        )  
+        cls.use_interchange = import_settings.get("use_interchange", 
+                                                  cls.use_interchange)  
+        cls.show_dialog = import_settings.get("show_dialog", 
+                                                  cls.show_dialog)  
+        cls.pipeline_path = import_settings.get("interchange", {}).get(  
+            "pipeline_path_static_mesh", cls.pipeline_path  
+        )  
 
-    @staticmethod
-    def get_task(filename, asset_dir, asset_name, replace):
+
+    unreal.log(f"Loading PNG file. Interchange: {use_interchange} Show dialog: {show_dialog}")
+
+    @classmethod
+    def get_task(cls, filename, asset_dir, asset_name, replace):
         task = unreal.AssetImportTask()
 
         task.set_editor_property('filename', filename)
         task.set_editor_property('destination_path', asset_dir)
         task.set_editor_property('destination_name', asset_name)
         task.set_editor_property('replace_existing', replace)
-        task.set_editor_property('automated', bool(not show_dialog))
+        task.set_editor_property('automated', bool(not cls.show_dialog))
         task.set_editor_property('save', True)
 
-        # set import options here
+        # todo: set import options here  
+        return task  
 
+    @classmethod
+    def import_and_containerize(  
+        self, filepath, asset_dir, asset_name, container_name  
+    ):  
+        unreal.EditorAssetLibrary.make_directory(asset_dir)  
 
-        return task
-
-    def import_and_containerize(
-        self, filepath, asset_dir, asset_name, container_name
-    ):
-        unreal.EditorAssetLibrary.make_directory(asset_dir)
-        
-
-
-        if use_interchange:
-            print("Import using interchange method")
+        if self.use_interchange:  
+            print("Import using interchange method")  
 
             
             unreal.SystemLibrary.execute_console_command(None, "Interchange.FeatureFlags.Import.PNG 1")
@@ -76,10 +84,10 @@ class TexturePNGLoader(plugin.Loader):
 
             import_assetparameters = unreal.ImportAssetParameters()
             editor_asset_subsystem = unreal.EditorAssetSubsystem()
-            import_assetparameters.is_automated = bool(not show_dialog)
+            import_assetparameters.is_automated = bool(not self.show_dialog)
 
             tmp_pipeline_path = "/Game/tmp"
-            pipeline = editor_asset_subsystem.duplicate_asset(pipeline_path, tmp_pipeline_path) # the path to the Interchange asset
+            pipeline = editor_asset_subsystem.duplicate_asset(self.pipeline_path, tmp_pipeline_path) # the path to the Interchange asset
 
             # interchange settings here
             pipeline.asset_name = asset_name
