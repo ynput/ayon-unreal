@@ -29,86 +29,101 @@ class TexturePNGLoader(plugin.Loader):
     color = "orange"
 
     root = AYON_ASSET_DIR
-    
-    global settings, use_interchange, show_dialog, pipeline_path
-    settings = get_project_settings(get_current_project_name())
-    
-    if(str(settings.get("unreal", {}).get("import_settings", {})) == "{}"):
-        print(settings)
-        print("Settings were not found, make sure u use the right Ayon Addon in the bundle. Settings will be default.")
 
-    use_interchange = bool(settings.get("unreal", {}).get("import_settings", {}).get("interchange", {}).get("enabled", {})) or False
-    show_dialog = bool(settings.get("unreal", {}).get("import_settings", {}).get("show_dialog", {})) or False
-    pipeline_path = str(settings.get("unreal", {}).get("import_settings", {}).get("interchange", {}).get("pipeline_path_textures", {})) or ""
+    # Defined by settings
+    use_interchange = False
+    show_dialog = False
+    pipeline_path = ""
 
-    print(f"Loading PNG file. Interchange: {use_interchange} Show dialog: {show_dialog}")
+    @classmethod
+    def apply_settings(cls, project_settings):
+        import_settings = (
+            project_settings.get("unreal", {}).get("import_settings")
+        )
+        if import_settings is None:
+            cls.log.warning(
+                "Import settings were not found. "
+                "Please update the ayon-unreal addon n your bundle. "
+                "Settings will fall back to defaults")
+            return
 
-    @staticmethod
-    def get_task(filename, asset_dir, asset_name, replace):
+        cls.use_interchange = import_settings.get("interchange", {}).get(
+            "enabled", cls.use_interchange)
+        cls.show_dialog = import_settings.get("show_dialog", cls.show_dialog)
+        cls.pipeline_path = import_settings.get("pipeline_path_textures",
+                                                cls.pipeline_path)
+
+    @classmethod
+    def get_task(cls, filename, asset_dir, asset_name, replace):
         task = unreal.AssetImportTask()
 
         task.set_editor_property('filename', filename)
         task.set_editor_property('destination_path', asset_dir)
         task.set_editor_property('destination_name', asset_name)
         task.set_editor_property('replace_existing', replace)
-        task.set_editor_property('automated', bool(not show_dialog))
+        task.set_editor_property('automated', bool(not cls.show_dialog))
         task.set_editor_property('save', True)
 
         # set import options here
 
-
         return task
 
     def import_and_containerize(
-        self, filepath, asset_dir, asset_name, container_name
+            self, filepath, asset_dir, asset_name, container_name
     ):
         unreal.EditorAssetLibrary.make_directory(asset_dir)
-        
 
+        if self.use_interchange:
+            self.log.info("Import using interchange method")
 
-        if use_interchange:
-            print("Import using interchange method")
-
-            
-            unreal.SystemLibrary.execute_console_command(None, "Interchange.FeatureFlags.Import.PNG 1")
-            unreal.SystemLibrary.execute_console_command(None, "Interchange.FeatureFlags.Import.JPG 1")
-            unreal.SystemLibrary.execute_console_command(None, "Interchange.FeatureFlags.Import.TIFF 1")
+            unreal.SystemLibrary.execute_console_command(
+                None, "Interchange.FeatureFlags.Import.PNG 1")
+            unreal.SystemLibrary.execute_console_command(
+                None, "Interchange.FeatureFlags.Import.JPG 1")
+            unreal.SystemLibrary.execute_console_command(
+                None, "Interchange.FeatureFlags.Import.TIFF 1")
 
             import_assetparameters = unreal.ImportAssetParameters()
             editor_asset_subsystem = unreal.EditorAssetSubsystem()
-            import_assetparameters.is_automated = bool(not show_dialog)
+            import_assetparameters.is_automated = bool(not self.show_dialog)
 
+            # The path to the Interchange asset
             tmp_pipeline_path = "/Game/tmp"
-            pipeline = editor_asset_subsystem.duplicate_asset(pipeline_path, tmp_pipeline_path) # the path to the Interchange asset
+            pipeline = editor_asset_subsystem.duplicate_asset(
+                self.pipeline_path, tmp_pipeline_path)
 
-            # interchange settings here
+            # Interchange settings here
             pipeline.asset_name = asset_name
 
-            import_assetparameters.override_pipelines.append(unreal.SoftObjectPath(f"{tmp_pipeline_path}.tmp"))
+            import_assetparameters.override_pipelines.append(
+                unreal.SoftObjectPath(f"{tmp_pipeline_path}.tmp"))
 
-            source_data = unreal.InterchangeManager.create_source_data(filepath)
-            interchange_manager = unreal.InterchangeManager.get_interchange_manager_scripted()
-            interchange_manager.import_asset(asset_dir, source_data, import_assetparameters)
+            source_data = unreal.InterchangeManager.create_source_data(
+                filepath)
+            interchange_manager = unreal.InterchangeManager.get_interchange_manager_scripted()  # noqa
+            interchange_manager.import_asset(asset_dir, source_data,
+                                             import_assetparameters)
 
-            
-            editor_asset_subsystem.delete_asset(tmp_pipeline_path) # remove temp file
+            # remove temp file
+            editor_asset_subsystem.delete_asset(tmp_pipeline_path)
 
         else:
-            print("Import using defered method")
+            self.log.info("Import using deferred method")
             task = self.get_task(filepath, asset_dir, asset_name, False)
-            unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+            unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks(
+                [task])
 
         # Create Asset Container
         create_container(container=container_name, path=asset_dir)
 
     def imprint(
-        self,
-        folder_path,
-        asset_dir,
-        container_name,
-        asset_name,
-        repre_entity,
-        product_type
+            self,
+            folder_path,
+            asset_dir,
+            container_name,
+            asset_name,
+            repre_entity,
+            product_type
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -176,14 +191,13 @@ class TexturePNGLoader(plugin.Loader):
             context["product"]["productType"]
         )
 
-        asset_content = unreal.EditorAssetLibrary.list_assets(
+        asset_contents = unreal.EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=True
         )
+        for unreal_asset in asset_contents:
+            unreal.EditorAssetLibrary.save_asset(unreal_asset)
 
-        for a in asset_content:
-            unreal.EditorAssetLibrary.save_asset(a)
-
-        return asset_content
+        return asset_contents
 
     def update(self, container, context):
         folder_path = context["folder"]["path"]
@@ -224,12 +238,11 @@ class TexturePNGLoader(plugin.Loader):
             product_type,
         )
 
-        asset_content = unreal.EditorAssetLibrary.list_assets(
+        asset_contents = unreal.EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=False
         )
-
-        for a in asset_content:
-            unreal.EditorAssetLibrary.save_asset(a)
+        for unreal_asset in asset_contents:
+            unreal.EditorAssetLibrary.save_asset(unreal_asset)
 
     def remove(self, container):
         path = container["namespace"]
@@ -237,9 +250,10 @@ class TexturePNGLoader(plugin.Loader):
 
         unreal.EditorAssetLibrary.delete_directory(path)
 
-        asset_content = unreal.EditorAssetLibrary.list_assets(
+        asset_contents = unreal.EditorAssetLibrary.list_assets(
             parent_path, recursive=False
         )
 
-        if len(asset_content) == 0:
+        if len(asset_contents) == 0:
             unreal.EditorAssetLibrary.delete_directory(parent_path)
+
