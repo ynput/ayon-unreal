@@ -607,29 +607,30 @@ def generate_sequence(h, h_dir):
         folder_path,
         fields={"id", "attrib.fps"}
     )
-
     start_frames = []
     end_frames = []
+    if folder_entity:
+        unreal.log("Found folder entity data: {}".format(folder_entity))
 
-    elements = list(ayon_api.get_folders(
-        project_name,
-        parent_ids=[folder_entity["id"]],
-        fields={"id", "attrib.clipIn", "attrib.clipOut"}
-    ))
-    for e in elements:
-        start_frames.append(e["attrib"].get("clipIn"))
-        end_frames.append(e["attrib"].get("clipOut"))
-
-        elements.extend(ayon_api.get_folders(
+        elements = list(ayon_api.get_folders(
             project_name,
-            parent_ids=[e["id"]],
+            parent_ids=[folder_entity["id"]],
             fields={"id", "attrib.clipIn", "attrib.clipOut"}
         ))
+        for e in elements:
+            start_frames.append(e["attrib"].get("clipIn"))
+            end_frames.append(e["attrib"].get("clipOut"))
 
-    min_frame = min(start_frames)
-    max_frame = max(end_frames)
+            elements.extend(ayon_api.get_folders(
+                project_name,
+                parent_ids=[e["id"]],
+                fields={"id", "attrib.clipIn", "attrib.clipOut"}
+            ))
 
-    fps = folder_entity["attrib"].get("fps")
+    min_frame = min(start_frames, default=sequence.get_playback_start())
+    max_frame = max(end_frames, default=sequence.get_playback_end())
+
+    fps = folder_entity["attrib"].get("fps") or 30.0
 
     sequence.set_display_rate(
         unreal.FrameRate(fps, 1.0))
