@@ -96,7 +96,7 @@ class CollectUnrealRemoteRender(publish.AbstractCollectRender):
 
             instance_families = inst.data.get("families", [])
             product_name = inst.data["productName"]
-            task_name = inst.data.get("task")
+            task_name = inst.data["task_name"]
 
             ar = unreal.AssetRegistryHelpers.get_asset_registry()
             sequence = (ar.get_asset_by_object_path(inst.data["sequence"]).
