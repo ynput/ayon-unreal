@@ -146,7 +146,7 @@ class CreateRender(UnrealAssetCreator):
                 # The asset name is the the third element of the path which
                 # contains the map.
                 # To take the asset name, we remove from the path the prefix
-                # "/Game/OpenPype/" and then we split the path by "/".
+                # "/Game/Ayon/" and then we split the path by "/".
                 sel_path = selected_asset_path
                 asset_name = sel_path.replace(
                     "/Game/Ayon/Sequences/", "").split("/")[0]
