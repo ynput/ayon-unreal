@@ -42,11 +42,15 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             BoolDef(
                 "create_materials",
                 label="Create Materials",
+                tooltip="Create materials according to found Face Set "
+                        "names (will not work without face sets)",
                 default=False
             ),
             BoolDef(
                 "find_materials",
                 label="Find Materials",
+                tooltip="Find materials according to found Face Set "
+                        "names (will not work without face sets)",
                 default=False
             )
         ]
