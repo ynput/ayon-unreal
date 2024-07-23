@@ -75,12 +75,19 @@ class CreateRender(UnrealAssetCreator):
         unreal.EditorAssetLibrary.save_asset(seq.get_path_name())
 
         # Create the master level
+        curr_level = None
         if UNREAL_VERSION.major >= 5:
-            curr_level = unreal.LevelEditorSubsystem().get_current_level()
+            if UNREAL_VERSION.minor >= 3:
+                les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
+                curr_level = les.get_current_level()
+            else:
+                curr_level = unreal.LevelEditorSubsystem().get_current_level()
+
         else:
             world = unreal.EditorLevelLibrary.get_editor_world()
             levels = unreal.EditorLevelUtils.get_levels(world)
             curr_level = levels[0] if len(levels) else None
+
             if not curr_level:
                 raise RuntimeError("No level loaded.")
         curr_level_path = curr_level.get_outer().get_path_name()

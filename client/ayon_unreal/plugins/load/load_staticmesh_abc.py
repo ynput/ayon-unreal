@@ -12,6 +12,7 @@ from ayon_unreal.api.pipeline import (
     create_container,
     imprint,
 )
+from ayon_core.lib import EnumDef
 import unreal  # noqa
 
 
@@ -26,8 +27,22 @@ class StaticMeshAlembicLoader(plugin.Loader):
 
     root = AYON_ASSET_DIR
 
+    @classmethod
+    def get_options(cls, contexts):
+        return [
+            EnumDef(
+                "abc_conversion_preset",
+                label="Alembic Conversion Preset",
+                items={
+                    "custom": "custom",
+                    "maya": "maya"
+                },
+                default="maya"
+            )
+        ]
+
     @staticmethod
-    def get_task(filename, asset_dir, asset_name, replace, default_conversion):
+    def get_task(filename, asset_dir, asset_name, replace, loaded_options):
         task = unreal.AssetImportTask()
         options = unreal.AbcImportSettings()
         sm_settings = unreal.AbcStaticMeshSettings()
@@ -46,12 +61,18 @@ class StaticMeshAlembicLoader(plugin.Loader):
 
         sm_settings.set_editor_property('merge_meshes', True)
 
-        if not default_conversion:
-            conversion_settings = unreal.AbcConversionSettings(
-                preset=unreal.AbcConversionPreset.CUSTOM,
-                flip_u=False, flip_v=False,
-                rotation=[0.0, 0.0, 0.0],
-                scale=[1.0, 1.0, 1.0])
+        if not loaded_options.get("default_conversion"):
+            conversion_settings = None
+            abc_conversion_preset = loaded_options.get("abc_conversion_preset")
+            if abc_conversion_preset == "maya":
+                conversion_settings = unreal.AbcConversionSettings(
+                    preset= unreal.AbcConversionPreset.MAYA)
+            else:
+                conversion_settings = unreal.AbcConversionSettings(
+                    preset=unreal.AbcConversionPreset.CUSTOM,
+                    flip_u=False, flip_v=False,
+                    rotation=[0.0, 0.0, 0.0],
+                    scale=[1.0, 1.0, 1.0])
             options.conversion_settings = conversion_settings
 
         options.static_mesh_settings = sm_settings
@@ -61,12 +82,12 @@ class StaticMeshAlembicLoader(plugin.Loader):
 
     def import_and_containerize(
         self, filepath, asset_dir, asset_name, container_name,
-        default_conversion=False
+        loaded_options
     ):
         unreal.EditorAssetLibrary.make_directory(asset_dir)
 
         task = self.get_task(
-            filepath, asset_dir, asset_name, False, default_conversion)
+            filepath, asset_dir, asset_name, False, loaded_options)
 
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
 
@@ -116,7 +137,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
         """
         # Create directory for asset and Ayon container
         folder_path = context["folder"]["path"]
-        folder_name = context["folder"]["path"]
+        folder_name = context["folder"]["name"]
 
         suffix = "_CON"
         asset_name = f"{folder_name}_{name}" if folder_name else f"{name}"
@@ -126,10 +147,10 @@ class StaticMeshAlembicLoader(plugin.Loader):
             name_version = f"{name}_hero"
         else:
             name_version = f"{name}_v{version:03d}"
-
-        default_conversion = False
-        if options.get("default_conversion"):
-            default_conversion = options.get("default_conversion")
+        loaded_options = {
+            "default_conversion": options.get("default_conversion", False),
+            "abc_conversion_preset": options.get("abc_conversion_preset", "maya")
+        }
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
@@ -141,7 +162,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
             path = self.filepath_from_context(context)
 
             self.import_and_containerize(path, asset_dir, asset_name,
-                                         container_name, default_conversion)
+                                         container_name, loaded_options)
 
         product_type = context["product"]["productType"]
         self.imprint(
@@ -156,7 +177,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
         asset_content = unreal.EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=False
         )
-
+        unreal.log(asset_content)
         for a in asset_content:
             unreal.EditorAssetLibrary.save_asset(a)
 
