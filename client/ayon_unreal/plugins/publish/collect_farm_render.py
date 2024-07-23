@@ -80,7 +80,9 @@ class CollectUnrealRemoteRender(publish.AbstractCollectRender):
             if family not in ["render"]:
                 continue
 
-            render_queue_path = "/Game/Ayon/renderQueue"
+            render_queue_path = (
+                project_settings["unreal"]["render_queue_path"]
+            )
             if not unreal.EditorAssetLibrary.does_asset_exist(
                     render_queue_path):
                 # TODO temporary until C++ blueprint is created as it is not
