@@ -74,9 +74,9 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             'import_type', unreal.AlembicImportType.SKELETAL)
 
         mat_settings.set_editor_property(
-            "create_materials", loaded_options.get("create_materials"))
+            "create_materials", bool(loaded_options.get("create_materials", False)))
         mat_settings.set_editor_property(
-            "find_materials", loaded_options.get("find_materials"))
+            "find_materials", bool(loaded_options.get("find_materials", False)))
 
         if not loaded_options.get("default_conversion"):
             conversion_settings = None
