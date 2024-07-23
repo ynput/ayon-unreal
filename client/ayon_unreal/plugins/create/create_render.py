@@ -135,6 +135,7 @@ class CreateRender(UnrealAssetCreator):
         for sel in selection:
             selected_asset = ar.get_asset_by_object_path(sel).get_asset()
             selected_asset_path = selected_asset.get_path_name()
+            unreal.log("selected_asset_path")
 
             # Check if the selected asset is a level sequence asset.
             if selected_asset.get_class().get_name() != "LevelSequence":
@@ -149,9 +150,9 @@ class CreateRender(UnrealAssetCreator):
                 # "/Game/OpenPype/" and then we split the path by "/".
                 sel_path = selected_asset_path
                 asset_name = sel_path.replace(
-                    "/Game/Ayon/", "").split("/")[0]
+                    "/Game/Ayon/Sequences/", "").split("/")[0]
 
-                search_path = f"/Game/Ayon/{asset_name}"
+                search_path = f"/Game/Ayon/Sequences/{asset_name}"
             else:
                 search_path = Path(selected_asset_path).parent.as_posix()
 
@@ -163,8 +164,8 @@ class CreateRender(UnrealAssetCreator):
                     package_paths=[search_path],
                     recursive_paths=False)
                 sequences = ar.get_assets(ar_filter)
-                master_seq = sequences[0].get_asset().get_path_name()
                 master_seq_obj = sequences[0].get_asset()
+                master_seq = master_seq_obj.get_path_name()
                 ar_filter = unreal.ARFilter(
                     class_names=["World"],
                     package_paths=[search_path],
