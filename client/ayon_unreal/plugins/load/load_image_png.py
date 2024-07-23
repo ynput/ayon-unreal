@@ -52,9 +52,6 @@ class TexturePNGLoader(plugin.Loader):
         )  
 
 
-    unreal.log(f"Loading PNG file. Interchange: {use_interchange} Show dialog: {show_dialog}")
-
-
     @classmethod
     def get_task(cls, filename, asset_dir, asset_name, replace):
         task = unreal.AssetImportTask()
