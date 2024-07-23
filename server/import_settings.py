@@ -16,8 +16,6 @@ class UnrealInterchangeModel(BaseSettingsModel):
                     "Right-click asset and copy reference path.")  
 
 
-
-
 class UnrealImportModel(BaseSettingsModel):  
     #_layout = "expanded"  
     _isGroup: bool = True  
