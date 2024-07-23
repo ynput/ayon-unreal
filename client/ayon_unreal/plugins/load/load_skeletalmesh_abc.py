@@ -6,7 +6,7 @@ from ayon_core.pipeline import (
     get_representation_path,
     AYON_CONTAINER_ID
 )
-from ayon_core.lib import EnumDef, BoolDef
+from ayon_core.lib import EnumDef
 from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
     AYON_ASSET_DIR,
@@ -39,19 +39,15 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
                 },
                 default="maya"
             ),
-            BoolDef(
-                "create_materials",
-                label="Create Materials",
-                tooltip="Create materials according to found Face Set "
-                        "names (will not work without face sets)",
-                default=False
-            ),
-            BoolDef(
-                "find_materials",
-                label="Find Materials",
-                tooltip="Find materials according to found Face Set "
-                        "names (will not work without face sets)",
-                default=False
+            EnumDef(
+                "abc_material_settings",
+                label="Alembic Material Settings",
+                items={
+                    "no_material": "Do not apply materials",
+                    "create_materials": "Create matarials by face sets",
+                    "find_materials": "Search matching materials by face sets",
+                },
+                default="Do not apply materials"
             )
         ]
 
@@ -77,10 +73,15 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
         options.set_editor_property(
             'import_type', unreal.AlembicImportType.SKELETAL)
 
-        mat_settings.set_editor_property(
-            "create_materials", bool(loaded_options.get("create_materials", False)))
-        mat_settings.set_editor_property(
-            "find_materials", bool(loaded_options.get("find_materials", False)))
+        if loaded_options.get("abc_material_settings") == "create_materials":
+            mat_settings.set_editor_property("create_materials", True)
+            mat_settings.set_editor_property("find_materials", False)
+        elif loaded_options.get("abc_material_settings") == "find_materials":
+            mat_settings.set_editor_property("create_materials", False)
+            mat_settings.set_editor_property("find_materials", True)
+        else:
+            mat_settings.set_editor_property("create_materials", False)
+            mat_settings.set_editor_property("find_materials", False)
 
         if not loaded_options.get("default_conversion"):
             conversion_settings = None
@@ -172,8 +173,7 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
         loaded_options = {
             "default_conversion": options.get("default_conversion", False),
             "abc_conversion_preset": options.get("abc_conversion_preset", "maya"),
-            "create_materials": options.get("abc_conversion_preset", False),
-            "find_materials": options.get("find_materials", False)
+            "abc_material_settings": options.get("abc_material_settings", "no_material")
         }
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
