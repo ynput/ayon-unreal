@@ -35,4 +35,3 @@ class UnrealImportModel(BaseSettingsModel):
 
     show_dialog: bool = SettingsField(False, title="Show import dialog")  
 
-
