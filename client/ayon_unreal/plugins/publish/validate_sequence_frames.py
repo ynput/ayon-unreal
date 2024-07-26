@@ -1,12 +1,15 @@
 import clique
 import os
 import re
-
+from ayon_core.pipeline import (
+    OptionalPyblishPluginMixin
+)
 import pyblish.api
 from ayon_core.pipeline.publish import PublishValidationError
 
 
-class ValidateSequenceFrames(pyblish.api.InstancePlugin):
+class ValidateSequenceFrames(pyblish.api.InstancePlugin,
+                             OptionalPyblishPluginMixin):
     """Ensure the sequence of frames is complete
 
     The files found in the folder are checked against the frameStart and
@@ -21,6 +24,10 @@ class ValidateSequenceFrames(pyblish.api.InstancePlugin):
     optional = True
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            self.log.debug("Skipping Validate Frame Range...")
+            return
+
         representations = instance.data.get("representations")
         folder_attributes = (
             instance.data
