@@ -1,6 +1,5 @@
 import clique
 import os
-import re
 from ayon_core.pipeline import (
     OptionalPyblishPluginMixin
 )
@@ -44,12 +43,10 @@ class ValidateSequenceFrames(pyblish.api.InstancePlugin,
                 _, ext = os.path.splitext(repr_files[0])
             elif not ext.startswith("."):
                 ext = ".{}".format(ext)
-            pattern = r"\D?(?P<index>(?P<padding>0*)\d+){}$".format(
-                re.escape(ext))
-            patterns = [pattern]
 
             collections, remainder = clique.assemble(
-                repr["files"], minimum_items=1, patterns=patterns)
+                repr["files"], minimum_items=1,
+                patterns=[clique.PATTERNS['frames']])
 
             if remainder:
                 raise PublishValidationError(

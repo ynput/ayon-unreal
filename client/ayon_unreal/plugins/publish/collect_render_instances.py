@@ -94,12 +94,14 @@ class CollectRenderInstances(pyblish.api.InstancePlugin):
 
                     render_dir = f"{root}/{project}/{s.get('output')}"
                     render_path = Path(render_dir)
+                    self.log.debug(render_path)
 
                     frames = []
-
+                    image_format = None
                     for x in render_path.iterdir():
-                        if x.is_file() and x.suffix == '.png':
+                        if x.is_file():
                             frames.append(str(x.name))
+                            image_format = x.suffix.lstrip(".")
 
                     if "representations" not in new_instance.data:
                         new_instance.data["representations"] = []
@@ -107,8 +109,8 @@ class CollectRenderInstances(pyblish.api.InstancePlugin):
                     repr = {
                         'frameStart': instance.data["frameStart"],
                         'frameEnd': instance.data["frameEnd"],
-                        'name': 'png',
-                        'ext': 'png',
+                        'name': image_format,
+                        'ext': image_format,
                         'files': frames,
                         'stagingDir': render_dir,
                         'tags': ['review']
