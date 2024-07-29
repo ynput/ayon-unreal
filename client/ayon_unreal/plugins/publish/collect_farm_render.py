@@ -37,9 +37,6 @@ class CollectUnrealRemoteRender(publish.AbstractCollectRender):
     hosts = ["unreal"]
     families = ["render.farm"]
 
-    padding_width = 6
-    rendered_extension = 'png'
-
     def get_instances(self, context):
         instances = []
         instances_to_remove = []
