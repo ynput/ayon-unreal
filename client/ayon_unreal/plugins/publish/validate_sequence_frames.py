@@ -31,7 +31,7 @@ class ValidateSequenceFrames(pyblish.api.InstancePlugin,
 
         folder_attributes = (
             instance.context.data
-            .get("taskEntity", {})
+            .get("folderEntity", {})
             .get("attrib", {})
         )
         for repr in representations:
