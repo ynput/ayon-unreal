@@ -65,7 +65,7 @@ class CollectRenderInstances(pyblish.api.InstancePlugin):
 
                     new_data = new_instance.data
 
-                    new_data["folderPath"] = f"{s.get('output')}"
+                    new_data["folderPath"] = f"/{s.get('output')}"
                     new_data["setMembers"] = seq_name
                     new_data["productName"] = new_product_name
                     new_data["productType"] = product_type
