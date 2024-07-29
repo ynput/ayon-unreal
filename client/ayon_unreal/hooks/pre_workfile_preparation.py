@@ -232,9 +232,11 @@ class UnrealPrelaunchHook(PreLaunchHook):
         if not project_file.is_file():
 
             #Get project settings -> allow project creation
-            allow_project_creation = bool(get_project_settings(get_current_project_name()).get("unreal",{}).get("project_setup", {}).get("allow_project_creation", True))
-
-            if (allow_project_creation):
+            current_project = get_current_project_name()
+            unreal_settings = get_project_settings(project).get("unreal")
+            allow_project_creation = unreproject_setupal_settings["project_setup"].get(
+                    "allow_project_creation")
+            if allow_project_creation:
                 with tempfile.TemporaryDirectory() as temp_dir:
                     self.exec_ue_project_gen(engine_version,
                                              unreal_project_name,
