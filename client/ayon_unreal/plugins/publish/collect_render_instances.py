@@ -65,7 +65,7 @@ class CollectRenderInstances(pyblish.api.InstancePlugin):
 
                     new_data = new_instance.data
 
-                    new_data["folderPath"] = f"/{s.get('output')}"
+                    new_data["folderPath"] = instance.context.data["folderPath"]
                     new_data["setMembers"] = seq_name
                     new_data["productName"] = new_product_name
                     new_data["productType"] = product_type
@@ -73,7 +73,7 @@ class CollectRenderInstances(pyblish.api.InstancePlugin):
                     new_data["families"] = [product_type, "review"]
                     new_data["parent"] = data.get("parent")
                     new_data["level"] = data.get("level")
-                    new_data["output"] = s.get('output')
+                    new_data["output"] = s['output']
                     new_data["fps"] = seq.get_display_rate().numerator
                     new_data["frameStart"] = int(s.get('frame_range')[0])
                     new_data["frameEnd"] = int(s.get('frame_range')[1])
@@ -116,3 +116,4 @@ class CollectRenderInstances(pyblish.api.InstancePlugin):
                         'tags': ['review']
                     }
                     new_instance.data["representations"].append(repr)
+
