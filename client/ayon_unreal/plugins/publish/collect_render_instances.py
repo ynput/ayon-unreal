@@ -1,3 +1,6 @@
+import os
+import re
+import clique
 from pathlib import Path
 
 import unreal
@@ -65,7 +68,7 @@ class CollectRenderInstances(pyblish.api.InstancePlugin):
 
                     new_data = new_instance.data
 
-                    new_data["folderPath"] = instance.context.data["folderPath"]
+                    new_data["folderPath"] = instance.data["folderPath"]
                     new_data["setMembers"] = seq_name
                     new_data["productName"] = new_product_name
                     new_data["productType"] = product_type
@@ -94,14 +97,12 @@ class CollectRenderInstances(pyblish.api.InstancePlugin):
 
                     render_dir = f"{root}/{project}/{s.get('output')}"
                     render_path = Path(render_dir)
-                    self.log.debug(render_path)
-
-                    frames = []
+                    self.log.debug(f"Collecting render path: {render_path}")
                     image_format = None
-                    for x in render_path.iterdir():
-                        if x.is_file():
-                            frames.append(str(x.name))
-                            image_format = x.suffix.lstrip(".")
+                    frames = [str(x) for x in render_path.iterdir() if x.is_file()]
+                    frames = get_sequence(frames)
+                    for x in frames:
+                        image_format = os.path.splitext(x)[-1].lstrip(".")
 
                     if "representations" not in new_instance.data:
                         new_instance.data["representations"] = []
@@ -117,3 +118,32 @@ class CollectRenderInstances(pyblish.api.InstancePlugin):
                     }
                     new_instance.data["representations"].append(repr)
 
+
+def get_sequence(files):
+    """Get sequence from filename.
+
+    This will only return files if they exist on disk as it tries
+    to collect the sequence using the filename pattern and searching
+    for them on disk.
+
+    Supports negative frame ranges like -001, 0000, 0001 and -0001,
+    0000, 0001.
+
+    Arguments:
+        files (str): List of files
+
+    Returns:
+        Optional[list[str]]: file sequence.
+
+    """
+    collections, _remainder = clique.assemble(
+        files,
+        patterns=[clique.PATTERNS["frames"]],
+        minimum_items=1)
+
+    if len(collections) > 1:
+        raise ValueError(
+            f"Multiple collections found for {collections}. "
+            "This is a bug.")
+
+    return [os.path.basename(filename) for filename in collections[0]]
