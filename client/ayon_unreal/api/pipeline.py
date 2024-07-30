@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import json
+import clique
 import logging
 from typing import List
 from contextlib import contextmanager
