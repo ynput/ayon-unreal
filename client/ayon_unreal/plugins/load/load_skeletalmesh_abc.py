@@ -72,6 +72,8 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
 
         options.set_editor_property(
             'import_type', unreal.AlembicImportType.SKELETAL)
+        options.sampling_settings.frame_start = loaded_options.get("frameStart", 1)
+        options.sampling_settings.frame_end = loaded_options.get("frameEnd", 1)
 
         if loaded_options.get("abc_material_settings") == "create_materials":
             mat_settings.set_editor_property("create_materials", True)
@@ -95,6 +97,7 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
                     flip_u=False, flip_v=False,
                     rotation=[0.0, 0.0, 0.0],
                     scale=[1.0, 1.0, 1.0])
+
             options.conversion_settings = conversion_settings
 
             options.material_settings = mat_settings
@@ -159,8 +162,9 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             list(str): list of container content
         """
         # Create directory for asset and ayon container
-        folder_path = context["folder"]["path"]
-        folder_name = context["folder"]["name"]
+        folder_entity = context["folder"]
+        folder_path = folder_entity["path"]
+        folder_name = folder_entity["name"]
         suffix = "_CON"
         asset_name = f"{folder_name}_{name}" if folder_name else f"{name}"
         version = context["version"]["version"]
@@ -173,7 +177,9 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
         loaded_options = {
             "default_conversion": options.get("default_conversion", False),
             "abc_conversion_preset": options.get("abc_conversion_preset", "maya"),
-            "abc_material_settings": options.get("abc_material_settings", "no_material")
+            "abc_material_settings": options.get("abc_material_settings", "no_material"),
+            "frameStart": folder_entity["attrib"]["frameStart"],
+            "frameEnd": folder_entity["attrib"]["frameEnd"]
         }
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
