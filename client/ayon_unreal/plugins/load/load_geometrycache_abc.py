@@ -47,6 +47,8 @@ class PointCacheAlembicLoader(plugin.Loader):
 
         options.set_editor_property(
             'import_type', unreal.AlembicImportType.GEOMETRY_CACHE)
+        options.sampling_settings.frame_start = frame_start
+        options.sampling_settings.frame_end = frame_end
 
         gc_settings.set_editor_property('flatten_tracks', False)
 
