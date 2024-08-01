@@ -119,7 +119,7 @@ class LayoutLoader(plugin.Loader):
         new_transform = (
             basis_matrix.get_inverse() * transform_matrix * basis_matrix)
 
-        return transform_matrix.transform()
+        return new_transform.transform()
 
     def _process_family(
         self, assets, class_name, transform, basis, sequence, inst_name=None
