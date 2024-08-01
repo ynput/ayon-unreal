@@ -45,8 +45,7 @@ class TexturePNGLoader(plugin.Loader):
         )  
         cls.use_interchange = import_settings.get("use_interchange", 
                                                   cls.use_interchange)  
-        cls.show_dialog = import_settings.get("show_dialog", 
-                                                  cls.show_dialog)  
+        cls.show_dialog = import_settings.get("show_dialog", cls.show_dialog)
         cls.pipeline_path = import_settings.get("interchange", {}).get(  
             "pipeline_path_static_mesh", cls.pipeline_path  
         )  
