@@ -119,7 +119,7 @@ class LayoutLoader(plugin.Loader):
         new_transform = (
             basis_matrix.get_inverse() * transform_matrix * basis_matrix)
 
-        return new_transform.transform()
+        return transform_matrix.transform()
 
     def _process_family(
         self, assets, class_name, transform, basis, sequence, inst_name=None
@@ -626,11 +626,12 @@ class LayoutLoader(plugin.Loader):
                 + 1
             )
             if sequences:
+                min_frame = 0 if frame_ranges[-1][1] == 0 else folder_attributes.get('clipIn')
                 set_sequence_hierarchy(
                     sequences[-1],
                     shot,
                     frame_ranges[-1][1],
-                    folder_attributes.get('clipIn'),
+                    min_frame,
                     folder_attributes.get('clipOut'),
                     [level])
 
