@@ -73,8 +73,8 @@ class ValidateSequenceFrames(pyblish.api.InstancePlugin,
                 frames = frames[1:]
 
             current_range = (frames[0], frames[-1])
-            required_range = (folder_attributes["clipIn"],
-                              folder_attributes["clipOut"])
+            required_range = (folder_attributes.get("clipIn", 1),
+                              folder_attributes.get("clipOut", 1))
 
             if current_range != required_range:
                 raise PublishValidationError(
