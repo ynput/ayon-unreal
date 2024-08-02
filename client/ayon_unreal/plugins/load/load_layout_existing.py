@@ -125,10 +125,15 @@ class ExistingLayoutLoader(plugin.Loader):
 
         transform = lasset.get('transform_matrix')
         basis = lasset.get('basis')
+        rotation = lasset.get("rotation", {})
 
         computed_transform = self._transform_from_basis(transform, basis)
 
         actor.set_actor_transform(computed_transform, False, True)
+        if rotation:
+            actor_rotation = unreal.Rotator(
+                rotation["x"], rotation["z"], rotation["y"])
+            actor.set_actor_rotation(actor_rotation, False)
 
     @staticmethod
     def _get_fbx_loader(loaders, family):
