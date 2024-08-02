@@ -72,8 +72,8 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
 
         options.set_editor_property(
             'import_type', unreal.AlembicImportType.SKELETAL)
-        options.sampling_settings.frame_start = loaded_options.get("frameStart", 1)
-        options.sampling_settings.frame_end = loaded_options.get("frameEnd", 1)
+        options.sampling_settings.frame_start = loaded_options.get("frameStart")
+        options.sampling_settings.frame_end = loaded_options.get("frameEnd")
 
         if loaded_options.get("abc_material_settings") == "create_materials":
             mat_settings.set_editor_property("create_materials", True)
