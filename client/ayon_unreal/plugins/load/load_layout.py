@@ -122,7 +122,8 @@ class LayoutLoader(plugin.Loader):
         return new_transform.transform()
 
     def _process_family(
-        self, assets, class_name, transform, basis, sequence, inst_name=None
+        self, assets, class_name, transform, basis, sequence, inst_name=None,
+        rotation=None
     ):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
@@ -136,7 +137,11 @@ class LayoutLoader(plugin.Loader):
                 actor = EditorLevelLibrary.spawn_actor_from_object(
                     obj, t.translation
                 )
-                actor.set_actor_rotation(t.rotation.rotator(), False)
+                actor_rotation = t.rotation.rotator()
+                if rotation:
+                    actor_rotation = unreal.Rotator(
+                        rotation["x"], rotation["z"], rotation["y"])
+                actor.set_actor_rotation(actor_rotation, False)
                 actor.set_actor_scale3d(t.scale3d)
 
                 if class_name == 'SkeletalMesh':
@@ -420,8 +425,8 @@ class LayoutLoader(plugin.Loader):
                         item.get('reference_abc') == repre_id)]
 
                 for instance in instances:
-                    # transform = instance.get('transform')
                     transform = instance.get('transform_matrix')
+                    rotation = instance.get('rotation', {})
                     basis = instance.get('basis')
                     inst = instance.get('instance_name')
 
@@ -430,12 +435,12 @@ class LayoutLoader(plugin.Loader):
                     if product_type == 'model':
                         actors, _ = self._process_family(
                             assets, 'StaticMesh', transform, basis,
-                            sequence, inst
+                            sequence, inst, rotation
                         )
                     elif product_type == 'rig':
                         actors, bindings = self._process_family(
                             assets, 'SkeletalMesh', transform, basis,
-                            sequence, inst
+                            sequence, inst, rotation
                         )
                         actors_dict[inst] = actors
                         bindings_dict[inst] = bindings
