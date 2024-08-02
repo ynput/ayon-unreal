@@ -609,6 +609,7 @@ def generate_sequence(h, h_dir):
     )
     start_frames = []
     end_frames = []
+    # unreal default fps value
     fps = 60.0
     if folder_entity:
         unreal.log("Found folder entity data: {}".format(folder_entity))
