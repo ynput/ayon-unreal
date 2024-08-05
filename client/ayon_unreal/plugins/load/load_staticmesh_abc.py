@@ -12,7 +12,7 @@ from ayon_unreal.api.pipeline import (
     create_container,
     imprint,
 )
-from ayon_core.lib import EnumDef
+from ayon_core.lib import EnumDef, BoolDef
 import unreal  # noqa
 
 
@@ -48,6 +48,11 @@ class StaticMeshAlembicLoader(plugin.Loader):
                     "find_materials": "Search matching materials by face sets",
                 },
                 default="no_materials"
+            ),
+            BoolDef(
+                "merge_meshes",
+                label="Merge Meshes",
+                default=True
             )
         ]
 
@@ -70,7 +75,8 @@ class StaticMeshAlembicLoader(plugin.Loader):
         options.set_editor_property(
             'import_type', unreal.AlembicImportType.STATIC_MESH)
 
-        sm_settings.set_editor_property('merge_meshes', True)
+        sm_settings.set_editor_property(
+            'merge_meshes', loaded_options.get("merge_meshes", True))
 
         if loaded_options.get("abc_material_settings") == "create_materials":
             mat_settings.set_editor_property("create_materials", True)
@@ -174,6 +180,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
             "default_conversion": options.get("default_conversion", False),
             "abc_conversion_preset": options.get("abc_conversion_preset", "maya"),
             "abc_material_settings": options.get("abc_material_settings", "no_material"),
+            "merge_meshes": options.get("merge_meshes", True),
         }
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
