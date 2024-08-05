@@ -140,7 +140,8 @@ class LayoutLoader(plugin.Loader):
                 actor_rotation = t.rotation.rotator()
                 if rotation:
                     actor_rotation = unreal.Rotator(
-                        rotation["x"], rotation["z"], rotation["y"])
+                        roll=rotation["x"], pitch=rotation["z"],
+                        yaw=rotation["y"])
                 actor.set_actor_rotation(actor_rotation, False)
                 actor.set_actor_scale3d(t.scale3d)
 
