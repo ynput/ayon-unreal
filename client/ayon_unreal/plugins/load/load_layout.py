@@ -21,7 +21,7 @@ from ayon_core.pipeline import (
     discover_loader_plugins,
     loaders_from_representation,
     load_container,
-    get_representation_path,
+    get_path,
     AYON_CONTAINER_ID,
     get_current_project_name,
 )
@@ -73,6 +73,8 @@ class LayoutLoader(plugin.Loader):
             name = "StaticMeshFBXLoader"
         elif family == 'camera':
             name = "CameraLoader"
+        elif family == 'animation':
+            name = "AnimationFBXLoader"
 
         if name == "":
             return None
@@ -90,6 +92,8 @@ class LayoutLoader(plugin.Loader):
             name = "SkeletalMeshAlembicLoader"
         elif family == 'model':
             name = "StaticMeshAlembicLoader"
+        elif family == 'animation':
+            name = "AnimationAlembicLoader"
 
         if name == "":
             return None
@@ -305,7 +309,7 @@ class LayoutLoader(plugin.Loader):
         project_name = get_current_project_name()
         repre_entities = ayon_api.get_representations(
             project_name,
-            representation_names={"fbx", "abc"},
+            names={"fbx", "abc"},
             version_ids=version_ids,
             fields={"id", "versionId", "name"}
         )
@@ -749,7 +753,7 @@ class LayoutLoader(plugin.Loader):
 
         EditorAssetLibrary.delete_directory(f"{asset_dir}/animations/")
 
-        source_path = get_representation_path(repre_entity)
+        source_path = get_path(repre_entity)
 
         loaded_assets = self._process(source_path, asset_dir, sequence)
 
