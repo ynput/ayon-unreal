@@ -133,7 +133,7 @@ class ExistingLayoutLoader(plugin.Loader):
         if rotation:
             actor_rotation = unreal.Rotator(
                 roll=rotation["x"], pitch=rotation["z"],
-                yaw=rotation["y"])
+                yaw=-rotation["y"])
             actor.set_actor_rotation(actor_rotation, False)
 
     @staticmethod
@@ -329,7 +329,7 @@ class ExistingLayoutLoader(plugin.Loader):
                 if rotation:
                     actor_rotation = unreal.Rotator(
                         roll=rotation["x"], pitch=rotation["z"],
-                        yaw=rotation["y"])
+                        yaw=-rotation["y"])
                     actor.set_actor_rotation(actor_rotation, False)
                 actors_matched.append(actor)
                 found = True

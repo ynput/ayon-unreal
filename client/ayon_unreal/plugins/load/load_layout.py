@@ -141,7 +141,7 @@ class LayoutLoader(plugin.Loader):
                 if rotation:
                     actor_rotation = unreal.Rotator(
                         roll=rotation["x"], pitch=rotation["z"],
-                        yaw=rotation["y"])
+                        yaw=-rotation["y"])
                 actor.set_actor_rotation(actor_rotation, False)
                 actor.set_actor_scale3d(t.scale3d)
 
@@ -633,12 +633,13 @@ class LayoutLoader(plugin.Loader):
             )
             if sequences:
                 min_frame = 0 if frame_ranges[-1][1] == 0 else folder_attributes.get('clipIn')
+                max_frame = min_frame + 1 if max_frame < min_frame else max_frame
                 set_sequence_hierarchy(
                     sequences[-1],
                     shot,
                     frame_ranges[-1][1],
                     min_frame,
-                    folder_attributes.get('clipOut'),
+                    max_frame,
                     [level])
 
             EditorLevelLibrary.load_level(level)
