@@ -633,7 +633,7 @@ class LayoutLoader(plugin.Loader):
             )
             if sequences:
                 min_frame = 0 if frame_ranges[-1][1] == 0 else folder_attributes.get('clipIn')
-                max_frame = min_frame + 1 if max_frame < min_frame else max_frame
+                max_frame = min_frame + 1 if max_frame < min_frame else folder_attributes.get('clipOut')
                 set_sequence_hierarchy(
                     sequences[-1],
                     shot,
