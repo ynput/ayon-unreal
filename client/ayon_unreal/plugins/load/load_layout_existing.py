@@ -132,7 +132,8 @@ class ExistingLayoutLoader(plugin.Loader):
         actor.set_actor_transform(computed_transform, False, True)
         if rotation:
             actor_rotation = unreal.Rotator(
-                rotation["x"], rotation["z"], rotation["y"])
+                roll=rotation["x"], pitch=rotation["z"],
+                yaw=rotation["y"])
             actor.set_actor_rotation(actor_rotation, False)
 
     @staticmethod
@@ -321,11 +322,15 @@ class ExistingLayoutLoader(plugin.Loader):
                 # Set the transform for the actor.
                 transform = lasset.get('transform_matrix')
                 basis = lasset.get('basis')
-
+                rotation = lasset.get("rotation", {})
                 computed_transform = self._transform_from_basis(
                     transform, basis)
                 actor.set_actor_transform(computed_transform, False, True)
-
+                if rotation:
+                    actor_rotation = unreal.Rotator(
+                        roll=rotation["x"], pitch=rotation["z"],
+                        yaw=rotation["y"])
+                    actor.set_actor_rotation(actor_rotation, False)
                 actors_matched.append(actor)
                 found = True
                 break
@@ -411,10 +416,13 @@ class ExistingLayoutLoader(plugin.Loader):
         project_name = context["project"]["name"]
         path = self.filepath_from_context(context)
         containers = self._process(path, project_name)
-
         curr_level_path = Path(
             curr_level.get_outer().get_path_name()).parent.as_posix()
-
+        if curr_level_path == "/Temp":
+            root = self.ASSET_ROOT
+            curr_level_path = f"{root}/{folder_name}/{name}"
+        #TODO: make sure curr_level_path is not a temp path,
+        # create new level for layout level
         if not unreal.EditorAssetLibrary.does_asset_exist(
             f"{curr_level_path}/{container_name}"
         ):
