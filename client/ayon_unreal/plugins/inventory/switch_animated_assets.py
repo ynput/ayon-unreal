@@ -59,6 +59,7 @@ class SwitchAnimatedAssets(InventoryAction):
                 for actor in actorsList:
                     if name in actor.get_actor_label():
                         transform_list.append({"transform": actor.get_actor_location()})
+                        unreal.EditorLevelLibrary.destroy_actor(actor)
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
             container_dir, recursive=True, include_folder=False
