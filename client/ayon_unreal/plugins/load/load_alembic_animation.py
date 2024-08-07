@@ -2,6 +2,7 @@
 """Load Alembic Animation."""
 import os
 
+from ayon_core.lib import EnumDef
 from ayon_core.pipeline import (
     get_representation_path,
     AYON_CONTAINER_ID
@@ -20,15 +21,37 @@ class AnimationAlembicLoader(plugin.Loader):
     icon = "cube"
     color = "orange"
 
-    def get_task(self, filename, asset_dir, asset_name, replace):
+    @classmethod
+    def get_options(cls, contexts):
+        return [
+            EnumDef(
+                "abc_conversion_preset",
+                label="Alembic Conversion Preset",
+                items={
+                    "custom": "custom",
+                    "maya": "maya"
+                },
+                default="maya"
+            )
+        ]
+
+    def get_task(self, filename, asset_dir, asset_name, replace, loaded_options=None):
         task = unreal.AssetImportTask()
         options = unreal.AbcImportSettings()
         sm_settings = unreal.AbcStaticMeshSettings()
-        conversion_settings = unreal.AbcConversionSettings(
-            preset=unreal.AbcConversionPreset.CUSTOM,
-            flip_u=False, flip_v=False,
-            rotation=[0.0, 0.0, 0.0],
-            scale=[1.0, 1.0, -1.0])
+        abc_conversion_preset = loaded_options.get("abc_conversion_preset")
+        if abc_conversion_preset == "maya":
+            conversion_settings = unreal.AbcConversionSettings(
+                preset= unreal.AbcConversionPreset.MAYA)
+        else:
+            conversion_settings = unreal.AbcConversionSettings(
+                preset=unreal.AbcConversionPreset.CUSTOM,
+                flip_u=False, flip_v=False,
+                rotation=[0.0, 0.0, 0.0],
+                scale=[1.0, 1.0, 1.0])
+
+        options.sampling_settings.frame_start = loaded_options.get("frameStart")
+        options.sampling_settings.frame_end = loaded_options.get("frameEnd")
 
         task.set_editor_property('filename', filename)
         task.set_editor_property('destination_path', asset_dir)
@@ -46,7 +69,7 @@ class AnimationAlembicLoader(plugin.Loader):
 
         return task
 
-    def load(self, context, name, namespace, data):
+    def load(self, context, name, namespace, options):
         """Load and containerise representation into Content Browser.
 
         This is two step process. First, import FBX to temporary path and
@@ -70,6 +93,7 @@ class AnimationAlembicLoader(plugin.Loader):
 
         # Create directory for asset and ayon container
         root = unreal_pipeline.AYON_ASSET_DIR
+        folder_entity = context["folder"]
         folder_name = context["folder"]["name"]
         folder_path = context["folder"]["path"]
         product_type = context["product"]["productType"]
@@ -93,9 +117,16 @@ class AnimationAlembicLoader(plugin.Loader):
 
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
+            loaded_options = {
+                "abc_conversion_preset": options.get("abc_conversion_preset", "maya"),
+                "frameStart": folder_entity["attrib"]["frameStart"],
+                "frameEnd": folder_entity["attrib"]["frameEnd"]
+            }
 
             path = self.filepath_from_context(context)
-            task = self.get_task(path, asset_dir, asset_name, False)
+            task = self.get_task(
+                path, asset_dir, asset_name, False, loaded_options
+            )
 
             asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
             asset_tools.import_asset_tasks([task])
