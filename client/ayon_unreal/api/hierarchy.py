@@ -206,8 +206,7 @@ def _find_in_hierarchy(hierarchy, path):
 def _on_confirm_clicked(folder_selector, sequence_path, project):
     selected_root = folder_selector.get_selected_folder()
     sequence_root_name = selected_root.lstrip("/")
-    project_name = get_current_project_name()
-    sequence_root = f"{sequence_path}/{project_name}/{sequence_root_name}"
+    sequence_root = f"{sequence_path}/{sequence_root_name}"
     asset_content = unreal.EditorAssetLibrary.list_assets(
         sequence_root, recursive=False, include_folder=True)
 
