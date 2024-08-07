@@ -7,7 +7,6 @@ from ayon_core import (
     style
 )
 from ayon_core.pipeline import get_current_project_name
-from ayon_core.settings import get_project_settings
 from ayon_core.tools.utils import (
     show_message_dialog,
     PlaceholderLineEdit,
@@ -113,15 +112,6 @@ class FolderSelector(QtWidgets.QWidget):
         return self._folders_widget.get_selected_folder_path()
 
 
-def get_default_sequence_path(settings):
-    """Get default render folder from blender settings."""
-
-    sequence_path = settings['unreal']['sequence_path']
-    sequence_path = sequence_path.rstrip("/")
-
-    return f"/Game/{sequence_path}"
-
-
 def _create_level(path, name, master_level):
     # Create the level
     level_path = f"{path}/{name}_map"
@@ -216,8 +206,8 @@ def _find_in_hierarchy(hierarchy, path):
 def _on_confirm_clicked(folder_selector, sequence_path, project):
     selected_root = folder_selector.get_selected_folder()
     sequence_root_name = selected_root.lstrip("/")
-
-    sequence_root = f"{sequence_path}/{sequence_root_name}"
+    project_name = get_current_project_name()
+    sequence_root = f"{sequence_path}/{project_name}/{sequence_root_name}"
     asset_content = unreal.EditorAssetLibrary.list_assets(
         sequence_root, recursive=False, include_folder=True)
 
@@ -278,8 +268,7 @@ def build_sequence_hierarchy():
 
     project = get_current_project_name()
 
-    settings = get_project_settings(project)
-    sequence_path = get_default_sequence_path(settings)
+    sequence_path = "/Game/Ayon/"
 
     folder_selector = FolderSelector(project=project)
 
