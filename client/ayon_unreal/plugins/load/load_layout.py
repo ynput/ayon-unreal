@@ -122,7 +122,8 @@ class LayoutLoader(plugin.Loader):
         return new_transform.transform()
 
     def _process_family(
-        self, assets, class_name, transform, basis, sequence, inst_name=None
+        self, assets, class_name, transform, basis, sequence, inst_name=None,
+        rotation=None
     ):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
@@ -136,7 +137,12 @@ class LayoutLoader(plugin.Loader):
                 actor = EditorLevelLibrary.spawn_actor_from_object(
                     obj, t.translation
                 )
-                actor.set_actor_rotation(t.rotation.rotator(), False)
+                actor_rotation = t.rotation.rotator()
+                if rotation:
+                    actor_rotation = unreal.Rotator(
+                        roll=rotation["x"], pitch=rotation["z"],
+                        yaw=-rotation["y"])
+                actor.set_actor_rotation(actor_rotation, False)
                 actor.set_actor_scale3d(t.scale3d)
 
                 if class_name == 'SkeletalMesh':
@@ -420,8 +426,8 @@ class LayoutLoader(plugin.Loader):
                         item.get('reference_abc') == repre_id)]
 
                 for instance in instances:
-                    # transform = instance.get('transform')
                     transform = instance.get('transform_matrix')
+                    rotation = instance.get('rotation', {})
                     basis = instance.get('basis')
                     inst = instance.get('instance_name')
 
@@ -430,12 +436,12 @@ class LayoutLoader(plugin.Loader):
                     if product_type == 'model':
                         actors, _ = self._process_family(
                             assets, 'StaticMesh', transform, basis,
-                            sequence, inst
+                            sequence, inst, rotation
                         )
                     elif product_type == 'rig':
                         actors, bindings = self._process_family(
                             assets, 'SkeletalMesh', transform, basis,
-                            sequence, inst
+                            sequence, inst, rotation
                         )
                         actors_dict[inst] = actors
                         bindings_dict[inst] = bindings
@@ -627,12 +633,14 @@ class LayoutLoader(plugin.Loader):
             )
             if sequences:
                 min_frame = 0 if frame_ranges[-1][1] == 0 else folder_attributes.get('clipIn')
+                max_frame = folder_attributes.get('clipOut')
+                max_frame = min_frame + 1 if max_frame < min_frame else max_frame
                 set_sequence_hierarchy(
                     sequences[-1],
                     shot,
                     frame_ranges[-1][1],
                     min_frame,
-                    folder_attributes.get('clipOut'),
+                    max_frame,
                     [level])
 
             EditorLevelLibrary.load_level(level)
@@ -861,12 +869,15 @@ class LayoutLoader(plugin.Loader):
                 if subscene_track:
                     sections = subscene_track.get_sections()
                     for ss in sections:
-                        if (ss.get_sequence().get_name() ==
-                                container.get('asset')):
-                            parent = s
-                            subscene_track.remove_section(ss)
-                            break
-                        sequences.append(ss.get_sequence())
+                        try:
+                            if (ss.get_sequence().get_name() ==
+                                    container.get('asset')):
+                                parent = s
+                                subscene_track.remove_section(ss)
+                                break
+                            sequences.append(ss.get_sequence())
+                        except AttributeError:
+                            unreal.log("Cannot get the level sequences")
                     # Update subscenes indexes.
                     i = 0
                     for ss in sections:
