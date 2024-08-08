@@ -203,24 +203,46 @@ def _find_in_hierarchy(hierarchy, path):
     return None
 
 
+def find_level_sequence(asset_content):
+    """
+    Search level sequence already exists in the hierarchy
+
+    Args:
+        asset_content (list): List of asset contents
+    """
+    has_level_sequence = []
+    ar = unreal.AssetRegistryHelpers.get_asset_registry()
+    for asset in asset_content:
+        content = ar.get_asset_by_object_path(asset).get_asset()
+        if content.get_class().get_name() == "LevelSequence":
+            has_level_sequence.append(content)
+    return has_level_sequence
+
+
+def save_asset_and_load_level(asset_content, level_package, folder_selector):
+    """Save asset contents and load master level thus close
+    folder selector
+
+    Args:
+        asset_content (list): List of asset contents
+        level_package (str): level package path
+        folder_selector(Object): folder selector widget
+    """
+    for a in asset_content:
+        unreal.EditorAssetLibrary.save_asset(a)
+
+    # load the master level
+    unreal.EditorLevelLibrary.load_level(level_package)
+
+    folder_selector.close()
+
+
 def _on_confirm_clicked(folder_selector, sequence_path, project):
     selected_root = folder_selector.get_selected_folder()
     sequence_root_name = selected_root.lstrip("/")
     sequence_root = f"{sequence_path}/{sequence_root_name}"
     asset_content = unreal.EditorAssetLibrary.list_assets(
         sequence_root, recursive=False, include_folder=True)
-
-    if asset_content:
-        msg = (
-            "The sequence folder is not empty. Please delete the contents "
-            "before building the sequence hierarchy.")
-        show_message_dialog(
-            parent=None,
-            title="Sequence Folder not empty",
-            message=msg,
-            level="critical")
-
-        return
 
     hierarchy = get_folders_hierarchy(project_name=project)["hierarchy"]
 
@@ -231,10 +253,31 @@ def _on_confirm_clicked(folder_selector, sequence_path, project):
     if not hierarchy_element:
         raise ValueError(f"Could not find {sequence_root_name} in hierarchy")
 
-    # Create the master level
     master_level_name = sequence_root_name.split("/")[-1]
     master_level_path = f"{sequence_root}/{master_level_name}_map"
     master_level_package = f"{master_level_path}.{master_level_name}_map"
+
+    if asset_content:
+        msg = (
+            f"The sequence hierarchy already created in {sequence_path}"
+            f"Loading level {master_level_package} from the path {master_level_path}."
+        )
+        show_message_dialog(
+            parent=None,
+            title="Loading level from the already-created shot structure",
+            message=msg,
+            level="info")
+
+        if not find_level_sequence(asset_content):
+            _create_sequence(
+                hierarchy_element, Path(sequence_root).parent.as_posix(),
+                master_level_package)
+
+        save_asset_and_load_level(
+            asset_content, master_level_package, folder_selector)
+        return
+
+    # Create the master level
     unreal.EditorLevelLibrary.new_level(master_level_path)
 
     # Start creating sequences from the root element
@@ -247,13 +290,8 @@ def _on_confirm_clicked(folder_selector, sequence_path, project):
         sequence_root, recursive=True, include_folder=False
     )
 
-    for a in asset_content:
-        unreal.EditorAssetLibrary.save_asset(a)
-
-    # Load the master level
-    unreal.EditorLevelLibrary.load_level(master_level_package)
-
-    folder_selector.close()
+    save_asset_and_load_level(
+        asset_content, master_level_package, folder_selector)
 
 
 def build_sequence_hierarchy():
