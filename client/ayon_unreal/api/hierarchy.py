@@ -173,6 +173,11 @@ def _create_sequence(
                 parents_frame_range[i + 1][0], parents_frame_range[i + 1][1],
                 [level])
 
+        if not parents_sequence:
+            parents_sequence = sequences
+        if not parents_frame_range:
+            parents_frame_range = frame_ranges
+
         # Add the newly created sequence to its parent
         set_sequence_hierarchy(
             parents_sequence[-1], sequence,
