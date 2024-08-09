@@ -24,7 +24,7 @@ class TexturePNGLoader(plugin.Loader):
     product_types = {"image", "texture", "render"}
     label = "Import image texture 2d"
     representations = {"*"}
-    extensions = {"png", "jpg", "tiff"}
+    extensions = {"png", "jpg", "tiff", "exr"}
     icon = "wallpaper"
     color = "orange"
 
@@ -43,8 +43,9 @@ class TexturePNGLoader(plugin.Loader):
         import_settings = (  
             project_settings.get("unreal", {}).get("import_settings", {})  
         )  
-        cls.use_interchange = import_settings.get("use_interchange", 
-                                                  cls.use_interchange)  
+        cls.use_interchange = import_settings.get("interchange", {}).get(
+            "enabled", cls.use_interchange
+        )    
         cls.show_dialog = import_settings.get("show_dialog", cls.show_dialog)
         cls.pipeline_path = import_settings.get("interchange", {}).get(  
             "pipeline_path_static_mesh", cls.pipeline_path  
@@ -81,6 +82,8 @@ class TexturePNGLoader(plugin.Loader):
                 None, "Interchange.FeatureFlags.Import.JPG 1")
             unreal.SystemLibrary.execute_console_command(
                 None, "Interchange.FeatureFlags.Import.TIFF 1")
+            unreal.SystemLibrary.execute_console_command(
+                None, "Interchange.FeatureFlags.Import.EXR 1")
 
             import_assetparameters = unreal.ImportAssetParameters()
             editor_asset_subsystem = unreal.EditorAssetSubsystem()

@@ -26,8 +26,23 @@ class SkeletalMeshFBXLoader(plugin.Loader):
 
     root = AYON_ASSET_DIR
 
+    
+    show_dialog = False
+
+    @classmethod  
+    def apply_settings(cls, project_settings):  
+        super(SkeletalMeshFBXLoader, cls).apply_settings(project_settings)  
+        
+        # Apply import settings  
+        import_settings = (  
+            project_settings.get("unreal", {}).get("import_settings", {})  
+        )  
+
+        cls.show_dialog = import_settings.get("show_dialog", 
+                                                cls.show_dialog)   
+
     @staticmethod
-    def get_task(filename, asset_dir, asset_name, replace):
+    def get_task(cls, filename, asset_dir, asset_name, replace):
         task = unreal.AssetImportTask()
         options = unreal.FbxImportUI()
 
@@ -35,7 +50,7 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         task.set_editor_property('destination_path', asset_dir)
         task.set_editor_property('destination_name', asset_name)
         task.set_editor_property('replace_existing', replace)
-        task.set_editor_property('automated', True)
+        task.set_editor_property('automated', not cls.show_dialog)
         task.set_editor_property('save', True)
 
         options.set_editor_property(

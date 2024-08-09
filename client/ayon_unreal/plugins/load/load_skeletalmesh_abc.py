@@ -26,6 +26,8 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
     color = "orange"
 
     root = AYON_ASSET_DIR
+    
+    show_dialog = False
 
     @classmethod
     def get_options(cls, contexts):
@@ -50,10 +52,23 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
                 default="Do not apply materials"
             )
         ]
+    
+
+    @classmethod  
+    def apply_settings(cls, project_settings):  
+        super(SkeletalMeshAlembicLoader, cls).apply_settings(project_settings)  
+        
+        # Apply import settings  
+        import_settings = (  
+            project_settings.get("unreal", {}).get("import_settings", {})  
+        )  
+
+        cls.show_dialog = import_settings.get("show_dialog", 
+                                                cls.show_dialog)   
 
 
     @staticmethod
-    def get_task(filename, asset_dir, asset_name, replace, loaded_options):
+    def get_task(cls, filename, asset_dir, asset_name, replace, loaded_options):
         task = unreal.AssetImportTask()
         options = unreal.AbcImportSettings()
         mat_settings = unreal.AbcMaterialSettings()
@@ -67,7 +82,7 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
         task.set_editor_property('destination_path', asset_dir)
         task.set_editor_property('destination_name', asset_name)
         task.set_editor_property('replace_existing', replace)
-        task.set_editor_property('automated', True)
+        task.set_editor_property('automated', not cls.show_dialog)
         task.set_editor_property('save', True)
 
         options.set_editor_property(
