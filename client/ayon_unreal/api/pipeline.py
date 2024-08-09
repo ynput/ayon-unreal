@@ -609,6 +609,8 @@ def generate_sequence(h, h_dir):
     )
     start_frames = []
     end_frames = []
+    # unreal default fps value
+    fps = 60.0
     if folder_entity:
         unreal.log("Found folder entity data: {}".format(folder_entity))
 
@@ -627,10 +629,10 @@ def generate_sequence(h, h_dir):
                 fields={"id", "attrib.clipIn", "attrib.clipOut"}
             ))
 
+        fps = folder_entity["attrib"].get("fps")
     min_frame = min(start_frames, default=sequence.get_playback_start())
     max_frame = max(end_frames, default=sequence.get_playback_end())
 
-    fps = folder_entity["attrib"].get("fps") or 30.0
 
     sequence.set_display_rate(
         unreal.FrameRate(fps, 1.0))
