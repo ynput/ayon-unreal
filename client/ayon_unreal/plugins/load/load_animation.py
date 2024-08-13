@@ -249,7 +249,9 @@ class AnimationFBXLoader(plugin.Loader):
             list(str): list of container content
         """
         # Create directory for asset and Ayon container
-        root = "/Game/Ayon"
+        root = unreal_pipeline.AYON_ASSET_DIR
+        project_name = context["project"]["name"]
+        root = f"{root}/{project_name}"
         folder_path = context["folder"]["path"]
         hierarchy = folder_path.lstrip("/").split("/")
         folder_name = hierarchy.pop(-1)

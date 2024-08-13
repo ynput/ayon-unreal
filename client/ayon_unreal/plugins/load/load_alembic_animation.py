@@ -72,6 +72,7 @@ class AnimationAlembicLoader(plugin.Loader):
         root = unreal_pipeline.AYON_ASSET_DIR
         folder_name = context["folder"]["name"]
         folder_path = context["folder"]["path"]
+        project_name = context["project"]["name"]
         product_type = context["product"]["productType"]
         suffix = "_CON"
         if folder_name:
@@ -87,7 +88,7 @@ class AnimationAlembicLoader(plugin.Loader):
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{root}/{folder_name}/{name_version}", suffix="")
+            f"{root}/{project_name}/{folder_name}/{name_version}", suffix="")
 
         container_name += suffix
 

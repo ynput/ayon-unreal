@@ -120,6 +120,7 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         """
         # Create directory for asset and Ayon container
         folder_name = context["folder"]["name"]
+        project_name = context["project"]["name"]
         product_type = context["product"]["productType"]
         suffix = "_CON"
         asset_name = f"{folder_name}_{name}" if folder_name else f"{name}"
@@ -133,7 +134,7 @@ class SkeletalMeshFBXLoader(plugin.Loader):
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{self.root}/{folder_name}/{name_version}", suffix=""
+            f"{self.root}/{project_name}/{folder_name}/{name_version}", suffix=""
         )
 
         container_name += suffix
@@ -165,6 +166,7 @@ class SkeletalMeshFBXLoader(plugin.Loader):
     def update(self, container, context):
         folder_path = context["folder"]["path"]
         folder_name = context["folder"]["name"]
+        project_name = context["project"]["name"]
         product_name = context["product"]["name"]
         product_type = context["product"]["productType"]
         version = context["version"]["version"]
@@ -182,7 +184,7 @@ class SkeletalMeshFBXLoader(plugin.Loader):
             name_version = f"{product_name}_v{version:03d}"
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{self.root}/{folder_name}/{name_version}", suffix="")
+            f"{self.root}/{project_name}/{folder_name}/{name_version}", suffix="")
 
         container_name += suffix
 
