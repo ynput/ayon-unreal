@@ -1,5 +1,4 @@
 from ayon_server.settings import BaseSettingsModel, SettingsField
-
 from .imageio import UnrealImageIOModel
 
 
@@ -19,6 +18,13 @@ def _render_format_enum():
     ]
 
 
+def _loaded_asset_enum():
+    return [
+        {"value": "fbx", "label": "fbx"},
+        {"value": "abc", "label": "abc"}
+    ]
+
+
 class UnrealSettings(BaseSettingsModel):
     imageio: UnrealImageIOModel = SettingsField(
         default_factory=UnrealImageIOModel,
@@ -31,6 +37,12 @@ class UnrealSettings(BaseSettingsModel):
     delete_unmatched_assets: bool = SettingsField(
         False,
         title="Delete assets that are not matched"
+    )
+    loaded_assets_extension: str = SettingsField(
+        "fbx",
+        title="Loaded Assets Extension",
+        enum_resolver=_loaded_asset_enum,
+        description="Extension for the loaded assets"
     )
     render_queue_path: str = SettingsField(
         "",
@@ -60,6 +72,7 @@ class UnrealSettings(BaseSettingsModel):
 DEFAULT_VALUES = {
     "level_sequences_for_layouts": True,
     "delete_unmatched_assets": False,
+    "loaded_assets_extension": "fbx",
     "render_queue_path": "/Game/Ayon/renderQueue",
     "render_config_path": "/Game/Ayon/DefaultMovieRenderQueueConfig.DefaultMovieRenderQueueConfig",
     "preroll_frames": 0,
