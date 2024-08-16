@@ -61,13 +61,14 @@ class ExtractLayout(publish.Extractor):
                 parent_id = eal.get_metadata_tag(asset_container, "parent")
                 family = eal.get_metadata_tag(asset_container, "family")
 
-                self.log.info("Parent: {}".format(parent_id))
                 blend = ayon_api.get_representation_by_name(
                     project_name, "blend", parent_id, fields={"id"}
                 )
                 if blend:
                     blend_id = blend["id"]
                     json_element["reference"] = str(blend_id)
+                else:
+                    json_element["reference"] = str(parent_id)
 
                 json_element = {}
                 json_element["family"] = family
