@@ -33,11 +33,13 @@ class ExtractLayout(publish.Extractor):
 
         json_data = []
         project_name = instance.context.data["projectName"]
-
-        for member in instance[:]:
-            actor = ell.get_actor_reference(member)
+        eas = unreal.EditorActorSubsystem()
+        sel_actors = eas.get_all_level_actors()
+        members = instance.data.get(
+            "creator_attributes", {}).get("members", [])
+        actors = [a for a in sel_actors if a.get_path_name() in members]
+        for actor in actors:
             mesh = None
-
             # Check type the type of mesh
             if actor.get_class().get_name() == 'SkeletalMeshActor':
                 mesh = actor.skeletal_mesh_component.skeletal_mesh
@@ -63,10 +65,11 @@ class ExtractLayout(publish.Extractor):
                 blend = ayon_api.get_representation_by_name(
                     project_name, "blend", parent_id, fields={"id"}
                 )
-                blend_id = blend["id"]
+                if blend:
+                    blend_id = blend["id"]
+                    json_element["reference"] = str(blend_id)
 
                 json_element = {}
-                json_element["reference"] = str(blend_id)
                 json_element["family"] = family
                 json_element["product_type"] = family
                 json_element["instance_name"] = actor.get_name()

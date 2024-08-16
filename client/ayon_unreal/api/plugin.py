@@ -247,13 +247,10 @@ class UnrealActorCreator(UnrealBaseCreator):
 
             # Check if instance data has members, filled by the plugin.
             # If not, use selection.
-            if not instance_data.get("members"):
-                actor_subsystem = unreal.EditorActorSubsystem()
-                sel_actors = actor_subsystem.get_selected_level_actors()
-                selection = [a.get_path_name() for a in sel_actors]
-
-                instance_data["members"] = selection
-
+            actor_subsystem = unreal.EditorActorSubsystem()
+            sel_actors = actor_subsystem.get_selected_level_actors()
+            creator_attributes = instance_data.setdefault("creator_attributes", dict())
+            creator_attributes["members"] = [a.get_path_name() for a in sel_actors]
             instance_data["level"] = world.get_path_name()
 
             super(UnrealActorCreator, self).create(
