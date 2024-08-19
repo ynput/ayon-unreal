@@ -21,7 +21,6 @@ class ValidateActorExistingInLayout(pyblish.api.InstancePlugin):
     @classmethod
     def get_invalid(cls, instance):
         invalid = []
-        self.log.
         eas = unreal.EditorActorSubsystem()
         sel_actors = eas.get_all_level_actors()
         members = instance.data.get(
