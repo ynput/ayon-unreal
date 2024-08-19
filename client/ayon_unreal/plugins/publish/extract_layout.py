@@ -72,6 +72,7 @@ class ExtractLayout(publish.Extractor):
                 else:
                     json_element["reference"] = str(repre_id)
 
+                json_element["version"] = str(parent_id)
                 json_element["family"] = family
                 json_element["product_type"] = family
                 json_element["instance_name"] = actor.get_name()
