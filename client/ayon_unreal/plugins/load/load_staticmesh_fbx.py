@@ -53,17 +53,20 @@ class StaticMeshFBXLoader(plugin.Loader):
         return task
 
     def import_and_containerize(
-        self, filepath, asset_dir, asset_name, container_name
+        self, filepath, asset_dir, asset_name, container_name, replace_existing=False
     ):
-        unreal.EditorAssetLibrary.make_directory(asset_dir)
-
+        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+            unreal.EditorAssetLibrary.make_directory(asset_dir)
         task = self.get_task(
-            filepath, asset_dir, asset_name, False)
-
+            filepath, asset_dir, asset_name, replace_existing)
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
 
-        # Create Asset Container
-        create_container(container=container_name, path=asset_dir)
+        if not unreal.EditorAssetLibrary.does_asset_exist(
+            f"{asset_dir}/{container_name}"
+        ):
+            # Create Asset Container
+            create_container(container=container_name, path=asset_dir)
+
 
     def imprint(
         self,
@@ -111,25 +114,18 @@ class StaticMeshFBXLoader(plugin.Loader):
         folder_name = context["folder"]["name"]
         suffix = "_CON"
         asset_name = f"{folder_name}_{name}" if folder_name else f"{name}"
-        version = context["version"]["version"]
-        # Check if version is hero version and use different name
-        if version < 0:
-            name_version = f"{name}_hero"
-        else:
-            name_version = f"{name}_v{version:03d}"
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{self.root}/{folder_name}/{name_version}", suffix=""
+            f"{self.root}/{folder_name}/{name}", suffix=""
         )
 
         container_name += suffix
 
-        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            path = self.filepath_from_context(context)
+        path = self.filepath_from_context(context)
 
-            self.import_and_containerize(
-                path, asset_dir, asset_name, container_name)
+        self.import_and_containerize(
+            path, asset_dir, asset_name, container_name)
 
         self.imprint(
             folder_path,
@@ -154,7 +150,6 @@ class StaticMeshFBXLoader(plugin.Loader):
         folder_name = context["folder"]["name"]
         product_name = context["product"]["name"]
         product_type = context["product"]["productType"]
-        version = context["version"]["version"]
         repre_entity = context["representation"]
 
         # Create directory for asset and Ayon container
@@ -162,22 +157,17 @@ class StaticMeshFBXLoader(plugin.Loader):
         asset_name = product_name
         if folder_name:
             asset_name = f"{folder_name}_{product_name}"
-        # Check if version is hero version and use different name
-        if version < 0:
-            name_version = f"{product_name}_hero"
-        else:
-            name_version = f"{product_name}_v{version:03d}"
+
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{self.root}/{folder_name}/{name_version}", suffix="")
+            f"{self.root}/{folder_name}/{product_name}", suffix="")
 
         container_name += suffix
 
-        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            path = get_representation_path(repre_entity)
+        path = get_representation_path(repre_entity)
 
-            self.import_and_containerize(
-                path, asset_dir, asset_name, container_name)
+        self.import_and_containerize(
+            path, asset_dir, asset_name, container_name, replace_existing=True)
 
         self.imprint(
             folder_path,
