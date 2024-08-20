@@ -35,6 +35,7 @@ from ayon_unreal.api.pipeline import (
     imprint,
     ls,
 )
+from ayon_core.lib import EnumDef
 
 
 class LayoutLoader(plugin.Loader):
@@ -47,6 +48,32 @@ class LayoutLoader(plugin.Loader):
     icon = "code-fork"
     color = "orange"
     ASSET_ROOT = "/Game/Ayon"
+    loaded_assets_extension = "fbx"
+
+    @classmethod
+    def apply_settings(cls, project_settings):
+        super(LayoutLoader, cls).apply_settings(project_settings)
+
+        # Apply import settings
+        loaded_assets_extension = (
+            project_settings.get("unreal", {}).get("loaded_assets_extension", {})
+        )
+        if loaded_assets_extension:
+            cls.loaded_assets_extension = loaded_assets_extension
+
+    @classmethod
+    def get_options(cls, contexts):
+        return [
+            EnumDef(
+                "loaded_assets_extension",
+                label="Loaded Assets Extension",
+                items={
+                    "fbx": "fbx",
+                    "abc": "abc"
+                },
+                default=cls.loaded_assets_extension
+            )
+        ]
 
     def _get_asset_containers(self, path):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
@@ -297,7 +324,7 @@ class LayoutLoader(plugin.Loader):
                     sec_params = section.get_editor_property('params')
                     sec_params.set_editor_property('animation', animation)
 
-    def _get_repre_entities_by_version_id(self, data):
+    def _get_repre_entities_by_version_id(self, data, repre_extension):
         version_ids = {
             element.get("version")
             for element in data
@@ -312,7 +339,7 @@ class LayoutLoader(plugin.Loader):
         project_name = get_current_project_name()
         repre_entities = ayon_api.get_representations(
             project_name,
-            representation_names={"fbx", "abc"},
+            representation_names={repre_extension},
             version_ids=version_ids,
             fields={"id", "versionId", "name"}
         )
@@ -321,7 +348,8 @@ class LayoutLoader(plugin.Loader):
             output[version_id].append(repre_entity)
         return output
 
-    def _process(self, lib_path, asset_dir, sequence, repr_loaded=None):
+    def _process(self, lib_path, asset_dir, sequence,
+                 repr_loaded=None, loaded_extension=None):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
         with open(lib_path, "r") as fp:
@@ -341,7 +369,7 @@ class LayoutLoader(plugin.Loader):
         loaded_assets = []
 
         repre_entities_by_version_id = self._get_repre_entities_by_version_id(
-            data
+            data, loaded_extension
         )
         for element in data:
             repre_id = None
@@ -647,9 +675,11 @@ class LayoutLoader(plugin.Loader):
                     [level])
 
             EditorLevelLibrary.load_level(level)
-
+        extension = options.get(
+            "loaded_assets_extension", self.loaded_assets_extension)
         path = self.filepath_from_context(context)
-        loaded_assets = self._process(path, asset_dir, shot)
+        loaded_assets = self._process(
+            path, asset_dir, shot, loaded_extension=extension)
 
         for s in sequences:
             EditorAssetLibrary.save_asset(s.get_path_name())
@@ -762,7 +792,9 @@ class LayoutLoader(plugin.Loader):
 
         source_path = get_representation_path(repre_entity)
 
-        loaded_assets = self._process(source_path, asset_dir, sequence)
+        loaded_assets = self._process(
+            source_path, asset_dir, sequence,
+            loaded_extension=self.loaded_assets_extension)
 
         data = {
             "representation": repre_entity["id"],
