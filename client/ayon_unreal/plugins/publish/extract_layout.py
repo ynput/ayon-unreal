@@ -9,7 +9,6 @@ from unreal import EditorAssetLibrary as eal
 import ayon_api
 
 from ayon_core.pipeline import publish
-from ayon_core.lib import BoolDef
 
 
 class ExtractLayout(publish.Extractor):
