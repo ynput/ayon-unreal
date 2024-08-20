@@ -127,8 +127,8 @@ class CameraLoader(plugin.Loader):
             f"{hierarchy_dir}/{folder_name}/{name}_{unique_number:02d}", suffix="")
 
         container_name += suffix
-
-        EditorAssetLibrary.make_directory(asset_dir)
+        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+            EditorAssetLibrary.make_directory(asset_dir)
 
         # Create map for the shot, and create hierarchy of map. If the maps
         # already exist, we will use them.

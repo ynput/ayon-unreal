@@ -576,8 +576,8 @@ class LayoutLoader(plugin.Loader):
         )
 
         container_name += suffix
-
-        EditorAssetLibrary.make_directory(asset_dir)
+        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+            EditorAssetLibrary.make_directory(asset_dir)
 
         master_level = None
         shot = None

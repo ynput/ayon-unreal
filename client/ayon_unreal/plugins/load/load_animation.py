@@ -295,8 +295,8 @@ class AnimationFBXLoader(plugin.Loader):
             unreal.EditorLevelLibrary.load_level(level)
 
             container_name += suffix
-
-            EditorAssetLibrary.make_directory(asset_dir)
+            if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+                EditorAssetLibrary.make_directory(asset_dir)
 
             self._load_from_json(
                 libpath, path, asset_dir, asset_name, hierarchy_dir)
