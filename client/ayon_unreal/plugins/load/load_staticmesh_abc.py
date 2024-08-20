@@ -64,7 +64,6 @@ class StaticMeshAlembicLoader(plugin.Loader):
         mat_settings = unreal.AbcMaterialSettings()
 
         task.set_editor_property('filename', filename)
-
         task.set_editor_property('destination_path', asset_dir)
         task.set_editor_property('destination_name', asset_name)
         task.set_editor_property('replace_existing', replace)
@@ -112,20 +111,17 @@ class StaticMeshAlembicLoader(plugin.Loader):
 
     def import_and_containerize(
         self, filepath, asset_dir, asset_name, container_name,
-        loaded_options, replace_existing=False
+        loaded_options
     ):
-        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            unreal.EditorAssetLibrary.make_directory(asset_dir)
+        unreal.EditorAssetLibrary.make_directory(asset_dir)
 
         task = self.get_task(
-            filepath, asset_dir, asset_name, replace_existing, loaded_options)
+            filepath, asset_dir, asset_name, False, loaded_options)
+
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
 
-        if not unreal.EditorAssetLibrary.does_asset_exist(
-            f"{asset_dir}/{container_name}"
-        ):
-            # Create Asset Container
-            create_container(container=container_name, path=asset_dir)
+        # Create Asset Container
+        create_container(container=container_name, path=asset_dir)
 
     def imprint(
         self,
@@ -174,7 +170,12 @@ class StaticMeshAlembicLoader(plugin.Loader):
 
         suffix = "_CON"
         asset_name = f"{folder_name}_{name}" if folder_name else f"{name}"
-
+        version = context["version"]["version"]
+        # Check if version is hero version and use different name
+        if version < 0:
+            name_version = f"{name}_hero"
+        else:
+            name_version = f"{name}_v{version:03d}"
         loaded_options = {
             "default_conversion": options.get("default_conversion", False),
             "abc_conversion_preset": options.get("abc_conversion_preset", "maya"),
@@ -184,15 +185,15 @@ class StaticMeshAlembicLoader(plugin.Loader):
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{self.root}/{folder_name}/{name}", suffix="")
+            f"{self.root}/{folder_name}/{name_version}", suffix="")
 
         container_name += suffix
 
+        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+            path = self.filepath_from_context(context)
 
-        path = self.filepath_from_context(context)
-
-        self.import_and_containerize(path, asset_dir, asset_name,
-                                     container_name, loaded_options)
+            self.import_and_containerize(path, asset_dir, asset_name,
+                                         container_name, loaded_options)
 
         product_type = context["product"]["productType"]
         self.imprint(
@@ -225,18 +226,24 @@ class StaticMeshAlembicLoader(plugin.Loader):
         asset_name = product_name
         if folder_name:
             asset_name = f"{folder_name}_{product_name}"
+        version = context["version"]["version"]
+        # Check if version is hero version and use different name
+        if version < 0:
+            name_version = f"{product_name}_hero"
+        else:
+            name_version = f"{product_name}_v{version:03d}"
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{self.root}/{folder_name}/{product_name}", suffix="")
+            f"{self.root}/{folder_name}/{name_version}", suffix="")
 
         container_name += suffix
 
-        path = get_representation_path(repre_entity)
-        loaded_options = {"default_conversion": False}
-        self.import_and_containerize(path, asset_dir, asset_name,
-                                     container_name, loaded_options,
-                                     replace_existing=True)
+        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+            path = get_representation_path(repre_entity)
+            loaded_options = {"default_conversion": False}
+            self.import_and_containerize(path, asset_dir, asset_name,
+                                         container_name, loaded_options)
 
         self.imprint(
             folder_path,
