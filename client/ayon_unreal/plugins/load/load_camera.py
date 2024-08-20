@@ -105,26 +105,8 @@ class CameraLoader(plugin.Loader):
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
 
-        # Create a unique name for the camera directory
-        unique_number = 1
-        if EditorAssetLibrary.does_directory_exist(
-            f"{hierarchy_dir}/{folder_name}"
-        ):
-            asset_content = EditorAssetLibrary.list_assets(
-                f"{root}/{folder_name}", recursive=False, include_folder=True
-            )
-
-            # Get highest number to make a unique name
-            folders = [a for a in asset_content
-                       if a[-1] == "/" and f"{name}_" in a]
-            # Get number from folder name. Splits the string by "_" and
-            # removes the last element (which is a "/").
-            f_numbers = [int(f.split("_")[-1][:-1]) for f in folders]
-            f_numbers.sort()
-            unique_number = f_numbers[-1] + 1 if f_numbers else 1
-
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{hierarchy_dir}/{folder_name}/{name}_{unique_number:02d}", suffix="")
+            f"{hierarchy_dir}/{folder_name}/{name}", suffix="")
 
         container_name += suffix
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
@@ -244,8 +226,11 @@ class CameraLoader(plugin.Loader):
                             key.set_time(unreal.FrameNumber(value=new_time))
 
         # Create Asset Container
-        create_container(
-            container=container_name, path=asset_dir)
+        if not unreal.EditorAssetLibrary.does_asset_exist(
+            f"{asset_dir}/{container_name}"
+        ):
+            create_container(
+                container=container_name, path=asset_dir)
 
         product_type = context["product"]["productType"]
         data = {
