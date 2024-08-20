@@ -78,13 +78,13 @@ class AnimationAlembicLoader(plugin.Loader):
             asset_name = "{}_{}".format(folder_name, name)
         else:
             asset_name = "{}".format(name)
-
         version = context["version"]["version"]
         # Check if version is hero version and use different name
         if version < 0:
             name_version = f"{name}_hero"
         else:
             name_version = f"{name}_v{version:03d}"
+
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             f"{root}/{folder_name}/{name_version}", suffix="")
