@@ -694,22 +694,22 @@ class LayoutLoader(plugin.Loader):
             create_container(
                 container=container_name, path=asset_dir)
 
-        data = {
-            "schema": "ayon:container-2.0",
-            "id": AYON_CONTAINER_ID,
-            "asset": folder_name,
-            "folder_path": folder_path,
-            "namespace": asset_dir,
-            "container_name": container_name,
-            "asset_name": asset_name,
-            "loader": str(self.__class__.__name__),
-            "representation": context["representation"]["id"],
-            "parent": context["representation"]["versionId"],
-            "family": context["product"]["productType"],
-            "loaded_assets": loaded_assets
-        }
-        imprint(
-            "{}/{}".format(asset_dir, container_name), data)
+            data = {
+                "schema": "ayon:container-2.0",
+                "id": AYON_CONTAINER_ID,
+                "asset": folder_name,
+                "folder_path": folder_path,
+                "namespace": asset_dir,
+                "container_name": container_name,
+                "asset_name": asset_name,
+                "loader": str(self.__class__.__name__),
+                "representation": context["representation"]["id"],
+                "parent": context["representation"]["versionId"],
+                "family": context["product"]["productType"],
+                "loaded_assets": loaded_assets
+            }
+            imprint(
+                "{}/{}".format(asset_dir, container_name), data)
 
         save_dir = hierarchy_dir_list[0] if create_sequences else asset_dir
 

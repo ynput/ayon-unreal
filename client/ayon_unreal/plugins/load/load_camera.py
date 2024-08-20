@@ -105,8 +105,26 @@ class CameraLoader(plugin.Loader):
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
 
+        # Create a unique name for the camera directory
+        unique_number = 1
+        if EditorAssetLibrary.does_directory_exist(
+            f"{hierarchy_dir}/{folder_name}"
+        ):
+            asset_content = EditorAssetLibrary.list_assets(
+                f"{root}/{folder_name}", recursive=False, include_folder=True
+            )
+
+            # Get highest number to make a unique name
+            folders = [a for a in asset_content
+                       if a[-1] == "/" and f"{name}_" in a]
+            # Get number from folder name. Splits the string by "_" and
+            # removes the last element (which is a "/").
+            f_numbers = [int(f.split("_")[-1][:-1]) for f in folders]
+            f_numbers.sort()
+            unique_number = f_numbers[-1] + 1 if f_numbers else 1
+
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{hierarchy_dir}/{folder_name}/{name}", suffix="")
+            f"{hierarchy_dir}/{folder_name}/{name}_{unique_number:02d}", suffix="")
 
         container_name += suffix
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
@@ -235,23 +253,23 @@ class CameraLoader(plugin.Loader):
             create_container(
                 container=container_name, path=asset_dir)
 
-        product_type = context["product"]["productType"]
-        data = {
-            "schema": "ayon:container-2.0",
-            "id": AYON_CONTAINER_ID,
-            "folder_path": folder_path,
-            "namespace": asset_dir,
-            "container_name": container_name,
-            "asset_name": asset_name,
-            "loader": str(self.__class__.__name__),
-            "representation": context["representation"]["id"],
-            "parent": context["representation"]["versionId"],
-            "product_type": product_type,
-            # TODO these should be probably removed
-            "asset": folder_name,
-            "family": product_type,
-        }
-        imprint(f"{asset_dir}/{container_name}", data)
+            product_type = context["product"]["productType"]
+            data = {
+                "schema": "ayon:container-2.0",
+                "id": AYON_CONTAINER_ID,
+                "folder_path": folder_path,
+                "namespace": asset_dir,
+                "container_name": container_name,
+                "asset_name": asset_name,
+                "loader": str(self.__class__.__name__),
+                "representation": context["representation"]["id"],
+                "parent": context["representation"]["versionId"],
+                "product_type": product_type,
+                # TODO these should be probably removed
+                "asset": folder_name,
+                "family": product_type,
+            }
+            imprint(f"{asset_dir}/{container_name}", data)
 
         EditorLevelLibrary.save_all_dirty_levels()
         EditorLevelLibrary.load_level(master_level)

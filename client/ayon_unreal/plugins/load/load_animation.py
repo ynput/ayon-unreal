@@ -312,22 +312,22 @@ class AnimationFBXLoader(plugin.Loader):
             unreal_pipeline.create_container(
                 container=container_name, path=asset_dir)
 
-        data = {
-            "schema": "ayon:container-2.0",
-            "id": AYON_CONTAINER_ID,
-            "namespace": asset_dir,
-            "container_name": container_name,
-            "asset_name": asset_name,
-            "loader": str(self.__class__.__name__),
-            "representation": context["representation"]["id"],
-            "parent": context["representation"]["versionId"],
-            "folder_path": folder_path,
-            "product_type": product_type,
-            # TODO these shold be probably removed
-            "asset": folder_path,
-            "family": product_type
-        }
-        unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
+            data = {
+                "schema": "ayon:container-2.0",
+                "id": AYON_CONTAINER_ID,
+                "namespace": asset_dir,
+                "container_name": container_name,
+                "asset_name": asset_name,
+                "loader": str(self.__class__.__name__),
+                "representation": context["representation"]["id"],
+                "parent": context["representation"]["versionId"],
+                "folder_path": folder_path,
+                "product_type": product_type,
+                # TODO these shold be probably removed
+                "asset": folder_path,
+                "family": product_type
+            }
+            unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
 
         imported_content = EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=False)
