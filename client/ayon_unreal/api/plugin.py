@@ -266,7 +266,16 @@ class UnrealActorCreator(UnrealBaseCreator):
 
     def get_pre_create_attr_defs(self):
         return [
-            UILabelDef("Select actors to create instance from them.")
+            UILabelDef("Select actors to create instance from them."),
+        ] + self.get_instance_attr_defs()
+
+    def get_instance_attr_defs(self):
+        return [
+            BoolDef(
+                "export_blender",
+                label="Export to Blender",
+                default=False
+            )
         ]
 
 

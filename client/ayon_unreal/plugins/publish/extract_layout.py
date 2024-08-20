@@ -9,6 +9,7 @@ from unreal import EditorAssetLibrary as eal
 import ayon_api
 
 from ayon_core.pipeline import publish
+from ayon_core.lib import BoolDef
 
 
 class ExtractLayout(publish.Extractor):
@@ -38,6 +39,7 @@ class ExtractLayout(publish.Extractor):
         members = instance.data.get(
             "creator_attributes", {}).get("members", [])
         actors = [a for a in sel_actors if a.get_path_name() in members]
+        attr_values = self.get_attr_values_from_data(instance.data)
         for actor in actors:
             mesh = None
             # Check type the type of mesh
@@ -62,15 +64,15 @@ class ExtractLayout(publish.Extractor):
                 repre_id = eal.get_metadata_tag(asset_container, "representation")
                 family = eal.get_metadata_tag(asset_container, "family")
                 json_element = {}
-
-                blend = ayon_api.get_representation_by_name(
-                    project_name, "blend", parent_id, fields={"id"}
-                )
-                if blend:
+                json_element["reference"] = str(repre_id)
+                # TODO: remove the option after tweaking
+                # the layout loader in blender
+                if attr_values.get("export_blender"):
+                    blend = ayon_api.get_representation_by_name(
+                        project_name, "blend", parent_id, fields={"id"}
+                    )
                     blend_id = blend["id"]
                     json_element["reference"] = str(blend_id)
-                else:
-                    json_element["reference"] = str(repre_id)
 
                 json_element["version"] = str(parent_id)
                 json_element["family"] = family
