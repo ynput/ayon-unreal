@@ -23,8 +23,7 @@ class ValidateActorExistingInLayout(pyblish.api.InstancePlugin):
         invalid = []
         eas = unreal.EditorActorSubsystem()
         sel_actors = eas.get_all_level_actors()
-        members = instance.data.get(
-            "creator_attributes", {}).get("members", [])
+        members = instance.data.get("members", [])
         if not members:
             msg = "No members found for publishing layout."
             invalid.append(msg)
@@ -61,6 +60,5 @@ class ValidateActorExistingInLayout(pyblish.api.InstancePlugin):
         instance_node = f"/Game/Ayon/AyonPublishInstances/{instance.name}"
         actor_subsystem = unreal.EditorActorSubsystem()
         sel_actors = actor_subsystem.get_selected_level_actors()
-        creator_attributes = instance.data["creator_attributes"]
-        creator_attributes["members"] = [a.get_path_name() for a in sel_actors]
-        imprint(instance_node, creator_attributes)
+        instance.data["members"] = [a.get_path_name() for a in sel_actors]
+        imprint(instance_node, instance.data["members"])

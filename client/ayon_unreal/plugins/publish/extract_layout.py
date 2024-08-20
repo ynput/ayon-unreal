@@ -35,10 +35,8 @@ class ExtractLayout(publish.Extractor):
         project_name = instance.context.data["projectName"]
         eas = unreal.EditorActorSubsystem()
         sel_actors = eas.get_all_level_actors()
-        members = instance.data.get(
-            "creator_attributes", {}).get("members", [])
+        members = instance.data.get("members", [])
         actors = [a for a in sel_actors if a.get_path_name() in members]
-        attr_values = self.get_attr_values_from_data(instance.data)
         for actor in actors:
             mesh = None
             # Check type the type of mesh
@@ -66,7 +64,7 @@ class ExtractLayout(publish.Extractor):
                 json_element["reference"] = str(repre_id)
                 # TODO: remove the option after tweaking
                 # the layout loader in blender
-                if attr_values.get("export_blender"):
+                if instance.data.get("export_blender", False):
                     blend = ayon_api.get_representation_by_name(
                         project_name, "blend", parent_id, fields={"id"}
                     )
