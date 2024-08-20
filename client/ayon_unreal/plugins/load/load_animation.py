@@ -305,9 +305,12 @@ class AnimationFBXLoader(plugin.Loader):
             self._load_standalone_animation(
                 path, asset_dir, asset_name, version_id)
 
-        # Create Asset Container
-        unreal_pipeline.create_container(
-            container=container_name, path=asset_dir)
+        if not unreal.EditorAssetLibrary.does_asset_exist(
+            f"{asset_dir}/{container_name}"
+        ):
+            # Create Asset Container
+            unreal_pipeline.create_container(
+                container=container_name, path=asset_dir)
 
         data = {
             "schema": "ayon:container-2.0",

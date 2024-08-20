@@ -163,16 +163,19 @@ class CameraLoader(plugin.Loader):
 
                 sequences.append(sequence)
                 frame_ranges.append(frame_range)
-
-        EditorAssetLibrary.make_directory(asset_dir)
-
-        cam_seq = tools.create_asset(
-            asset_name=f"{folder_name}_camera",
-            package_path=asset_dir,
-            asset_class=unreal.LevelSequence,
-            factory=unreal.LevelSequenceFactoryNew()
+        camera_seq = (
+            f"{asset_dir}/{folder_name}_camera.{folder_name}_camera"
         )
-
+        cam_seq = None
+        if not EditorAssetLibrary.does_asset_exist(camera_seq):
+            cam_seq = tools.create_asset(
+                asset_name=f"{folder_name}_camera",
+                package_path=asset_dir,
+                asset_class=unreal.LevelSequence,
+                factory=unreal.LevelSequenceFactoryNew()
+            )
+        else:
+            cam_seq = unreal.load_asset(camera_seq)
         # Add sequences data to hierarchy
         for i in range(len(sequences) - 1):
             set_sequence_hierarchy(
