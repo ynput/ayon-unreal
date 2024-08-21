@@ -35,7 +35,7 @@ class ExtractLayout(publish.Extractor):
         project_name = instance.context.data["projectName"]
         eas = unreal.EditorActorSubsystem()
         sel_actors = eas.get_all_level_actors()
-        members = instance.data.get("members", [])
+        members = set(instance.data.get("members", []))
         actors = [a for a in sel_actors if a.get_path_name() in members]
         for actor in actors:
             mesh = None
