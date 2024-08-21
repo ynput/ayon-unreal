@@ -15,7 +15,8 @@ from ayon_core.lib import (
     UILabelDef,
     UISeparatorDef,
     BoolDef,
-    NumberDef
+    NumberDef,
+    EnumDef
 )
 
 
@@ -74,12 +75,19 @@ class CreateRender(UnrealAssetCreator):
         unreal.EditorAssetLibrary.save_asset(seq.get_path_name())
 
         # Create the master level
+        curr_level = None
         if UNREAL_VERSION.major >= 5:
-            curr_level = unreal.LevelEditorSubsystem().get_current_level()
+            if UNREAL_VERSION.minor >= 3:
+                les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
+                curr_level = les.get_current_level()
+            else:
+                curr_level = unreal.LevelEditorSubsystem().get_current_level()
+
         else:
             world = unreal.EditorLevelLibrary.get_editor_world()
             levels = unreal.EditorLevelUtils.get_levels(world)
             curr_level = levels[0] if len(levels) else None
+
             if not curr_level:
                 raise RuntimeError("No level loaded.")
         curr_level_path = curr_level.get_outer().get_path_name()
@@ -236,6 +244,10 @@ class CreateRender(UnrealAssetCreator):
                 product_name, instance_data, pre_create_data)
 
     def get_pre_create_attr_defs(self):
+        rendering_targets = {
+            "local": "Local machine rendering",
+            "farm": "Farm rendering",
+        }
         return [
             UILabelDef(
                 "Select a Level Sequence to render or create a new one."
@@ -248,6 +260,10 @@ class CreateRender(UnrealAssetCreator):
             UILabelDef(
                 "WARNING: If you create a new Level Sequence, the current\n"
                 "level will be saved and a new Master Level will be created."
+            ),
+
+            EnumDef(
+                "render_target", items=rendering_targets, label="Render target"
             ),
             NumberDef(
                 "start_frame",
@@ -272,5 +288,17 @@ class CreateRender(UnrealAssetCreator):
                 "use_hierarchy",
                 label="Use Hierarchy",
                 default=False
+            ),
+        ]
+
+    def get_instance_attr_defs(self):
+        rendering_targets = {
+            "local": "Local machine rendering",
+            "farm": "Farm rendering",
+        }
+        return [
+            EnumDef(
+                "render_target", items=rendering_targets,
+                label="Render target"
             ),
         ]
