@@ -49,7 +49,7 @@ class ValidateActorExistingInLayout(pyblish.api.InstancePlugin):
             report = (
                 "Invalid actors for layout publish\n\n"
                 f"{bullet_point_invalid_statement}\n\n"
-                "You can select the actors and use repair action to update\n"
+                "You can select the actors and use repair action to update "
                 "the actors which you want to publish for the layout."
             )
             raise PublishValidationError(
