@@ -61,4 +61,4 @@ class ValidateActorExistingInLayout(pyblish.api.InstancePlugin):
         actor_subsystem = unreal.EditorActorSubsystem()
         sel_actors = actor_subsystem.get_selected_level_actors()
         instance.data["members"] = [a.get_path_name() for a in sel_actors]
-        imprint(instance_node, instance.data)
+        imprint(instance_node, {"members": instance.data["members"]})
