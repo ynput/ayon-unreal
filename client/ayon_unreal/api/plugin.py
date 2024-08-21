@@ -287,13 +287,7 @@ class UnrealActorCreator(UnrealBaseCreator):
         ] + self.get_instance_attr_defs()
 
     def get_instance_attr_defs(self):
-        return [
-            BoolDef(
-                "export_blender",
-                label="Export to Blender",
-                default=False
-            )
-        ]
+        return []
 
 
 class Loader(LoaderPlugin, ABC):
