@@ -258,12 +258,14 @@ class AnimationFBXLoader(plugin.Loader):
         product_type = context["product"]["productType"]
 
         suffix = "_CON"
+
+        path = self.filepath_from_context(context)
+        ext = os.path.splitext(path)[-1].lstrip(".")
         asset_name = f"{folder_name}_{name}" if folder_name else f"{name}"
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{root}/Animations/{folder_name}/{name}", suffix="")
+            f"{root}/Animations/{folder_name}/{name}", suffix=f"_{ext}")
 
-        path = self.filepath_from_context(context)
         libpath = path.replace(".fbx", ".json")
 
         master_level = None

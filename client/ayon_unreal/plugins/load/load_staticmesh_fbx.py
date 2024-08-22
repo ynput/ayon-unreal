@@ -119,15 +119,15 @@ class StaticMeshFBXLoader(plugin.Loader):
             name_version = f"{name}_v{version:03d}"
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
+        path = self.filepath_from_context(context)
+        ext = os.path.splitext(path)[-1].lstrip(".")
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{self.root}/{folder_name}/{name_version}", suffix=""
+            f"{self.root}/{folder_name}/{name_version}", suffix=f"_{ext}"
         )
 
         container_name += suffix
 
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            path = self.filepath_from_context(context)
-
             self.import_and_containerize(
                 path, asset_dir, asset_name, container_name)
 
@@ -168,14 +168,14 @@ class StaticMeshFBXLoader(plugin.Loader):
         else:
             name_version = f"{product_name}_v{version:03d}"
         tools = unreal.AssetToolsHelpers().get_asset_tools()
+        path = get_representation_path(repre_entity)
+        ext = os.path.splitext(path)[-1].lstrip(".")
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{self.root}/{folder_name}/{name_version}", suffix="")
+            f"{self.root}/{folder_name}/{name_version}", suffix=f"_{ext}")
 
         container_name += suffix
 
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            path = get_representation_path(repre_entity)
-
             self.import_and_containerize(
                 path, asset_dir, asset_name, container_name)
 

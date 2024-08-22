@@ -85,16 +85,17 @@ class AnimationAlembicLoader(plugin.Loader):
         else:
             name_version = f"{name}_v{version:03d}"
 
+        path = self.filepath_from_context(context)
+        ext = os.path.splitext(path)[-1].lstrip(".")
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{root}/{folder_name}/{name_version}", suffix="")
+            f"{root}/{folder_name}/{name_version}", suffix=f"_{ext}")
 
         container_name += suffix
 
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
 
-            path = self.filepath_from_context(context)
             task = self.get_task(path, asset_dir, asset_name, False)
 
             asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
