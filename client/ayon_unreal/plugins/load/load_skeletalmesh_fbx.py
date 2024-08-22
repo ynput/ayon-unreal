@@ -122,7 +122,9 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         folder_name = context["folder"]["name"]
         product_type = context["product"]["productType"]
         suffix = "_CON"
-        asset_name = f"{folder_name}_{name}" if folder_name else f"{name}"
+        path = self.filepath_from_context(context)
+        ext = os.path.splitext(path)[-1].lstrip(".")
+        asset_name = f"{folder_name}_{name}_{ext}" if folder_name else f"{name}_{ext}"
         version_entity = context["version"]
         # Check if version is hero version and use different name
         version = version_entity["version"]
@@ -132,8 +134,6 @@ class SkeletalMeshFBXLoader(plugin.Loader):
             name_version = f"{name}_v{version:03d}"
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
-        path = self.filepath_from_context(context)
-        ext = os.path.splitext(path)[-1].lstrip(".")
         asset_dir, container_name = tools.create_unique_asset_name(
             f"{self.root}/{folder_name}/{name_version}", suffix=f"_{ext}"
         )
@@ -172,7 +172,9 @@ class SkeletalMeshFBXLoader(plugin.Loader):
 
         # Create directory for asset and Ayon container
         suffix = "_CON"
-        asset_name = product_name
+        path = get_representation_path(repre_entity)
+        ext = os.path.splitext(path)[-1].lstrip(".")
+        asset_name = f"{product_name}_{ext}"
         if folder_name:
             asset_name = f"{folder_name}_{product_name}"
         # Check if version is hero version and use different name
@@ -181,8 +183,6 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         else:
             name_version = f"{product_name}_v{version:03d}"
         tools = unreal.AssetToolsHelpers().get_asset_tools()
-        path = get_representation_path(repre_entity)
-        ext = os.path.splitext(path)[-1].lstrip(".")
         asset_dir, container_name = tools.create_unique_asset_name(
             f"{self.root}/{folder_name}/{name_version}", suffix=f"_{ext}")
 
