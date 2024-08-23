@@ -422,7 +422,7 @@ class AnimationFBXLoader(plugin.Loader):
             asset_dir,
             container_name,
             asset_name,
-            context["representation"],
+            repre_entity,
             product_type
         )
 

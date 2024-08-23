@@ -20,15 +20,24 @@ class AnimationAlembicLoader(plugin.Loader):
     icon = "cube"
     color = "orange"
 
-    def get_task(self, filename, asset_dir, asset_name, replace):
+    root = unreal_pipeline.AYON_ASSET_DIR
+    abc_conversion_preset = "maya"
+
+    def get_task(self, filename, asset_dir, asset_name, replace, loaded_options=None):
         task = unreal.AssetImportTask()
         options = unreal.AbcImportSettings()
         sm_settings = unreal.AbcStaticMeshSettings()
-        conversion_settings = unreal.AbcConversionSettings(
-            preset=unreal.AbcConversionPreset.CUSTOM,
-            flip_u=False, flip_v=False,
-            rotation=[0.0, 0.0, 0.0],
-            scale=[1.0, 1.0, -1.0])
+        conversion_settings = unreal.AbcConversionSettings()
+        abc_conversion_preset = loaded_options.get("abc_conversion_preset")
+        if abc_conversion_preset == "maya":
+            conversion_settings = unreal.AbcConversionSettings(
+                preset= unreal.AbcConversionPreset.MAYA)
+        else:
+            conversion_settings = unreal.AbcConversionSettings(
+                preset=unreal.AbcConversionPreset.CUSTOM,
+                flip_u=False, flip_v=False,
+                rotation=[0.0, 0.0, 0.0],
+                scale=[1.0, 1.0, 1.0])
 
         task.set_editor_property('filename', filename)
         task.set_editor_property('destination_path', asset_dir)
@@ -46,7 +55,45 @@ class AnimationAlembicLoader(plugin.Loader):
 
         return task
 
-    def load(self, context, name, namespace, data):
+    def import_and_containerize(
+        self, filepath, asset_dir, asset_name, container_name, loaded_options
+    ):
+        unreal.EditorAssetLibrary.make_directory(asset_dir)
+
+        task = self.get_task(filepath, asset_dir, asset_name, False, loaded_options)
+
+        unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+
+        # Create Asset Container
+        unreal_pipeline.create_container(container=container_name, path=asset_dir)
+
+    def imprint(
+        self,
+        folder_path,
+        asset_dir,
+        container_name,
+        asset_name,
+        representation,
+        product_type,
+    ):
+        data = {
+            "schema": "ayon:container-2.0",
+            "id": AYON_CONTAINER_ID,
+            "folder_path": folder_path,
+            "namespace": asset_dir,
+            "container_name": container_name,
+            "asset_name": asset_name,
+            "loader": str(self.__class__.__name__),
+            "representation": representation["id"],
+            "parent": representation["versionId"],
+            "product_type": product_type,
+            # TODO these should be probably removed
+            "asset": folder_path,
+            "family": product_type
+        }
+        unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
+
+    def load(self, context, name, namespace, options):
         """Load and containerise representation into Content Browser.
 
         This is two step process. First, import FBX to temporary path and
@@ -69,7 +116,6 @@ class AnimationAlembicLoader(plugin.Loader):
         """
 
         # Create directory for asset and ayon container
-        root = unreal_pipeline.AYON_ASSET_DIR
         folder_name = context["folder"]["name"]
         folder_path = context["folder"]["path"]
         product_type = context["product"]["productType"]
@@ -87,41 +133,27 @@ class AnimationAlembicLoader(plugin.Loader):
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{root}/{folder_name}/{name_version}", suffix="")
+            f"{self.root}/{folder_name}/{name_version}", suffix="")
 
         container_name += suffix
-
-        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            unreal.EditorAssetLibrary.make_directory(asset_dir)
-
-            path = self.filepath_from_context(context)
-            task = self.get_task(path, asset_dir, asset_name, False)
-
-            asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
-            asset_tools.import_asset_tasks([task])
-
-            # Create Asset Container
-            unreal_pipeline.create_container(
-                container=container_name, path=asset_dir)
-
-        data = {
-            "schema": "ayon:container-2.0",
-            "id": AYON_CONTAINER_ID,
-            "folder_path": folder_path,
-            "namespace": asset_dir,
-            "container_name": container_name,
-            "asset_name": asset_name,
-            "loader": str(self.__class__.__name__),
-            "representation": context["representation"]["id"],
-            "parent": context["representation"]["versionId"],
-            "product_type": product_type,
-            # TODO these should be probably removed
-            "asset": folder_path,
-            "family": product_type,
+        loaded_options = {
+                "abc_conversion_preset": options.get(
+                    "abc_conversion_preset", self.abc_conversion_preset)
         }
-        unreal_pipeline.imprint(
-            f"{asset_dir}/{container_name}", data)
+        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+            path = self.filepath_from_context(context)
+            self.import_and_containerize(
+                path, asset_dir, asset_name, container_name, loaded_options
+            )
 
+        self.imprint(
+            folder_path,
+            asset_dir,
+            container_name,
+            asset_name,
+            context["representation"],
+            product_type
+        )
         asset_content = unreal.EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=True
         )
@@ -132,31 +164,50 @@ class AnimationAlembicLoader(plugin.Loader):
         return asset_content
 
     def update(self, container, context):
-        folder_name = container["asset_name"]
+        folder_path = context["folder"]["path"]
+        folder_name = context["folder"]["name"]
+        product_name = context["product"]["name"]
+        product_type = context["product"]["productType"]
+        version = context["version"]["version"]
         repre_entity = context["representation"]
-        source_path = get_representation_path(repre_entity)
-        destination_path = container["namespace"]
 
-        task = self.get_task(
-            source_path, destination_path, folder_name, True
-        )
-
+        # Create directory for folder and Ayon container
+        suffix = "_CON"
+        asset_name = product_name
+        if folder_name:
+            asset_name = f"{folder_name}_{product_name}"
+        # Check if version is hero version and use different name
+        if version < 0:
+            name_version = f"{product_name}_hero"
+        else:
+            name_version = f"{product_name}_v{version:03d}"
         # do import fbx and replace existing data
         asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
-        asset_tools.import_asset_tasks([task])
+        asset_dir, container_name = asset_tools.create_unique_asset_name(
+            f"{self.root}/{folder_name}/{name_version}", suffix="")
 
-        container_path = f"{container['namespace']}/{container['objectName']}"
+        container_name += suffix
+
+        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+            source_path = get_representation_path(repre_entity)
+            loaded_options = {
+                    "abc_conversion_preset": self.abc_conversion_preset
+            }
+            self.import_and_containerize(
+                source_path, asset_dir, asset_name, container_name, loaded_options
+            )
 
         # update metadata
-        unreal_pipeline.imprint(
-            container_path,
-            {
-                "representation": repre_entity["id"],
-                "parent": repre_entity["versionId"],
-            })
-
+        self.imprint(
+            folder_path,
+            asset_dir,
+            container_name,
+            asset_name,
+            repre_entity,
+            product_type
+        )
         asset_content = unreal.EditorAssetLibrary.list_assets(
-            destination_path, recursive=True, include_folder=True
+            asset_dir, recursive=True, include_folder=True
         )
 
         for a in asset_content:
