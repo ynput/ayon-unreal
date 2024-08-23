@@ -575,17 +575,9 @@ class CameraLoader(plugin.Loader):
         else:
             EditorLevelLibrary.load_level(tmp_level)
 
-        # Delete the layout directory.
-        EditorAssetLibrary.delete_directory(asset_dir)
+        # Delete the camera directory.
+        if EditorAssetLibrary.does_directory_exist(asset_dir):
+            EditorAssetLibrary.delete_directory(asset_dir)
 
         EditorLevelLibrary.load_level(master_level)
         EditorAssetLibrary.delete_directory(f"{root}/tmp")
-
-        # Check if there isn't any more assets in the parent folder, and
-        # delete it if not.
-        asset_content = EditorAssetLibrary.list_assets(
-            path.parent.as_posix(), recursive=False, include_folder=True
-        )
-
-        if len(asset_content) == 0:
-            EditorAssetLibrary.delete_directory(path.parent.as_posix())

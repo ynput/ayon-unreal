@@ -192,7 +192,9 @@ class PointCacheAlembicLoader(plugin.Loader):
         product_type = context["product"]["productType"]
         version = context["version"]["version"]
         repre_entity = context["representation"]
-
+        asset_dir = container["namespace"]
+        unreal.log("asset directory")
+        unreal.log(asset_dir)
         suffix = "_CON"
         asset_name = product_name
         if folder_name:
@@ -239,13 +241,5 @@ class PointCacheAlembicLoader(plugin.Loader):
 
     def remove(self, container):
         path = container["namespace"]
-        parent_path = os.path.dirname(path)
-
-        unreal.EditorAssetLibrary.delete_directory(path)
-
-        asset_content = unreal.EditorAssetLibrary.list_assets(
-            parent_path, recursive=False
-        )
-
-        if len(asset_content) == 0:
-            unreal.EditorAssetLibrary.delete_directory(parent_path)
+        if unreal.EditorAssetLibrary.does_directory_exist(path):
+            unreal.EditorAssetLibrary.delete_directory(path)
