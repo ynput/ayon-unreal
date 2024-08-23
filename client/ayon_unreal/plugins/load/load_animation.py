@@ -85,6 +85,8 @@ class AnimationFBXLoader(plugin.Loader):
             'convert_scene', True)
         task.options.anim_sequence_import_data.set_editor_property(
             'force_front_x_axis', False)
+        task.options.anim_sequence_import_data.set_editor_property(
+            'import_rotation', unreal.Rotator(roll=90.0, pitch=0.0, yaw=0.0))
 
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
 
