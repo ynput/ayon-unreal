@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 """Load camera from FBX."""
-from pathlib import Path
-
 import ayon_api
 
 import unreal
@@ -460,7 +458,6 @@ class CameraLoader(plugin.Loader):
 
     def remove(self, container):
         asset_dir = container.get('namespace')
-        path = Path(asset_dir)
 
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
         _filter = unreal.ARFilter(

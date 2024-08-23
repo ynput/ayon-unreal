@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 """Load Skeletal Meshes form FBX."""
-import os
-
 from ayon_core.pipeline import (
     get_representation_path,
     AYON_CONTAINER_ID

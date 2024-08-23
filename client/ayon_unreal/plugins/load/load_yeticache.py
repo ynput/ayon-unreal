@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """Loader for Yeti Cache."""
-import os
 import json
 
 from ayon_core.pipeline import (
