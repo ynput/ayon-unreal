@@ -24,6 +24,8 @@ class AnimationFBXLoader(plugin.Loader):
     icon = "cube"
     color = "orange"
 
+    root = "/Game/Ayon"
+
     def _import_animation(
         self, path, asset_dir, asset_name, skeleton, automated, replace=False
     ):
@@ -228,6 +230,76 @@ class AnimationFBXLoader(plugin.Loader):
         self._import_animation(
             path, asset_dir, asset_name, skeleton, True)
 
+    def _import_animation_with_json(self, path, context, hierarchy,
+                                    asset_dir, folder_name,
+                                    asset_name):
+            libpath = path.replace(".fbx", ".json")
+
+            master_level = None
+
+            # check if json file exists.
+            if os.path.exists(libpath):
+                ar = unreal.AssetRegistryHelpers.get_asset_registry()
+
+                _filter = unreal.ARFilter(
+                    class_names=["World"],
+                    package_paths=[f"{self.root}/{hierarchy[0]}"],
+                    recursive_paths=False)
+                levels = ar.get_assets(_filter)
+                master_level = levels[0].get_asset().get_path_name()
+
+                hierarchy_dir = self.root
+                for h in hierarchy:
+                    hierarchy_dir = f"{hierarchy_dir}/{h}"
+                hierarchy_dir = f"{hierarchy_dir}/{folder_name}"
+
+                _filter = unreal.ARFilter(
+                    class_names=["World"],
+                    package_paths=[f"{hierarchy_dir}/"],
+                    recursive_paths=True)
+                levels = ar.get_assets(_filter)
+                level = levels[0].get_asset().get_path_name()
+
+                unreal.EditorLevelLibrary.save_all_dirty_levels()
+                unreal.EditorLevelLibrary.load_level(level)
+
+                EditorAssetLibrary.make_directory(asset_dir)
+
+                self._load_from_json(
+                    libpath, path, asset_dir, asset_name, hierarchy_dir)
+            else:
+                version_id = context["representation"]["versionId"]
+                self._load_standalone_animation(
+                    path, asset_dir, asset_name, version_id)
+
+            return master_level
+
+    def imprint(
+        self,
+        folder_path,
+        asset_dir,
+        container_name,
+        asset_name,
+        representation,
+        product_type
+    ):
+        data = {
+            "schema": "ayon:container-2.0",
+            "id": AYON_CONTAINER_ID,
+            "namespace": asset_dir,
+            "container_name": container_name,
+            "asset_name": asset_name,
+            "loader": str(self.__class__.__name__),
+            "representation": representation["id"],
+            "parent": representation["versionId"],
+            "folder_path": folder_path,
+            "product_type": product_type,
+            # TODO these shold be probably removed
+            "asset": folder_path,
+            "family": product_type
+        }
+        unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
+
     def load(self, context, name, namespace, options=None):
         """
         Load and containerise representation into Content Browser.
@@ -251,7 +323,6 @@ class AnimationFBXLoader(plugin.Loader):
             list(str): list of container content
         """
         # Create directory for asset and Ayon container
-        root = "/Game/Ayon"
         folder_path = context["folder"]["path"]
         hierarchy = folder_path.lstrip("/").split("/")
         folder_name = hierarchy.pop(-1)
@@ -268,70 +339,29 @@ class AnimationFBXLoader(plugin.Loader):
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{root}/Animations/{folder_name}/{name_version}", suffix="")
+            f"{self.root}/Animations/{folder_name}/{name_version}", suffix="")
+
 
         path = self.filepath_from_context(context)
-        libpath = path.replace(".fbx", ".json")
+        master_level = self._import_animation_with_json(
+            path, context, hierarchy,
+            asset_dir, folder_name,
+            asset_name
+        )
 
-        master_level = None
-
-        # check if json file exists.
-        if os.path.exists(libpath):
-            ar = unreal.AssetRegistryHelpers.get_asset_registry()
-
-            _filter = unreal.ARFilter(
-                class_names=["World"],
-                package_paths=[f"{root}/{hierarchy[0]}"],
-                recursive_paths=False)
-            levels = ar.get_assets(_filter)
-            master_level = levels[0].get_asset().get_path_name()
-
-            hierarchy_dir = root
-            for h in hierarchy:
-                hierarchy_dir = f"{hierarchy_dir}/{h}"
-            hierarchy_dir = f"{hierarchy_dir}/{folder_name}"
-
-            _filter = unreal.ARFilter(
-                class_names=["World"],
-                package_paths=[f"{hierarchy_dir}/"],
-                recursive_paths=True)
-            levels = ar.get_assets(_filter)
-            level = levels[0].get_asset().get_path_name()
-
-            unreal.EditorLevelLibrary.save_all_dirty_levels()
-            unreal.EditorLevelLibrary.load_level(level)
-
-            container_name += suffix
-
-            EditorAssetLibrary.make_directory(asset_dir)
-
-            self._load_from_json(
-                libpath, path, asset_dir, asset_name, hierarchy_dir)
-        else:
-            version_id = context["representation"]["versionId"]
-            self._load_standalone_animation(
-                path, asset_dir, asset_name, version_id)
-
+        container_name += suffix
         # Create Asset Container
         unreal_pipeline.create_container(
             container=container_name, path=asset_dir)
 
-        data = {
-            "schema": "ayon:container-2.0",
-            "id": AYON_CONTAINER_ID,
-            "namespace": asset_dir,
-            "container_name": container_name,
-            "asset_name": asset_name,
-            "loader": str(self.__class__.__name__),
-            "representation": context["representation"]["id"],
-            "parent": context["representation"]["versionId"],
-            "folder_path": folder_path,
-            "product_type": product_type,
-            # TODO these shold be probably removed
-            "asset": folder_path,
-            "family": product_type
-        }
-        unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
+        self.imprint(
+            folder_path,
+            asset_dir,
+            container_name,
+            asset_name,
+            context["representation"],
+            product_type
+        )
 
         imported_content = EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=False)
@@ -351,33 +381,63 @@ class AnimationFBXLoader(plugin.Loader):
             unreal.EditorLevelLibrary.load_level(master_level)
 
     def update(self, container, context):
+        # Create directory for folder and Ayon container
+        folder_path = context["folder"]["path"]
+        hierarchy = folder_path.lstrip("/").split("/")
+        folder_name = hierarchy.pop(-1)
+        folder_name = context["folder"]["name"]
+        product_name = context["product"]["name"]
+        product_type = context["product"]["productType"]
+        version = context["version"]["version"]
         repre_entity = context["representation"]
-        folder_name = container["asset_name"]
-        source_path = get_representation_path(repre_entity)
-        destination_path = container["namespace"]
 
-        skeletal_mesh = EditorAssetLibrary.load_asset(
-            container.get('namespace') + "/" + container.get('asset_name'))
-        skeleton = skeletal_mesh.get_editor_property('skeleton')
+        suffix = "_CON"
+        asset_name = product_name
+        if folder_name:
+            asset_name = f"{folder_name}_{product_name}"
 
-        self._import_animation(
-            source_path, destination_path, folder_name, skeleton, True, True)
+        # Check if version is hero version and use different name
+        if version < 0:
+            name_version = f"{product_name}_hero"
+        else:
+            name_version = f"{product_name}_v{version:03d}"
+        tools = unreal.AssetToolsHelpers().get_asset_tools()
+        asset_dir, container_name = tools.create_unique_asset_name(
+            f"{self.root}/Animations/{folder_name}/{name_version}", suffix="")
 
-        container_path = f'{container["namespace"]}/{container["objectName"]}'
+        container_name += suffix
+
+        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+            source_path = get_representation_path(repre_entity)
+            master_level = self._import_animation_with_json(
+                source_path, context, hierarchy,
+                asset_dir, folder_name,
+                asset_name
+            )
+            unreal_pipeline.create_container(
+                container=container_name, path=asset_dir)
         # update metadata
-        unreal_pipeline.imprint(
-            container_path,
-            {
-                "representation": repre_entity["id"],
-                "parent": repre_entity["versionId"],
-            })
+        self.imprint(
+            folder_path,
+            asset_dir,
+            container_name,
+            asset_name,
+            context["representation"],
+            product_type
+        )
 
         asset_content = EditorAssetLibrary.list_assets(
-            destination_path, recursive=True, include_folder=True
+            asset_dir, recursive=True, include_folder=True
         )
 
         for a in asset_content:
             EditorAssetLibrary.save_asset(a)
+
+        if master_level:
+            unreal.EditorLevelLibrary.save_current_level()
+            unreal.EditorLevelLibrary.load_level(master_level)
+
+        return asset_content
 
     def remove(self, container):
         path = container["namespace"]
