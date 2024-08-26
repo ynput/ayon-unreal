@@ -26,6 +26,17 @@ class StaticMeshAlembicLoader(plugin.Loader):
     color = "orange"
 
     root = AYON_ASSET_DIR
+    abc_conversion_preset = "maya"
+
+
+    @classmethod
+    def apply_settings(cls, project_settings):
+        super(StaticMeshAlembicLoader, cls).apply_settings(project_settings)
+        # Apply import settings
+        unreal_settings = project_settings.get("unreal", {})
+        if unreal_settings.get("abc_conversion_preset", cls.abc_conversion_preset):
+            cls.abc_conversion_preset = unreal_settings.get(
+                "abc_conversion_preset", cls.abc_conversion_preset)
 
     @classmethod
     def get_options(cls, contexts):
@@ -37,7 +48,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
                     "custom": "custom",
                     "maya": "maya"
                 },
-                default="maya"
+                default=cls.abc_conversion_preset
             ),
             EnumDef(
                 "abc_material_settings",
@@ -62,6 +73,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
         options = unreal.AbcImportSettings()
         sm_settings = unreal.AbcStaticMeshSettings()
         mat_settings = unreal.AbcMaterialSettings()
+        conversion_settings = unreal.AbcConversionSettings()
 
         task.set_editor_property('filename', filename)
         task.set_editor_property('destination_path', asset_dir)
@@ -180,7 +192,8 @@ class StaticMeshAlembicLoader(plugin.Loader):
             name_version = f"{name}_v{version:03d}"
         loaded_options = {
             "default_conversion": options.get("default_conversion", False),
-            "abc_conversion_preset": options.get("abc_conversion_preset", "maya"),
+            "abc_conversion_preset": options.get(
+                "abc_conversion_preset", self.abc_conversion_preset),
             "abc_material_settings": options.get("abc_material_settings", "no_material"),
             "merge_meshes": options.get("merge_meshes", True),
         }
@@ -242,7 +255,11 @@ class StaticMeshAlembicLoader(plugin.Loader):
         container_name += suffix
 
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            loaded_options = {"default_conversion": False}
+            path = get_representation_path(repre_entity)
+            loaded_options = {
+                "default_conversion": False,
+                "abc_conversion_preset": self.abc_conversion_preset
+            }
             self.import_and_containerize(path, asset_dir, asset_name,
                                          container_name, loaded_options)
 
