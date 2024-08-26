@@ -94,14 +94,15 @@ class LayoutLoader(plugin.Loader):
     @staticmethod
     def _get_fbx_loader(loaders, family):
         name = ""
-        if family == 'rig':
+        if family in ['rig', 'skeletalMesh']:
             name = "SkeletalMeshFBXLoader"
-        elif family == 'model':
+        elif family in ['model', 'staticMesh']:
             name = "StaticMeshFBXLoader"
         elif family == 'camera':
             name = "CameraLoader"
 
         if name == "":
+
             return None
 
         for loader in loaders:
@@ -113,9 +114,9 @@ class LayoutLoader(plugin.Loader):
     @staticmethod
     def _get_abc_loader(loaders, family):
         name = ""
-        if family == 'rig':
+        if family in ['rig', 'skeletalMesh']:
             name = "SkeletalMeshAlembicLoader"
-        elif family == 'model':
+        elif family in ['model', 'staticMesh']:
             name = "StaticMeshAlembicLoader"
 
         if name == "":
@@ -200,7 +201,7 @@ class LayoutLoader(plugin.Loader):
         anim_file = Path(animation_file)
         anim_file_name = anim_file.with_suffix('')
 
-        anim_path = f"{asset_dir}/animations/{anim_file_name}"
+        anim_path = f"{asset_dir}/Animations/{anim_file_name}"
 
         folder_entity = get_current_folder_entity()
         # Import animation
@@ -421,7 +422,9 @@ class LayoutLoader(plugin.Loader):
 
                 if not loader:
                     self.log.error(
-                        f"No valid loader found for {repre_id}")
+                        f"No valid loader found for {repre_id} "
+                        f"({repr_format}) "
+                        f"{product_type}")
                     continue
 
                 options = {
@@ -461,12 +464,12 @@ class LayoutLoader(plugin.Loader):
 
                     actors = []
 
-                    if product_type == 'model':
+                    if product_type in ['model', 'staticMesh']:
                         actors, _ = self._process_family(
                             assets, 'StaticMesh', transform, basis,
                             sequence, inst, rotation
                         )
-                    elif product_type == 'rig':
+                    elif product_type in ['rig', 'skeletalMesh']:
                         actors, bindings = self._process_family(
                             assets, 'SkeletalMesh', transform, basis,
                             sequence, inst, rotation
@@ -523,10 +526,10 @@ class LayoutLoader(plugin.Loader):
                 asset_container.get_asset(), "family")
             assets = EditorAssetLibrary.list_assets(
                 str(package_path), recursive=False)
-            if family == 'model':
+            if family in ['model', 'staticMesh']:
                 self._remove_family(
                     assets, static_meshes_comp, 'StaticMesh', 'static_mesh')
-            elif family == 'rig':
+            elif family in ['rig', 'skeletalMesh']:
                 self._remove_family(
                     assets, skel_meshes_comp, 'SkeletalMesh', 'skeletal_mesh')
 
@@ -832,7 +835,7 @@ class LayoutLoader(plugin.Loader):
         create_sequences = data["unreal"]["level_sequences_for_layouts"]
 
         root = "/Game/Ayon"
-        path = Path(container.get("namespace"))
+        path = Path(container["namespace"])
 
         containers = ls()
         layout_containers = [
@@ -945,16 +948,9 @@ class LayoutLoader(plugin.Loader):
             EditorLevelLibrary.load_level(tmp_level)
 
         # Delete the layout directory.
-        EditorAssetLibrary.delete_directory(str(path))
+        if EditorAssetLibrary.does_directory_exist(str(path)):
+            EditorAssetLibrary.delete_directory(str(path))
 
         if create_sequences:
             EditorLevelLibrary.load_level(master_level)
             EditorAssetLibrary.delete_directory(f"{root}/tmp")
-
-        # Delete the parent folder if there aren't any more layouts in it.
-        asset_content = EditorAssetLibrary.list_assets(
-            str(path.parent), recursive=False, include_folder=True
-        )
-
-        if len(asset_content) == 0:
-            EditorAssetLibrary.delete_directory(str(path.parent))
