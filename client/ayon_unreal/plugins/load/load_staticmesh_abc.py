@@ -26,8 +26,21 @@ class StaticMeshAlembicLoader(plugin.Loader):
     color = "orange"
 
     root = AYON_ASSET_DIR
-    
+    abc_conversion_preset = "maya"
     show_dialog = False
+
+
+    @classmethod
+    def apply_settings(cls, project_settings):
+        super(StaticMeshAlembicLoader, cls).apply_settings(project_settings)
+        # Apply import settings
+        unreal_settings = project_settings.get("unreal", {})
+        if unreal_settings.get("abc_conversion_preset", cls.abc_conversion_preset):
+            cls.abc_conversion_preset = unreal_settings.get(
+                "abc_conversion_preset", cls.abc_conversion_preset)
+        if unreal_settings.get("show_dialog", cls.show_dialog):
+            cls.show_dialog = unreal_settings.get(
+                "show_dialog", cls.show_dialog)
 
     @classmethod
     def get_options(cls, contexts):
@@ -39,7 +52,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
                     "custom": "custom",
                     "maya": "maya"
                 },
-                default="maya"
+                default=cls.abc_conversion_preset
             ),
             EnumDef(
                 "abc_material_settings",
@@ -57,32 +70,21 @@ class StaticMeshAlembicLoader(plugin.Loader):
                 default=True
             )
         ]
-    
-
-    @classmethod  
-    def apply_settings(cls, project_settings):  
-        super(StaticMeshAlembicLoader, cls).apply_settings(project_settings)  
-        
-        # Apply import settings  
-        import_settings = (  
-            project_settings.get("unreal", {}).get("import_settings", {})  
-        )  
-
-        cls.show_dialog = import_settings.get("show_dialog", 
-                                                cls.show_dialog)   
 
     @staticmethod
-    def get_task(cls, filename, asset_dir, asset_name, replace, loaded_options):
+    def get_task(filename, asset_dir, asset_name, replace, loaded_options):
         task = unreal.AssetImportTask()
         options = unreal.AbcImportSettings()
         sm_settings = unreal.AbcStaticMeshSettings()
         mat_settings = unreal.AbcMaterialSettings()
+        conversion_settings = unreal.AbcConversionSettings()
 
         task.set_editor_property('filename', filename)
         task.set_editor_property('destination_path', asset_dir)
         task.set_editor_property('destination_name', asset_name)
         task.set_editor_property('replace_existing', replace)
-        task.set_editor_property('automated', not cls.show_dialog)
+        task.set_editor_property(
+            'automated', not loaded_options.get("show_dialog"))
         task.set_editor_property('save', True)
 
         # set import options here
@@ -184,7 +186,9 @@ class StaticMeshAlembicLoader(plugin.Loader):
         folder_name = context["folder"]["name"]
 
         suffix = "_CON"
-        asset_name = f"{folder_name}_{name}" if folder_name else f"{name}"
+        path = self.filepath_from_context(context)
+        ext = os.path.splitext(path)[-1].lstrip(".")
+        asset_name = f"{folder_name}_{name}_{ext}" if folder_name else f"{name}_{ext}"
         version = context["version"]["version"]
         # Check if version is hero version and use different name
         if version < 0:
@@ -193,20 +197,20 @@ class StaticMeshAlembicLoader(plugin.Loader):
             name_version = f"{name}_v{version:03d}"
         loaded_options = {
             "default_conversion": options.get("default_conversion", False),
-            "abc_conversion_preset": options.get("abc_conversion_preset", "maya"),
+            "abc_conversion_preset": options.get(
+                "abc_conversion_preset", self.abc_conversion_preset),
             "abc_material_settings": options.get("abc_material_settings", "no_material"),
             "merge_meshes": options.get("merge_meshes", True),
+            "show_dialog": options.get("show_dialog", self.show_dialog),
         }
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{self.root}/{folder_name}/{name_version}", suffix="")
+            f"{self.root}/{folder_name}/{name_version}", suffix=f"_{ext}")
 
         container_name += suffix
 
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            path = self.filepath_from_context(context)
-
             self.import_and_containerize(path, asset_dir, asset_name,
                                          container_name, loaded_options)
 
@@ -238,7 +242,9 @@ class StaticMeshAlembicLoader(plugin.Loader):
 
         # Create directory for asset and Ayon container
         suffix = "_CON"
-        asset_name = product_name
+        path = get_representation_path(repre_entity)
+        ext = os.path.splitext(path)[-1].lstrip(".")
+        asset_name = f"{product_name}_{ext}"
         if folder_name:
             asset_name = f"{folder_name}_{product_name}"
         version = context["version"]["version"]
@@ -250,13 +256,16 @@ class StaticMeshAlembicLoader(plugin.Loader):
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{self.root}/{folder_name}/{name_version}", suffix="")
+            f"{self.root}/{folder_name}/{name_version}", suffix=f"_{ext}")
 
         container_name += suffix
 
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             path = get_representation_path(repre_entity)
-            loaded_options = {"default_conversion": False}
+            loaded_options = {
+                "default_conversion": False,
+                "abc_conversion_preset": self.abc_conversion_preset
+            }
             self.import_and_containerize(path, asset_dir, asset_name,
                                          container_name, loaded_options)
 
@@ -278,13 +287,5 @@ class StaticMeshAlembicLoader(plugin.Loader):
 
     def remove(self, container):
         path = container["namespace"]
-        parent_path = os.path.dirname(path)
-
-        unreal.EditorAssetLibrary.delete_directory(path)
-
-        asset_content = unreal.EditorAssetLibrary.list_assets(
-            parent_path, recursive=False
-        )
-
-        if len(asset_content) == 0:
-            unreal.EditorAssetLibrary.delete_directory(parent_path)
+        if unreal.EditorAssetLibrary.does_directory_exist(path):
+            unreal.EditorAssetLibrary.delete_directory(path)

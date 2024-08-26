@@ -12,8 +12,6 @@ from ayon_unreal.api.pipeline import (
     create_container,
     imprint,
 )
-from ayon_core.settings import get_project_settings
-from ayon_core.pipeline import get_current_project_name
 
 import unreal  # noqa
 
