@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """Loader for Static Mesh alembics."""
+import os
+
 from ayon_core.pipeline import (
     get_representation_path,
     AYON_CONTAINER_ID
