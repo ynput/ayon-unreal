@@ -329,7 +329,10 @@ class AnimationFBXLoader(plugin.Loader):
         product_type = context["product"]["productType"]
 
         suffix = "_CON"
-        asset_name = f"{folder_name}_{name}" if folder_name else f"{name}"
+
+        path = self.filepath_from_context(context)
+        ext = os.path.splitext(path)[-1].lstrip(".")
+        asset_name = f"{folder_name}_{name}_{ext}" if folder_name else f"{name}_{ext}"
         version = context["version"]["version"]
         # Check if version is hero version and use different name
         if version < 0:
@@ -339,15 +342,39 @@ class AnimationFBXLoader(plugin.Loader):
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{self.root}/Animations/{folder_name}/{name_version}", suffix="")
+            f"{self.root}/Animations/{folder_name}/{name_version}", suffix=f"_{ext}")
 
 
         path = self.filepath_from_context(context)
-        master_level = self._import_animation_with_json(
-            path, context, hierarchy,
-            asset_dir, folder_name,
-            asset_name
-        )
+        libpath = path.replace(".fbx", ".json")
+
+        master_level = None
+
+        # check if json file exists.
+        if os.path.exists(libpath):
+            ar = unreal.AssetRegistryHelpers.get_asset_registry()
+
+            _filter = unreal.ARFilter(
+                class_names=["World"],
+                package_paths=[f"{self.root}/{hierarchy[0]}"],
+                recursive_paths=False)
+            levels = ar.get_assets(_filter)
+            master_level = levels[0].get_asset().get_path_name()
+
+            hierarchy_dir = self.root
+            for h in hierarchy:
+                hierarchy_dir = f"{hierarchy_dir}/{h}"
+            hierarchy_dir = f"{hierarchy_dir}/{folder_name}"
+
+            _filter = unreal.ARFilter(
+                class_names=["World"],
+                package_paths=[f"{hierarchy_dir}/"],
+                recursive_paths=True)
+            levels = ar.get_assets(_filter)
+            level = levels[0].get_asset().get_path_name()
+
+            unreal.EditorLevelLibrary.save_all_dirty_levels()
+            unreal.EditorLevelLibrary.load_level(level)
 
         container_name += suffix
         # Create Asset Container
@@ -392,9 +419,11 @@ class AnimationFBXLoader(plugin.Loader):
         repre_entity = context["representation"]
 
         suffix = "_CON"
+        source_path = get_representation_path(repre_entity)
+        ext = os.path.splitext(source_path)[-1].lstrip(".")
         asset_name = product_name
         if folder_name:
-            asset_name = f"{folder_name}_{product_name}"
+            asset_name = f"{folder_name}_{product_name}_{ext}"
 
         # Check if version is hero version and use different name
         if version < 0:
@@ -403,12 +432,11 @@ class AnimationFBXLoader(plugin.Loader):
             name_version = f"{product_name}_v{version:03d}"
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{self.root}/Animations/{folder_name}/{name_version}", suffix="")
+            f"{self.root}/Animations/{folder_name}/{name_version}", suffix=f"_{ext}")
 
         container_name += suffix
 
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            source_path = get_representation_path(repre_entity)
             master_level = self._import_animation_with_json(
                 source_path, context, hierarchy,
                 asset_dir, folder_name,

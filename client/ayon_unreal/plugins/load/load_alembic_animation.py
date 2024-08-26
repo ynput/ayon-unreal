@@ -120,10 +120,12 @@ class AnimationAlembicLoader(plugin.Loader):
         folder_path = context["folder"]["path"]
         product_type = context["product"]["productType"]
         suffix = "_CON"
+        path = self.filepath_from_context(context)
+        ext = os.path.splitext(path)[-1].lstrip(".")
         if folder_name:
-            asset_name = "{}_{}".format(folder_name, name)
+            asset_name = "{}_{}_{}".format(folder_name, name, ext)
         else:
-            asset_name = "{}".format(name)
+            asset_name = "{}_{}".format(name, ext)
         version = context["version"]["version"]
         # Check if version is hero version and use different name
         if version < 0:
@@ -133,7 +135,7 @@ class AnimationAlembicLoader(plugin.Loader):
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{self.root}/{folder_name}/{name_version}", suffix="")
+            f"{self.root}/{folder_name}/{name_version}", suffix=f"_{ext}")
 
         container_name += suffix
         loaded_options = {
@@ -173,9 +175,11 @@ class AnimationAlembicLoader(plugin.Loader):
 
         # Create directory for folder and Ayon container
         suffix = "_CON"
+        source_path = get_representation_path(repre_entity)
+        ext = os.path.splitext(source_path)[-1].lstrip(".")
         asset_name = product_name
         if folder_name:
-            asset_name = f"{folder_name}_{product_name}"
+            asset_name = f"{folder_name}_{product_name}_{ext}"
         # Check if version is hero version and use different name
         if version < 0:
             name_version = f"{product_name}_hero"
@@ -184,12 +188,11 @@ class AnimationAlembicLoader(plugin.Loader):
         # do import fbx and replace existing data
         asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
         asset_dir, container_name = asset_tools.create_unique_asset_name(
-            f"{self.root}/{folder_name}/{name_version}", suffix="")
+            f"{self.root}/{folder_name}/{name_version}", suffix=f"_{ext}")
 
         container_name += suffix
 
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            source_path = get_representation_path(repre_entity)
             loaded_options = {
                     "abc_conversion_preset": self.abc_conversion_preset
             }
