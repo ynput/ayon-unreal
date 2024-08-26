@@ -149,16 +149,8 @@ class UAssetLoader(plugin.Loader):
 
     def remove(self, container):
         path = container["namespace"]
-        parent_path = Path(path).parent.as_posix()
-
-        unreal.EditorAssetLibrary.delete_directory(path)
-
-        asset_content = unreal.EditorAssetLibrary.list_assets(
-            parent_path, recursive=False
-        )
-
-        if len(asset_content) == 0:
-            unreal.EditorAssetLibrary.delete_directory(parent_path)
+        if unreal.EditorAssetLibrary.does_directory_exist(path):
+            unreal.EditorAssetLibrary.delete_directory(path)
 
 
 class UMapLoader(UAssetLoader):

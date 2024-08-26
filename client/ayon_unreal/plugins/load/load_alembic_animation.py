@@ -2,6 +2,7 @@
 """Load Alembic Animation."""
 import os
 
+from ayon_core.lib import EnumDef
 from ayon_core.pipeline import (
     get_representation_path,
     AYON_CONTAINER_ID
@@ -19,17 +20,49 @@ class AnimationAlembicLoader(plugin.Loader):
     representations = {"abc"}
     icon = "cube"
     color = "orange"
+    abc_conversion_preset = "maya"
 
-    def get_task(self, filename, asset_dir, asset_name, replace):
+    @classmethod
+    def apply_settings(cls, project_settings):
+        super(AnimationAlembicLoader, cls).apply_settings(project_settings)
+        # Apply import settings
+        unreal_settings = project_settings.get("unreal", {})
+        if unreal_settings.get("abc_conversion_preset", cls.abc_conversion_preset):
+            cls.abc_conversion_preset = unreal_settings.get(
+                "abc_conversion_preset", cls.abc_conversion_preset)
+
+    @classmethod
+    def get_options(cls, contexts):
+        return [
+            EnumDef(
+                "abc_conversion_preset",
+                label="Alembic Conversion Preset",
+                items={
+                    "custom": "custom",
+                    "maya": "maya"
+                },
+                default=cls.abc_conversion_preset
+            )
+        ]
+
+    def get_task(self, filename, asset_dir, asset_name, replace, loaded_options=None):
         task = unreal.AssetImportTask()
         options = unreal.AbcImportSettings()
         sm_settings = unreal.AbcStaticMeshSettings()
-        conversion_settings = unreal.AbcConversionSettings(
-            preset=unreal.AbcConversionPreset.CUSTOM,
-            flip_u=False, flip_v=False,
-            rotation=[0.0, 0.0, 0.0],
-            scale=[1.0, 1.0, -1.0])
+        conversion_settings = unreal.AbcConversionSettings()
+        abc_conversion_preset = loaded_options.get("abc_conversion_preset")
+        if abc_conversion_preset == "maya":
+            conversion_settings = unreal.AbcConversionSettings(
+                preset= unreal.AbcConversionPreset.MAYA)
+        else:
+            conversion_settings = unreal.AbcConversionSettings(
+                preset=unreal.AbcConversionPreset.CUSTOM,
+                flip_u=False, flip_v=False,
+                rotation=[0.0, 0.0, 0.0],
+                scale=[1.0, 1.0, 1.0])
 
+        options.sampling_settings.frame_start = loaded_options.get("frameStart")
+        options.sampling_settings.frame_end = loaded_options.get("frameEnd")
         task.set_editor_property('filename', filename)
         task.set_editor_property('destination_path', asset_dir)
         task.set_editor_property('destination_name', asset_name)
@@ -46,7 +79,7 @@ class AnimationAlembicLoader(plugin.Loader):
 
         return task
 
-    def load(self, context, name, namespace, data):
+    def load(self, context, name, namespace, options):
         """Load and containerise representation into Content Browser.
 
         This is two step process. First, import FBX to temporary path and
@@ -74,10 +107,12 @@ class AnimationAlembicLoader(plugin.Loader):
         folder_path = context["folder"]["path"]
         product_type = context["product"]["productType"]
         suffix = "_CON"
+        path = self.filepath_from_context(context)
+        ext = os.path.splitext(path)[-1].lstrip(".")
         if folder_name:
-            asset_name = "{}_{}".format(folder_name, name)
+            asset_name = "{}_{}_{}".format(folder_name, name, ext)
         else:
-            asset_name = "{}".format(name)
+            asset_name = "{}_{}".format(name, ext)
         version = context["version"]["version"]
         # Check if version is hero version and use different name
         if version < 0:
@@ -87,15 +122,18 @@ class AnimationAlembicLoader(plugin.Loader):
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{root}/{folder_name}/{name_version}", suffix="")
+            f"{root}/{folder_name}/{name_version}", suffix=f"_{ext}")
 
         container_name += suffix
 
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
-
+            loaded_options = {
+                "abc_conversion_preset": options.get(
+                    "abc_conversion_preset", self.abc_conversion_preset)
+            }
             path = self.filepath_from_context(context)
-            task = self.get_task(path, asset_dir, asset_name, False)
+            task = self.get_task(path, asset_dir, asset_name, False, loaded_options)
 
             asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
             asset_tools.import_asset_tasks([task])
@@ -136,9 +174,11 @@ class AnimationAlembicLoader(plugin.Loader):
         repre_entity = context["representation"]
         source_path = get_representation_path(repre_entity)
         destination_path = container["namespace"]
-
+        loaded_options = {
+                "abc_conversion_preset": self.abc_conversion_preset
+        }
         task = self.get_task(
-            source_path, destination_path, folder_name, True
+            source_path, destination_path, folder_name, True, loaded_options
         )
 
         # do import fbx and replace existing data
@@ -164,13 +204,5 @@ class AnimationAlembicLoader(plugin.Loader):
 
     def remove(self, container):
         path = container["namespace"]
-        parent_path = os.path.dirname(path)
-
-        unreal.EditorAssetLibrary.delete_directory(path)
-
-        asset_content = unreal.EditorAssetLibrary.list_assets(
-            parent_path, recursive=False
-        )
-
-        if len(asset_content) == 0:
-            unreal.EditorAssetLibrary.delete_directory(parent_path)
+        if unreal.EditorAssetLibrary.does_directory_exist(path):
+            unreal.EditorAssetLibrary.delete_directory(path)

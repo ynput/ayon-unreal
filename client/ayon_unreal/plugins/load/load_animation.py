@@ -258,12 +258,14 @@ class AnimationFBXLoader(plugin.Loader):
         product_type = context["product"]["productType"]
 
         suffix = "_CON"
-        asset_name = f"{folder_name}_{name}" if folder_name else f"{name}"
-        tools = unreal.AssetToolsHelpers().get_asset_tools()
-        asset_dir, container_name = tools.create_unique_asset_name(
-            f"{root}/Animations/{folder_name}/{name}", suffix="")
 
         path = self.filepath_from_context(context)
+        ext = os.path.splitext(path)[-1].lstrip(".")
+        asset_name = f"{folder_name}_{name}_{ext}" if folder_name else f"{name}_{ext}"
+        tools = unreal.AssetToolsHelpers().get_asset_tools()
+        asset_dir, container_name = tools.create_unique_asset_name(
+            f"{root}/Animations/{folder_name}/{name}", suffix=f"_{ext}")
+
         libpath = path.replace(".fbx", ".json")
 
         master_level = None
@@ -374,13 +376,5 @@ class AnimationFBXLoader(plugin.Loader):
 
     def remove(self, container):
         path = container["namespace"]
-        parent_path = os.path.dirname(path)
-
-        EditorAssetLibrary.delete_directory(path)
-
-        asset_content = EditorAssetLibrary.list_assets(
-            parent_path, recursive=False, include_folder=True
-        )
-
-        if len(asset_content) == 0:
-            EditorAssetLibrary.delete_directory(parent_path)
+        if unreal.EditorAssetLibrary.does_directory_exist(path):
+            unreal.EditorAssetLibrary.delete_directory(path)
