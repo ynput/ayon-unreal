@@ -469,13 +469,5 @@ class AnimationFBXLoader(plugin.Loader):
 
     def remove(self, container):
         path = container["namespace"]
-        parent_path = os.path.dirname(path)
-
-        EditorAssetLibrary.delete_directory(path)
-
-        asset_content = EditorAssetLibrary.list_assets(
-            parent_path, recursive=False, include_folder=True
-        )
-
-        if len(asset_content) == 0:
-            EditorAssetLibrary.delete_directory(parent_path)
+        if unreal.EditorAssetLibrary.does_directory_exist(path):
+            unreal.EditorAssetLibrary.delete_directory(path)
