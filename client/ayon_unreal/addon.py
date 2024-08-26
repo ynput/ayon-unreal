@@ -20,7 +20,7 @@ class UnrealAddon(AYONAddon, IHostAddon):
     def add_implementation_envs(self, env, app):
         """Modify environments to contain all required for implementation."""
         # Set AYON_UNREAL_PLUGIN required for Unreal implementation
-        # Imports are in this method for Python 2 compatiblity of an addon
+        # Imports are in this method for Python 2 compatibility of an addon
         from pathlib import Path
 
         from .lib import get_compatible_integration
@@ -43,18 +43,16 @@ class UnrealAddon(AYONAddon, IHostAddon):
 
         ue_version = app.name.replace("-", ".")
         unreal_plugin_path = os.path.join(
-            UNREAL_ADDON_ROOT, "integration", "UE_{}".format(ue_version), "Ayon"
+            UNREAL_ADDON_ROOT, "integration", f"UE_{ue_version}", "Ayon"
         )
         if not Path(unreal_plugin_path).exists():
-            compatible_versions = get_compatible_integration(
+            if compatible_versions := get_compatible_integration(
                 ue_version, Path(UNREAL_ADDON_ROOT) / "integration"
-            )
-            if compatible_versions:
+            ):
                 unreal_plugin_path = compatible_versions[-1] / "Ayon"
                 unreal_plugin_path = unreal_plugin_path.as_posix()
 
-        if not env.get("AYON_UNREAL_PLUGIN") or \
-                env.get("AYON_UNREAL_PLUGIN") != unreal_plugin_path:
+        if not env.get("AYON_UNREAL_PLUGIN"):
             env["AYON_UNREAL_PLUGIN"] = unreal_plugin_path
 
         # Set default environments if are not set via settings

@@ -107,10 +107,12 @@ class AnimationAlembicLoader(plugin.Loader):
         folder_path = context["folder"]["path"]
         product_type = context["product"]["productType"]
         suffix = "_CON"
+        path = self.filepath_from_context(context)
+        ext = os.path.splitext(path)[-1].lstrip(".")
         if folder_name:
-            asset_name = "{}_{}".format(folder_name, name)
+            asset_name = "{}_{}_{}".format(folder_name, name, ext)
         else:
-            asset_name = "{}".format(name)
+            asset_name = "{}_{}".format(name, ext)
         version = context["version"]["version"]
         # Check if version is hero version and use different name
         if version < 0:
@@ -120,7 +122,7 @@ class AnimationAlembicLoader(plugin.Loader):
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{root}/{folder_name}/{name_version}", suffix="")
+            f"{root}/{folder_name}/{name_version}", suffix=f"_{ext}")
 
         container_name += suffix
 
@@ -202,13 +204,5 @@ class AnimationAlembicLoader(plugin.Loader):
 
     def remove(self, container):
         path = container["namespace"]
-        parent_path = os.path.dirname(path)
-
-        unreal.EditorAssetLibrary.delete_directory(path)
-
-        asset_content = unreal.EditorAssetLibrary.list_assets(
-            parent_path, recursive=False
-        )
-
-        if len(asset_content) == 0:
-            unreal.EditorAssetLibrary.delete_directory(parent_path)
+        if unreal.EditorAssetLibrary.does_directory_exist(path):
+            unreal.EditorAssetLibrary.delete_directory(path)
