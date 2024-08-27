@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import json
+import clique
 import logging
 from typing import List
 from contextlib import contextmanager
@@ -804,3 +805,33 @@ def maintained_selection():
         yield
     finally:
         pass
+
+
+def get_sequence(files):
+    """Get sequence from filename.
+
+    This will only return files if they exist on disk as it tries
+    to collect the sequence using the filename pattern and searching
+    for them on disk.
+
+    Supports negative frame ranges like -001, 0000, 0001 and -0001,
+    0000, 0001.
+
+    Arguments:
+        files (str): List of files
+
+    Returns:
+        Optional[list[str]]: file sequence.
+
+    """
+    collections, _remainder = clique.assemble(
+        files,
+        patterns=[clique.PATTERNS["frames"]],
+        minimum_items=1)
+
+    if len(collections) > 1:
+        raise ValueError(
+            f"Multiple collections found for {collections}. "
+            "This is a bug.")
+
+    return [os.path.basename(filename) for filename in collections[0]]

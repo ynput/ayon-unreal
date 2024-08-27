@@ -147,12 +147,12 @@ class CreateRender(UnrealAssetCreator):
                 # The asset name is the the third element of the path which
                 # contains the map.
                 # To take the asset name, we remove from the path the prefix
-                # "/Game/OpenPype/" and then we split the path by "/".
+                # "/Game/Ayon/" and then we split the path by "/".
                 sel_path = selected_asset_path
                 asset_name = sel_path.replace(
-                    "/Game/Ayon/", "").split("/")[0]
+                    "/Game/Ayon/Sequences/", "").split("/")[0]
 
-                search_path = f"/Game/Ayon/{asset_name}"
+                search_path = f"/Game/Ayon/Sequences/{asset_name}"
             else:
                 search_path = Path(selected_asset_path).parent.as_posix()
 
@@ -164,8 +164,8 @@ class CreateRender(UnrealAssetCreator):
                     package_paths=[search_path],
                     recursive_paths=False)
                 sequences = ar.get_assets(ar_filter)
-                master_seq = sequences[0].get_asset().get_path_name()
                 master_seq_obj = sequences[0].get_asset()
+                master_seq = master_seq_obj.get_path_name()
                 ar_filter = unreal.ARFilter(
                     class_names=["World"],
                     package_paths=[search_path],
