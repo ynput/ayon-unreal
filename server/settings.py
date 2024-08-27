@@ -1,6 +1,6 @@
 from ayon_server.settings import BaseSettingsModel, SettingsField
-
 from .imageio import UnrealImageIOModel
+from .import_settings import UnrealImportModel
 
 
 class ProjectSetup(BaseSettingsModel):
@@ -8,6 +8,13 @@ class ProjectSetup(BaseSettingsModel):
         False,
         title="Dev mode"
     )
+
+
+def _abc_conversion_presets_enum():
+    return [
+        {"value": "maya", "label": "maya"},
+        {"value": "custom", "label": "custom"}
+    ]
 
 
 def _render_format_enum():
@@ -19,10 +26,21 @@ def _render_format_enum():
     ]
 
 
+def _loaded_asset_enum():
+    return [
+        {"value": "fbx", "label": "fbx"},
+        {"value": "abc", "label": "abc"}
+    ]
+
+
 class UnrealSettings(BaseSettingsModel):
     imageio: UnrealImageIOModel = SettingsField(
         default_factory=UnrealImageIOModel,
         title="Color Management (ImageIO)"
+    )
+    import_settings: UnrealImportModel = SettingsField(
+        default_factory=UnrealImportModel,
+        title="Import settings"
     )
     level_sequences_for_layouts: bool = SettingsField(
         False,
@@ -32,9 +50,28 @@ class UnrealSettings(BaseSettingsModel):
         False,
         title="Delete assets that are not matched"
     )
+    abc_conversion_preset: str = SettingsField(
+        "maya",
+        title="Alembic Conversion Setting Presets",
+        enum_resolver=_abc_conversion_presets_enum,
+        description="Presets for converting the loaded alembic "
+                    "with correct UV and transform"
+    )
+    loaded_assets_extension: str = SettingsField(
+        "fbx",
+        title="Loaded Assets Extension",
+        enum_resolver=_loaded_asset_enum,
+        description="Extension for the loaded assets"
+    )
+    render_queue_path: str = SettingsField(
+        "",
+        title="Render Queue Path",
+        description="Path to Render Queue UAsset for farm publishing"
+    )
     render_config_path: str = SettingsField(
         "",
-        title="Render Config Path"
+        title="Render Config Path",
+        description="Path to Render Configuration UAsset for farm publishing"
     )
     preroll_frames: int = SettingsField(
         0,
@@ -54,7 +91,10 @@ class UnrealSettings(BaseSettingsModel):
 DEFAULT_VALUES = {
     "level_sequences_for_layouts": True,
     "delete_unmatched_assets": False,
-    "render_config_path": "",
+    "abc_conversion_preset": "maya",
+    "loaded_assets_extension": "fbx",
+    "render_queue_path": "/Game/Ayon/renderQueue",
+    "render_config_path": "/Game/Ayon/DefaultMovieRenderQueueConfig.DefaultMovieRenderQueueConfig",
     "preroll_frames": 0,
     "render_format": "exr",
     "project_setup": {
