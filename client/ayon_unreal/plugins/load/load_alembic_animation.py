@@ -21,6 +21,7 @@ class AnimationAlembicLoader(plugin.Loader):
     icon = "cube"
     color = "orange"
     abc_conversion_preset = "maya"
+    root = unreal_pipeline.AYON_ASSET_DIR
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -140,6 +141,7 @@ class AnimationAlembicLoader(plugin.Loader):
         """
 
         # Create directory for asset and ayon container
+        folder_entity = context["folder"]
         folder_name = context["folder"]["name"]
         folder_path = context["folder"]["path"]
         product_type = context["product"]["productType"]
@@ -166,9 +168,12 @@ class AnimationAlembicLoader(plugin.Loader):
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
             loaded_options = {
-                "abc_conversion_preset": options.get(
-                    "abc_conversion_preset", self.abc_conversion_preset)
+                "abc_conversion_preset": options.get("abc_conversion_preset", self.abc_conversion_preset),
+                "frameStart": folder_entity["attrib"]["frameStart"],
+                "frameEnd": folder_entity["attrib"]["frameEnd"]
             }
+
+            path = self.filepath_from_context(context)
             task = self.get_task(path, asset_dir, asset_name, False, loaded_options)
 
             asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
@@ -189,6 +194,8 @@ class AnimationAlembicLoader(plugin.Loader):
             "representation": context["representation"]["id"],
             "parent": context["representation"]["versionId"],
             "product_type": product_type,
+            "frameStart": folder_entity["attrib"]["frameStart"],
+            "frameEnd": folder_entity["attrib"]["frameEnd"],
             # TODO these should be probably removed
             "asset": folder_path,
             "family": product_type,
@@ -216,9 +223,6 @@ class AnimationAlembicLoader(plugin.Loader):
         # Create directory for folder and Ayon container
         suffix = "_CON"
         source_path = get_representation_path(repre_entity)
-        loaded_options = {
-                "abc_conversion_preset": self.abc_conversion_preset
-        }
 
         ext = os.path.splitext(source_path)[-1].lstrip(".")
         asset_name = product_name
@@ -238,7 +242,9 @@ class AnimationAlembicLoader(plugin.Loader):
 
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             loaded_options = {
-                    "abc_conversion_preset": self.abc_conversion_preset
+                "abc_conversion_preset": self.abc_conversion_preset,
+                "frameStart": int(container.get("frameStart", "1")),
+                "frameEnd": int(container.get("frameEnd", "1"))
             }
             self.import_and_containerize(
                 source_path, asset_dir, asset_name, container_name, loaded_options
