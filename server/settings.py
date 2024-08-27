@@ -1,5 +1,6 @@
 from ayon_server.settings import BaseSettingsModel, SettingsField
 from .imageio import UnrealImageIOModel
+from .import_settings import UnrealImportModel
 
 
 class ProjectSetup(BaseSettingsModel):
@@ -36,6 +37,10 @@ class UnrealSettings(BaseSettingsModel):
     imageio: UnrealImageIOModel = SettingsField(
         default_factory=UnrealImageIOModel,
         title="Color Management (ImageIO)"
+    )
+    import_settings: UnrealImportModel = SettingsField(
+        default_factory=UnrealImportModel,
+        title="Import settings"
     )
     level_sequences_for_layouts: bool = SettingsField(
         False,
