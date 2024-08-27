@@ -223,11 +223,6 @@ class AnimationAlembicLoader(plugin.Loader):
         # Create directory for folder and Ayon container
         suffix = "_CON"
         source_path = get_representation_path(repre_entity)
-        loaded_options = {
-            "abc_conversion_preset": self.abc_conversion_preset,
-            "frameStart": int(container.get("frameStart", "1")),
-            "frameEnd": int(container.get("frameEnd", "1"))
-        }
 
         ext = os.path.splitext(source_path)[-1].lstrip(".")
         asset_name = product_name
@@ -247,7 +242,9 @@ class AnimationAlembicLoader(plugin.Loader):
 
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             loaded_options = {
-                    "abc_conversion_preset": self.abc_conversion_preset
+                "abc_conversion_preset": self.abc_conversion_preset,
+                "frameStart": int(container.get("frameStart", "1")),
+                "frameEnd": int(container.get("frameEnd", "1"))
             }
             self.import_and_containerize(
                 source_path, asset_dir, asset_name, container_name, loaded_options
