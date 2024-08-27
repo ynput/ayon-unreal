@@ -181,8 +181,8 @@ class AnimationAlembicLoader(plugin.Loader):
         destination_path = container["namespace"]
         loaded_options = {
             "abc_conversion_preset": self.abc_conversion_preset,
-            "frameStart": container.get("frameStart", 1),
-            "frameEnd": container.get("frameEnd", 1)
+            "frameStart": int(container.get("frameStart", "1")),
+            "frameEnd": int(container.get("frameEnd", "1"))
         }
         task = self.get_task(
             source_path, destination_path, folder_name, True, loaded_options
