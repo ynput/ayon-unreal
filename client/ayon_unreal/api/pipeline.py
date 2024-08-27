@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import re
 import json
 import clique
 import logging
@@ -601,12 +602,17 @@ def generate_sequence(h, h_dir):
     )
 
     project_name = get_current_project_name()
-    # TODO Fix this does not return folder path
-    folder_path = h_dir.split('/')[-1]
+    filtered_dir = "/Game/Ayon/"
+    folder_path = re.sub(filtered_dir, "", h_dir)
     folder_entity = ayon_api.get_folder_by_path(
         project_name,
         folder_path,
-        fields={"id", "attrib.fps"}
+        fields={
+            "id",
+            "attrib.fps",
+            "attrib.clipIn",
+            "attrib.clipOut"
+        }
     )
     start_frames = []
     end_frames = []
@@ -620,6 +626,7 @@ def generate_sequence(h, h_dir):
             parent_ids=[folder_entity["id"]],
             fields={"id", "attrib.clipIn", "attrib.clipOut"}
         ))
+
         for e in elements:
             start_frames.append(e["attrib"].get("clipIn"))
             end_frames.append(e["attrib"].get("clipOut"))
