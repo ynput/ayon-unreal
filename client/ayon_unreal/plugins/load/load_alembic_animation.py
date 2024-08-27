@@ -140,7 +140,6 @@ class AnimationAlembicLoader(plugin.Loader):
         """
 
         # Create directory for asset and ayon container
-        root = unreal_pipeline.AYON_ASSET_DIR
         folder_entity = context["folder"]
         folder_name = context["folder"]["name"]
         folder_path = context["folder"]["path"]
