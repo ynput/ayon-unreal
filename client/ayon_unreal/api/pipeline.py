@@ -621,6 +621,10 @@ def generate_sequence(h, h_dir):
         min_frame = folder_entity["attrib"]["clipIn"]
         max_frame = folder_entity["attrib"]["clipOut"]
         fps = folder_entity["attrib"]["fps"]
+    else:
+        unreal.log_warning(
+            "Folder Entity not found. Using default Unreal frame range value."
+        )
 
     sequence.set_display_rate(
         unreal.FrameRate(fps, 1.0))
