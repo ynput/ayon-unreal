@@ -81,6 +81,8 @@ class UnrealCreateLogic():
                 instance.get('creator_attributes', '{}'))
             instance['publish_attributes'] = ast.literal_eval(
                 instance.get('publish_attributes', '{}'))
+            instance['members'] = ast.literal_eval(
+                instance.get('members', '[]'))
             created_instance = CreatedInstance.from_existing(instance, self)
             self._add_instance_to_context(created_instance)
 
