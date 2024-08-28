@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import os
-import re
 import json
 import clique
 import logging
