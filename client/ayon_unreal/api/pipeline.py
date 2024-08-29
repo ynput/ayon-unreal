@@ -798,6 +798,28 @@ def maintained_selection():
         pass
 
 
+@contextmanager
+def select_camera(sequence):
+    """Select camera during context
+    Args:
+        sequence (Objects): Level Sequence Object
+    """
+    camera_actors = find_camera_actors_in_camera_tracks(sequence)
+    actor_subsys = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+    selected_actors = actor_subsys.get_selected_level_actors()
+    actor_subsys.select_nothing()
+    for actor in camera_actors:
+        actor_subsys.set_actor_selection_state(actor, True)
+    try:
+        yield
+    finally:
+        for actor in camera_actors:
+            if actor in selected_actors:
+                actor_subsys.set_actor_selection_state(actor, True)
+            else:
+                actor_subsys.set_actor_selection_state(actor, False)
+
+
 def get_sequence(files):
     """Get sequence from filename.
 
@@ -826,3 +848,33 @@ def get_sequence(files):
             "This is a bug.")
 
     return [os.path.basename(filename) for filename in collections[0]]
+
+
+def find_camera_actors_in_camera_tracks(sequence):
+    """Find the camera actors in the tracks from the Level Sequence
+
+    Args:
+        tracks (Object): Level Seqence Asset
+
+    Returns:
+        Object: Camera Actor
+    """
+    camera_objects = []
+    tracks = sequence.get_tracks()
+    camera_track = None
+    for track in tracks:
+        if str(track).count("MovieSceneCameraCutTrack"):
+            camera_track = track
+        if camera_track:
+            sections = camera_track.get_sections()
+            for section in sections:
+                binding_id = section.get_camera_binding_id()
+                bound_objects = unreal.LevelSequenceEditorBlueprintLibrary.get_bound_objects(
+                    binding_id)
+                for camera_object in bound_objects:
+                    camera_objects.append(camera_object.get_path_name())
+    world =  unreal.EditorLevelLibrary.get_editor_world()
+    sel_actors = unreal.GameplayStatics().get_all_actors_of_class(
+        world, unreal.CameraActor)
+    actors = [a for a in sel_actors if a.get_path_name() in camera_objects]
+    return actors
