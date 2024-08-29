@@ -601,39 +601,30 @@ def generate_sequence(h, h_dir):
     )
 
     project_name = get_current_project_name()
-    # TODO Fix this does not return folder path
-    folder_path = h_dir.split('/')[-1]
+    filtered_dir = "/Game/Ayon/"
+    folder_path = h_dir.replace(filtered_dir, "")
     folder_entity = ayon_api.get_folder_by_path(
         project_name,
         folder_path,
-        fields={"id", "attrib.fps"}
+        fields={
+            "id",
+            "attrib.fps",
+            "attrib.clipIn",
+            "attrib.clipOut"
+        }
     )
-    start_frames = []
-    end_frames = []
-    # unreal default fps value
+    # unreal default frame range value
     fps = 60.0
+    min_frame = sequence.get_playback_start()
+    max_frame = sequence.get_playback_end()
     if folder_entity:
-        unreal.log("Found folder entity data: {}".format(folder_entity))
-
-        elements = list(ayon_api.get_folders(
-            project_name,
-            parent_ids=[folder_entity["id"]],
-            fields={"id", "attrib.clipIn", "attrib.clipOut"}
-        ))
-        for e in elements:
-            start_frames.append(e["attrib"].get("clipIn"))
-            end_frames.append(e["attrib"].get("clipOut"))
-
-            elements.extend(ayon_api.get_folders(
-                project_name,
-                parent_ids=[e["id"]],
-                fields={"id", "attrib.clipIn", "attrib.clipOut"}
-            ))
-
-        fps = folder_entity["attrib"].get("fps")
-    min_frame = min(start_frames, default=sequence.get_playback_start())
-    max_frame = max(end_frames, default=sequence.get_playback_end())
-
+        min_frame = folder_entity["attrib"]["clipIn"]
+        max_frame = folder_entity["attrib"]["clipOut"]
+        fps = folder_entity["attrib"]["fps"]
+    else:
+        unreal.log_warning(
+            "Folder Entity not found. Using default Unreal frame range value."
+        )
 
     sequence.set_display_rate(
         unreal.FrameRate(fps, 1.0))
