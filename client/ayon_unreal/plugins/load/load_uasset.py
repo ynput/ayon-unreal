@@ -66,11 +66,11 @@ class UAssetLoader(plugin.Loader):
             "/Game", Path(unreal.Paths.project_content_dir()).as_posix(), 1)
 
         path = self.filepath_from_context(context)
-        new_asset = os.path.basename(path)
-        new_asset_name = os.path.splitext(new_asset)[-1].lstrip(".")
+        asset = os.path.basename(path)
+        asset_name = os.path.splitext(asset)[-1].lstrip(".")
         shutil.copy(
             path,
-            f"{destination_path}/{new_asset}")
+            f"{destination_path}/{asset_name}")
 
         # Create Asset Container
         unreal_pipeline.create_container(
@@ -83,7 +83,7 @@ class UAssetLoader(plugin.Loader):
             "namespace": asset_dir,
             "folder_path": folder_path,
             "container_name": container_name,
-            "asset_name": new_asset_name,
+            "asset_name": asset_name,
             "loader": str(self.__class__.__name__),
             "representation": context["representation"]["id"],
             "parent": context["representation"]["versionId"],
