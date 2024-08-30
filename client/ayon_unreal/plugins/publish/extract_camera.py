@@ -5,7 +5,11 @@ import os
 import unreal
 
 from ayon_core.pipeline import publish
-from ayon_unreal.api.pipeline import UNREAL_VERSION, select_camera
+from ayon_unreal.api.pipeline import (
+    UNREAL_VERSION,
+    select_camera,
+    get_frame_range
+)
 
 
 class ExtractCamera(publish.Extractor):
@@ -25,7 +29,8 @@ class ExtractCamera(publish.Extractor):
 
         # Perform extraction
         self.log.info("Performing extraction..")
-
+        frameStart = 1
+        frameEnd = 1
         # Check if the loaded level is the same of the instance
         if UNREAL_VERSION.major == 5:
             world = unreal.UnrealEditorSubsystem().get_editor_world()
@@ -45,6 +50,7 @@ class ExtractCamera(publish.Extractor):
 
             if is_level_sequence:
                 sequence = data.get_asset()
+                frameStart, frameEnd = get_frame_range(sequence)
                 with select_camera(sequence):
                     if UNREAL_VERSION.major == 5:
                         params = None
@@ -94,6 +100,8 @@ class ExtractCamera(publish.Extractor):
             'name': 'fbx',
             'ext': 'fbx',
             'files': fbx_filename,
+            'frameStart': frameStart,
+            'frameEnd': frameEnd,
             "stagingDir": staging_dir,
         }
         instance.data["representations"].append(fbx_representation)

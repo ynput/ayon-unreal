@@ -861,21 +861,37 @@ def find_camera_actors_in_camera_tracks(sequence):
     """
     camera_tracks = []
     camera_objects = []
-    tracks = sequence.get_master_tracks()
-    for track in tracks:
-        if str(track).count("MovieSceneCameraCutTrack"):
-            camera_tracks.append(track)
-        if camera_tracks:
-            for camera_track in camera_tracks:
-                sections = camera_track.get_sections()
-                for section in sections:
-                    binding_id = section.get_camera_binding_id()
-                    bound_objects = unreal.LevelSequenceEditorBlueprintLibrary.get_bound_objects(
-                        binding_id)
-                    for camera_object in bound_objects:
-                        camera_objects.append(camera_object.get_path_name())
+    camera_tracks = get_camera_tracks(sequence)
+    if camera_tracks:
+        for camera_track in camera_tracks:
+            sections = camera_track.get_sections()
+            for section in sections:
+                binding_id = section.get_camera_binding_id()
+                bound_objects = unreal.LevelSequenceEditorBlueprintLibrary.get_bound_objects(
+                    binding_id)
+                for camera_object in bound_objects:
+                    camera_objects.append(camera_object.get_path_name())
     world =  unreal.EditorLevelLibrary.get_editor_world()
     sel_actors = unreal.GameplayStatics().get_all_actors_of_class(
         world, unreal.CameraActor)
     actors = [a for a in sel_actors if a.get_path_name() in camera_objects]
     return actors
+
+
+def get_frame_range(sequence):
+    camera_tracks = get_camera_tracks(sequence)
+    if camera_tracks:
+        for camera_track in camera_tracks:
+            sections = camera_track.get_sections()
+            for section in sections:
+                return section.get_start_frame(), section.get_end_frame()
+
+
+def get_camera_tracks(sequence):
+    camera_tracks = []
+    tracks = sequence.get_master_tracks()
+    for track in tracks:
+        if str(track).count("MovieSceneCameraCutTrack"):
+            camera_tracks.append(track)
+    return camera_tracks
+
