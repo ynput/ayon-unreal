@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Load UAsset."""
 from pathlib import Path
+import os
 import shutil
 
 from ayon_core.pipeline import (
@@ -66,9 +67,19 @@ class UAssetLoader(plugin.Loader):
             "/Game", Path(unreal.Paths.project_content_dir()).as_posix(), 1)
 
         path = self.filepath_from_context(context)
+        asset_name = os.path.basename(path)
         shutil.copy(
             path,
-            f"{destination_path}/{name}_{unique_number:02}.{self.extension}")
+            f"{destination_path}/{asset_name}")
+
+        asset = unreal.EditorAssetLibrary.load_asset(f"{asset_dir}/{asset_name}")
+        #rename the incoming assets to align with the container name
+        rename_data = unreal.AssetRenameData(
+            asset=asset, new_package_path=asset_dir,
+            new_name=f"{name}_{unique_number:02}"
+        )
+        # Perform the rename operation
+        unreal.AssetToolsHelpers.get_asset_tools().rename_assets([rename_data])
 
         # Create Asset Container
         unreal_pipeline.create_container(
@@ -124,11 +135,17 @@ class UAssetLoader(plugin.Loader):
                 unreal.EditorAssetLibrary.delete_asset(asset)
 
         update_filepath = get_representation_path(repre_entity)
+        asset_name = os.path.basename(update_filepath)
+        shutil.copy(update_filepath, f"{destination_path}/{asset_name}")
 
-        shutil.copy(
-            update_filepath,
-            f"{destination_path}/{product_name}_{unique_number}.{self.extension}"
+        asset = unreal.EditorAssetLibrary.load_asset(f"{asset_dir}/{asset_name}")
+        #rename the incoming assets to align with the container name
+        rename_data = unreal.AssetRenameData(
+            asset=asset, new_package_path=asset_dir,
+            new_name=f"{product_name}_{unique_number}"
         )
+        # Perform the rename operation
+        unreal.AssetToolsHelpers.get_asset_tools().rename_assets([rename_data])
 
         container_path = f'{container["namespace"]}/{container["objectName"]}'
         # update metadata
