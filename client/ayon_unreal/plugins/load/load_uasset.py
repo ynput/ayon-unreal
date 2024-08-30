@@ -66,8 +66,7 @@ class UAssetLoader(plugin.Loader):
             "/Game", Path(unreal.Paths.project_content_dir()).as_posix(), 1)
 
         path = self.filepath_from_context(context)
-        asset = os.path.basename(path)
-        asset_name = os.path.splitext(asset)[-1].lstrip(".")
+        asset_name = os.path.basename(path)
         shutil.copy(
             path,
             f"{destination_path}/{asset_name}")
