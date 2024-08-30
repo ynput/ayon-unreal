@@ -859,20 +859,21 @@ def find_camera_actors_in_camera_tracks(sequence):
     Returns:
         Object: Camera Actor
     """
+    camera_tracks = []
     camera_objects = []
-    tracks = sequence.get_tracks()
-    camera_track = None
+    tracks = sequence.get_master_tracks()
     for track in tracks:
         if str(track).count("MovieSceneCameraCutTrack"):
-            camera_track = track
-        if camera_track:
-            sections = camera_track.get_sections()
-            for section in sections:
-                binding_id = section.get_camera_binding_id()
-                bound_objects = unreal.LevelSequenceEditorBlueprintLibrary.get_bound_objects(
-                    binding_id)
-                for camera_object in bound_objects:
-                    camera_objects.append(camera_object.get_path_name())
+            camera_tracks.append(track)
+        if camera_tracks:
+            for camera_track in camera_tracks:
+                sections = camera_track.get_sections()
+                for section in sections:
+                    binding_id = section.get_camera_binding_id()
+                    bound_objects = unreal.LevelSequenceEditorBlueprintLibrary.get_bound_objects(
+                        binding_id)
+                    for camera_object in bound_objects:
+                        camera_objects.append(camera_object.get_path_name())
     world =  unreal.EditorLevelLibrary.get_editor_world()
     sel_actors = unreal.GameplayStatics().get_all_actors_of_class(
         world, unreal.CameraActor)

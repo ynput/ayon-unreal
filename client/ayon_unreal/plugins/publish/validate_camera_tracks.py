@@ -32,10 +32,11 @@ class ValidateCameraTracks(pyblish.api.InstancePlugin):
                 invalid.append(
                     "The published assets must be Level Sequence")
             sequence = data.get_asset()
+            seq_name = sequence.get_name()
             all_tracks = sequence.get_master_tracks()
             if not all_tracks:
                 message = (
-                    f"No tracks found in Level Sequence {sequence}. You can perform\n "
+                    f"No tracks found in Level Sequence {seq_name}. You can perform\n "
                     "repair action to add camera track into the sequence\n "
                     "and assign the camera to the track you want to publish\n"
                 )
@@ -47,7 +48,7 @@ class ValidateCameraTracks(pyblish.api.InstancePlugin):
                     break
             if not has_movie_tracks:
                 message = (
-                    f"The level sequence {sequence} does not include any Movie\n "
+                    f"The level sequence {seq_name} does not include any Movie\n "
                     " Scene Camera Cut Track. Please make sure the published level\n "
                     "sequence must include Movie Scene Camera Cut Track."
                 )
