@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-import os
-
 import unreal
 
 from ayon_core.pipeline import publish
