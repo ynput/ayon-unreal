@@ -46,7 +46,6 @@ class UAssetLoader(plugin.Loader):
         folder_path = context["folder"]["path"]
         folder_name = context["folder"]["name"]
         suffix = "_CON"
-        asset_name = f"{folder_name}_{name}" if folder_name else f"{name}"
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             f"{root}/{folder_name}/{name}", suffix=""
