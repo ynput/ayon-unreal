@@ -11,7 +11,7 @@ from ayon_core.pipeline.publish import (
 )
 from ayon_unreal.api.pipeline import (
     get_frame_range_from_folder_attributes,
-    get_frame_range
+    get_camera_tracks
 )
 
 
@@ -66,6 +66,8 @@ class ValidateFrameRange(pyblish.api.InstancePlugin,
 
     @classmethod
     def repair(cls, instance):
+        clip_in_handle, clip_out_handle = get_frame_range_from_folder_attributes(
+            instance.data["folderEntity"])
         for member in instance.data.get('members'):
             ar = unreal.AssetRegistryHelpers.get_asset_registry()
             data = ar.get_asset_by_object_path(member)
@@ -73,6 +75,10 @@ class ValidateFrameRange(pyblish.api.InstancePlugin,
                 data.asset_class_path.asset_name == "LevelSequence")
             if is_level_sequence:
                 sequence = data.get_asset()
-                frameStart, frameEnd = get_frame_range(sequence)
-                instance.data["clipIn"] = frameStart
-                instance.data["clipOut"] = frameEnd
+                camera_tracks = get_camera_tracks(sequence)
+                if not camera_tracks:
+                    return sequence.get_playback_start(), sequence.get_playback_end()
+                for camera_track in camera_tracks:
+                    sections = camera_track.get_sections()
+                    for section in sections:
+                        section.set_range(clip_in_handle, clip_out_handle)

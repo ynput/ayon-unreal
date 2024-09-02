@@ -6,7 +6,7 @@ from ayon_unreal.api.pipeline import get_frame_range
 
 
 
-class CollectFrameRange(pyblish.api.ContextPlugin):
+class CollectFrameRange(pyblish.api.InstancePlugin):
     """Collect Frame Range"""
 
     order = pyblish.api.CollectorOrder + 0.2
