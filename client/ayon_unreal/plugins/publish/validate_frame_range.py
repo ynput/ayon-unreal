@@ -40,7 +40,8 @@ class ValidateFrameRange(pyblish.api.InstancePlugin,
                 "Missing clip In and clip Out values on "
                 "instance to to validate."
             )
-        clip_in_handle, clip_out_handle = get_frame_range_from_folder_attributes()
+        clip_in_handle, clip_out_handle = get_frame_range_from_folder_attributes(
+            instance.data["folderEntity"])
         errors = []
         if inst_clip_in != clip_in_handle:
             errors.append(

@@ -22,7 +22,7 @@ from ayon_core.pipeline import (
     get_current_project_name,
 )
 from ayon_core.pipeline.context_tools import (
-    get_current_task_entity
+    get_current_folder_entity
 )
 from ayon_core.tools.utils import host_tools
 from ayon_core.host import HostBase, ILoadHost, IPublishHost
@@ -917,7 +917,7 @@ def get_camera_tracks(sequence):
     return camera_tracks
 
 
-def get_frame_range_from_folder_attributes():
+def get_frame_range_from_folder_attributes(folder_entity=None):
     """Get the current clip In/Out value
     Args:
         folder_entity (dict): folder Entity.
@@ -926,6 +926,6 @@ def get_frame_range_from_folder_attributes():
         int, int: clipIn, clipOut.
     """
     if folder_entity is None:
-        folder_entity = get_current_task_entity(fields={"attrib"})
+        folder_entity = get_current_folder_entity(fields={"attrib"})
     folder_attributes = folder_entity["attrib"]
     return int(folder_attributes["clipIn"]), int(folder_attributes["clipOut"])
