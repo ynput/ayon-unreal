@@ -1,4 +1,4 @@
-"""Collect current project path."""
+# -*- coding: utf-8 -*-
 
 import pyblish.api
 import unreal

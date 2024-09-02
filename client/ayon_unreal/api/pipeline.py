@@ -880,12 +880,12 @@ def find_camera_actors_in_camera_tracks(sequence):
 
 def get_frame_range(sequence):
     camera_tracks = get_camera_tracks(sequence)
-    if camera_tracks:
-        for camera_track in camera_tracks:
-            sections = camera_track.get_sections()
-            for section in sections:
-                return section.get_start_frame(), section.get_end_frame()
-
+    if not camera_tracks:
+        return sequence.get_playback_start(), sequence.get_playback_end()
+    for camera_track in camera_tracks:
+        sections = camera_track.get_sections()
+        for section in sections:
+            return section.get_start_frame(), section.get_end_frame()
 
 def get_camera_tracks(sequence):
     camera_tracks = []
