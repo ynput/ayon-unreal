@@ -21,6 +21,9 @@ from ayon_core.pipeline import (
     AYON_CONTAINER_ID,
     get_current_project_name,
 )
+from ayon_core.pipeline.context_tools import (
+    get_current_task_entity
+)
 from ayon_core.tools.utils import host_tools
 from ayon_core.host import HostBase, ILoadHost, IPublishHost
 from ayon_unreal import UNREAL_ADDON_ROOT
@@ -879,6 +882,15 @@ def find_camera_actors_in_camera_tracks(sequence):
 
 
 def get_frame_range(sequence):
+    """Get the Clip in/out value from the camera tracks located inside
+    the level sequence
+
+    Args:
+        sequence (Object): Level Sequence
+
+    Returns:
+        int32, int32 : Start Frame, End Frame
+    """
     camera_tracks = get_camera_tracks(sequence)
     if not camera_tracks:
         return sequence.get_playback_start(), sequence.get_playback_end()
@@ -887,7 +899,16 @@ def get_frame_range(sequence):
         for section in sections:
             return section.get_start_frame(), section.get_end_frame()
 
+
 def get_camera_tracks(sequence):
+    """Get the list of movie scene camera cut tracks in the level sequence
+
+    Args:
+        sequence (Object): Level Sequence
+
+    Returns:
+        list: list of movie scene camera cut tracks
+    """
     camera_tracks = []
     tracks = sequence.get_master_tracks()
     for track in tracks:
@@ -895,3 +916,16 @@ def get_camera_tracks(sequence):
             camera_tracks.append(track)
     return camera_tracks
 
+
+def get_frame_range_from_folder_attributes():
+    """Get the current clip In/Out value
+    Args:
+        folder_entity (dict): folder Entity.
+
+    Returns:
+        int, int: clipIn, clipOut.
+    """
+    if folder_entity is None:
+        folder_entity = get_current_task_entity(fields={"attrib"})
+    folder_attributes = folder_entity["attrib"]
+    return int(folder_attributes["clipIn"]), int(folder_attributes["clipOut"])

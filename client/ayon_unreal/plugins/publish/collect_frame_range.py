@@ -1,7 +1,4 @@
 # -*- coding: utf-8 -*-
-"""Collect current project path."""
-import os
-
 import unreal  # noqa
 import pyblish.api
 from ayon_unreal.api.pipeline import get_frame_range
