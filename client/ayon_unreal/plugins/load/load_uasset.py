@@ -91,9 +91,8 @@ class UAssetLoader(plugin.Loader):
             # TODO these should be probably removed
             "asset": folder_path,
             "family": context["product"]["productType"],
+            "asset_path": asset_path
         }
-        if asset_path:
-            data["asset_path"] = asset_path
         unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
@@ -125,17 +124,16 @@ class UAssetLoader(plugin.Loader):
                 unreal.EditorAssetLibrary.delete_asset(asset)
 
 
+        asset_path = unreal_pipeline.has_asset_existing_directory(asset_name)
         imprinted_data = {
                 "representation": repre_entity["id"],
                 "parent": repre_entity["versionId"],
+                "asset_path": asset_path
             }
-        asset_path = unreal_pipeline.has_asset_existing_directory(asset_name)
         if not asset_path:
             update_filepath = get_representation_path(repre_entity)
             new_asset_name = os.path.basename(update_filepath)
             shutil.copy(update_filepath, f"{destination_path}/{new_asset_name}")
-        else:
-            imprinted_data["asset_path"] = asset_path
 
         container_path = f'{container["namespace"]}/{container["objectName"]}'
         # update metadata

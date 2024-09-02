@@ -139,10 +139,9 @@ class StaticMeshFBXLoader(plugin.Loader):
             "product_type": product_type,
             # TODO these shold be probably removed
             "asset": folder_path,
-            "family": product_type
+            "family": product_type,
+            "asset_path": asset_path
         }
-        if asset_path:
-            data["asset_path"] = asset_path
         imprint(f"{asset_dir}/{container_name}", data)
 
     def load(self, context, name, namespace, options):

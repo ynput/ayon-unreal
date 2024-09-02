@@ -131,9 +131,8 @@ class YetiLoader(plugin.Loader):
             # TODO these shold be probably removed
             "asset": folder_path,
             "family": context["product"]["productType"],
+            "asset_path": asset_path
         }
-        if asset_path:
-            data["asset_path"] = asset_path
         unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
@@ -150,18 +149,17 @@ class YetiLoader(plugin.Loader):
         name = container["asset_name"]
         source_path = get_representation_path(repre_entity)
         destination_path = container["namespace"]
+        asset_path = unreal_pipeline.has_asset_existing_directory(name)
         imprinted_data = {
                 "representation": repre_entity["id"],
                 "parent": repre_entity["versionId"],
+                "asset_path": asset_path
             }
-        asset_path = unreal_pipeline.has_asset_existing_directory(name)
         if not asset_path:
             task = self.get_task(source_path, destination_path, name, True)
 
             # do import fbx and replace existing data
             unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
-        else:
-            imprinted_data["asset_path"] = asset_path
 
         container_path = f'{container["namespace"]}/{container["objectName"]}'
         # update metadata

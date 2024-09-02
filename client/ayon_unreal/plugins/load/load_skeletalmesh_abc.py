@@ -154,10 +154,9 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             "frameEnd": frameEnd,
             # TODO these should be probably removed
             "asset": folder_path,
-            "family": product_type
+            "family": product_type,
+            "asset_path": asset_path
         }
-        if asset_path:
-            data["asset_path"] = asset_path
 
         imprint(f"{asset_dir}/{container_name}", data)
 
