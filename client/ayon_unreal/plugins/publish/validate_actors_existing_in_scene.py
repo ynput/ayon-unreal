@@ -18,8 +18,7 @@ class ValidateActorExistingInLayout(pyblish.api.InstancePlugin):
     hosts = ["unreal"]
     actions = [RepairAction]
 
-    @classmethod
-    def get_invalid(cls, instance):
+    def get_invalid(self, instance):
         invalid = []
         eas = unreal.EditorActorSubsystem()
         sel_actors = eas.get_all_level_actors()
@@ -40,11 +39,17 @@ class ValidateActorExistingInLayout(pyblish.api.InstancePlugin):
         return invalid
 
     def process(self, instance):
-        invalid = self.get_invalid(instance)
-        if invalid:
-            bullet_point_invalid_statement = "\n".join(
-                "- {}".format(err) for err
-                in invalid
+        eas = unreal.EditorActorSubsystem()
+        sel_actors = eas.get_all_level_actors()
+        members = instance.data.get("members", [])
+        if not members:
+            raise PublishValidationError("No members found for publishing layout.")
+
+        actors = [a for a in sel_actors if a.get_path_name() in members]
+        if not actors:
+            bullet_point_invalid_statement = (
+                "Selected actors for publishing layout do not "
+                f"exist in the Unreal Scene: {actors}"
             )
             report = (
                 "Invalid actors for layout publish\n\n"

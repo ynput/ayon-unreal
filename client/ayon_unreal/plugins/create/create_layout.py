@@ -13,8 +13,9 @@ class CreateLayout(UnrealActorCreator):
     product_type = "layout"
     icon = "cubes"
 
-    def get_instance_attr_defs(self):
-        return [
+    def get_pre_create_attr_defs(self):
+        defs = super(CreateLayout, self).get_pre_create_attr_defs()
+        return defs + [
             BoolDef(
                 "export_blender",
                 label="Export to Blender",
