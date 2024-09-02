@@ -70,10 +70,11 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         asset_path=None
     ):
         unreal.EditorAssetLibrary.make_directory(asset_dir)
-        if not asset_path:
-            task = self.get_task(
-                filepath, asset_dir, asset_name, False)
-
+        if asset_path:
+            asset_dir = unreal.Paths.split(asset_path)[0]
+            task = self.get_task(filepath, asset_dir, asset_name, True)
+        else:
+            task = self.get_task(filepath, asset_dir, asset_name, False)
             unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
 
         # Create Asset Container

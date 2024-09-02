@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Load textures from PNG."""
+import os
 from ayon_core.pipeline import (
     get_representation_path,
     AYON_CONTAINER_ID
@@ -106,10 +107,13 @@ class TexturePNGLoader(plugin.Loader):
 
         else:
             self.log.info("Import using deferred method")
-            if not asset_path:
+            if asset_path:
+                asset_path = unreal.Paths.split(asset_path)[0]
+                task = self.get_task(filepath, asset_dir, asset_name, True)
+            else:
                 task = self.get_task(filepath, asset_dir, asset_name, False)
-                unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks(
-                    [task])
+            unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks(
+                [task])
 
         # Create Asset Container
         create_container(container=container_name, path=asset_dir)

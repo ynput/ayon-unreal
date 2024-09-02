@@ -108,8 +108,11 @@ class StaticMeshFBXLoader(plugin.Loader):
             editor_asset_subsystem.delete_asset(tmp_pipeline_path) # remove temp file
 
         else:
-            if not asset_path:
-                unreal.log("Import using defered method")
+            unreal.log("Import using defered method")
+            if asset_path:
+                asset_dir = unreal.Paths.split(asset_path)[0]
+                task = cls.get_task(filepath, asset_dir, asset_name, True)
+            else:
                 task = cls.get_task(filepath, asset_dir, asset_name, False)
                 unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
 

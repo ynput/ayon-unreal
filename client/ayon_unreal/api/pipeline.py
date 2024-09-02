@@ -829,6 +829,13 @@ def get_sequence(files):
 
 
 def has_asset_existing_directory(asset_name):
+    """Check if the asset already existed
+    Args:
+        asset_name (str): asset name
+
+    Returns:
+        str: package path
+    """
     asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
     all_assets = asset_registry.get_assets_by_path('/Game', recursive=True)
     for game_asset in all_assets:

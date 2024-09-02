@@ -236,41 +236,42 @@ class AnimationFBXLoader(plugin.Loader):
             libpath = path.replace(".fbx", ".json")
 
             master_level = None
-            if not asset_path:
-                # check if json file exists.
-                if os.path.exists(libpath):
-                    ar = unreal.AssetRegistryHelpers.get_asset_registry()
+            if asset_path:
+                asset_dir = unreal.Paths.split(asset_path)[0]
+            # check if json file exists.
+            if os.path.exists(libpath):
+                ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
-                    _filter = unreal.ARFilter(
-                        class_names=["World"],
-                        package_paths=[f"{self.root}/{hierarchy[0]}"],
-                        recursive_paths=False)
-                    levels = ar.get_assets(_filter)
-                    master_level = levels[0].get_asset().get_path_name()
+                _filter = unreal.ARFilter(
+                    class_names=["World"],
+                    package_paths=[f"{self.root}/{hierarchy[0]}"],
+                    recursive_paths=False)
+                levels = ar.get_assets(_filter)
+                master_level = levels[0].get_asset().get_path_name()
 
-                    hierarchy_dir = self.root
-                    for h in hierarchy:
-                        hierarchy_dir = f"{hierarchy_dir}/{h}"
-                    hierarchy_dir = f"{hierarchy_dir}/{folder_name}"
+                hierarchy_dir = self.root
+                for h in hierarchy:
+                    hierarchy_dir = f"{hierarchy_dir}/{h}"
+                hierarchy_dir = f"{hierarchy_dir}/{folder_name}"
 
-                    _filter = unreal.ARFilter(
-                        class_names=["World"],
-                        package_paths=[f"{hierarchy_dir}/"],
-                        recursive_paths=True)
-                    levels = ar.get_assets(_filter)
-                    level = levels[0].get_asset().get_path_name()
+                _filter = unreal.ARFilter(
+                    class_names=["World"],
+                    package_paths=[f"{hierarchy_dir}/"],
+                    recursive_paths=True)
+                levels = ar.get_assets(_filter)
+                level = levels[0].get_asset().get_path_name()
 
-                    unreal.EditorLevelLibrary.save_all_dirty_levels()
-                    unreal.EditorLevelLibrary.load_level(level)
+                unreal.EditorLevelLibrary.save_all_dirty_levels()
+                unreal.EditorLevelLibrary.load_level(level)
 
-                    EditorAssetLibrary.make_directory(asset_dir)
+                EditorAssetLibrary.make_directory(asset_dir)
 
-                    self._load_from_json(
-                        libpath, path, asset_dir, asset_name, hierarchy_dir)
-                else:
-                    version_id = context["representation"]["versionId"]
-                    self._load_standalone_animation(
-                        path, asset_dir, asset_name, version_id)
+                self._load_from_json(
+                    libpath, path, asset_dir, asset_name, hierarchy_dir)
+            else:
+                version_id = context["representation"]["versionId"]
+                self._load_standalone_animation(
+                    path, asset_dir, asset_name, version_id)
 
             return master_level
 

@@ -68,10 +68,9 @@ class UAssetLoader(plugin.Loader):
         path = self.filepath_from_context(context)
         asset_name = os.path.basename(path)
         asset_path = unreal_pipeline.has_asset_existing_directory(asset_name)
-        if not asset_path:
-            shutil.copy(
-                path,
-                f"{destination_path}/{asset_name}")
+        if asset_path:
+            destination_path = unreal.Paths.split(asset_path)[0]
+        shutil.copy(path, f"{destination_path}/{asset_name}")
 
         # Create Asset Container
         unreal_pipeline.create_container(
@@ -130,10 +129,11 @@ class UAssetLoader(plugin.Loader):
                 "parent": repre_entity["versionId"],
                 "asset_path": asset_path
             }
-        if not asset_path:
-            update_filepath = get_representation_path(repre_entity)
-            new_asset_name = os.path.basename(update_filepath)
-            shutil.copy(update_filepath, f"{destination_path}/{new_asset_name}")
+        update_filepath = get_representation_path(repre_entity)
+        new_asset_name = os.path.basename(update_filepath)
+        if asset_path:
+            destination_path = unreal.Paths.split(asset_path)[0]
+        shutil.copy(update_filepath, f"{destination_path}/{new_asset_name}")
 
         container_path = f'{container["namespace"]}/{container["objectName"]}'
         # update metadata

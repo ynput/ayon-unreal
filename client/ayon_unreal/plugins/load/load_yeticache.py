@@ -108,9 +108,11 @@ class YetiLoader(plugin.Loader):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
 
             path = self.filepath_from_context(context)
-            if not asset_path:
+            if asset_path:
+                asset_dir = unreal.Paths.split(asset_path)[0]
+                task = self.get_task(path, asset_dir, asset_name, True)
+            else:
                 task = self.get_task(path, asset_dir, asset_name, False)
-
                 unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])  # noqa: E501
 
             # Create Asset Container
@@ -155,8 +157,11 @@ class YetiLoader(plugin.Loader):
                 "parent": repre_entity["versionId"],
                 "asset_path": asset_path
             }
-        if not asset_path:
-            task = self.get_task(source_path, destination_path, name, True)
+        if asset_path:
+            asset_dir = unreal.Paths.split(asset_path)[0]
+            task = self.get_task(source_path, asset_dir, name, True)
+        else:
+            task = self.get_task(source_path, destination_path, name, False)
 
             # do import fbx and replace existing data
             unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])

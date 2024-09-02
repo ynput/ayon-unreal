@@ -85,10 +85,13 @@ class AnimationAlembicLoader(plugin.Loader):
         asset_path=None
     ):
         unreal.EditorAssetLibrary.make_directory(asset_dir)
-        if not asset_path:
+        if asset_path:
+            asset_dir = os.path.dirname(asset_path)
+            task = self.get_task(filepath, asset_dir, asset_name, True, loaded_options)
+        else:
             task = self.get_task(filepath, asset_dir, asset_name, False, loaded_options)
 
-            unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+        unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
 
         # Create Asset Container
         unreal_pipeline.create_container(container=container_name, path=asset_dir)
