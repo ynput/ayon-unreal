@@ -10,7 +10,7 @@ from ayon_core.pipeline import InventoryAction
 
 
 def update_assets(containers, selected):
-    allowed_families = ["model", "rig"]
+    allowed_families = ["animation", "model", "rig", "pointcache"]
 
     # Get all the containers in the Unreal Project
     all_containers = ls()
@@ -49,12 +49,26 @@ def update_assets(containers, selected):
                     old_content, asset_content, selected)
                 replace_static_mesh_actors(
                     old_content, asset_content, selected)
+
             elif container.get("family") == "model":
                 if container.get("loader") == "PointCacheAlembicLoader":
                     replace_geometry_cache_actors(
                         old_content, asset_content, selected)
                 else:
                     replace_static_mesh_actors(
+                        old_content, asset_content, selected)
+
+            elif container.get("family") == "pointcache":
+                if container.get("loader") == "PointCacheAlembicLoader":
+                    replace_geometry_cache_actors(
+                        old_content, asset_content, selected)
+                else:
+                    replace_skeletal_mesh_actors(
+                        old_content, asset_content, selected)
+
+            elif container.get("family") == "animation":
+                if container.get("loader") == "AnimationAlembicLoader":
+                    replace_skeletal_mesh_actors(
                         old_content, asset_content, selected)
 
             unreal.EditorLevelLibrary.save_current_level()
