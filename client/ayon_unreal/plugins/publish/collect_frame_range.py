@@ -4,8 +4,6 @@ import pyblish.api
 from ayon_unreal.api.pipeline import get_frame_range
 
 
-
-
 class CollectFrameRange(pyblish.api.InstancePlugin):
     """Collect Frame Range"""
 
