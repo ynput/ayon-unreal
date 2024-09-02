@@ -12,6 +12,7 @@ from ayon_unreal.api.pipeline import (
     AYON_ASSET_DIR,
     create_container,
     imprint,
+    has_asset_existing_directory
 )
 import unreal  # noqa
 
@@ -114,14 +115,14 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
 
     def import_and_containerize(
         self, filepath, asset_dir, asset_name, container_name,
-        loaded_options
+        loaded_options, asset_path=None
     ):
         unreal.EditorAssetLibrary.make_directory(asset_dir)
+        if not asset_path:
+            task = self.get_task(
+                filepath, asset_dir, asset_name, False, loaded_options)
 
-        task = self.get_task(
-            filepath, asset_dir, asset_name, False, loaded_options)
-
-        unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+            unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
 
         # Create Asset Container
         create_container(container=container_name, path=asset_dir)
@@ -135,7 +136,8 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
         representation,
         product_type,
         frameStart,
-        frameEnd
+        frameEnd,
+        asset_path=None
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -152,8 +154,11 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             "frameEnd": frameEnd,
             # TODO these should be probably removed
             "asset": folder_path,
-            "family": product_type,
+            "family": product_type
         }
+        if asset_path:
+            data["asset_path"] = asset_path
+
         imprint(f"{asset_dir}/{container_name}", data)
 
     def load(self, context, name, namespace, options):
@@ -201,9 +206,11 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
 
         container_name += suffix
 
+        asset_path = has_asset_existing_directory(asset_name)
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             self.import_and_containerize(path, asset_dir, asset_name,
-                                         container_name, loaded_options)
+                                         container_name, loaded_options,
+                                         asset_path=asset_path)
 
         product_type = context["product"]["productType"]
         self.imprint(
@@ -214,7 +221,8 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             context["representation"],
             product_type,
             folder_entity["attrib"]["frameStart"],
-            folder_entity["attrib"]["frameEnd"]
+            folder_entity["attrib"]["frameEnd"],
+            asset_path=asset_path
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
@@ -251,7 +259,7 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             f"{self.root}/{folder_name}/{name_version}", suffix=f"_{ext}")
 
         container_name += suffix
-
+        asset_path = has_asset_existing_directory(asset_name)
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             path = get_representation_path(repre_entity)
             loaded_options = {
@@ -261,7 +269,8 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
                 "frameEnd": container.get("frameEnd", 1)
             }
             self.import_and_containerize(path, asset_dir, asset_name,
-                                         container_name, loaded_options)
+                                         container_name, loaded_options,
+                                         asset_path=asset_path)
 
         self.imprint(
             folder_path,
@@ -272,6 +281,7 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             product_type,
             container.get("frameStart", 1),
             container.get("frameEnd", 1),
+            asset_path=asset_path
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(

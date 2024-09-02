@@ -826,3 +826,12 @@ def get_sequence(files):
             "This is a bug.")
 
     return [os.path.basename(filename) for filename in collections[0]]
+
+
+def has_asset_existing_directory(asset_name):
+    asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
+    all_assets = asset_registry.get_assets_by_path('/Game', recursive=True)
+    for game_asset in all_assets:
+        if game_asset.asset_name == asset_name:
+            return game_asset.package_path
+    return None

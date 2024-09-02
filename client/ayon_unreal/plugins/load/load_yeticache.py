@@ -103,20 +103,20 @@ class YetiLoader(plugin.Loader):
 
         asset_dir = f"{asset_dir}_{unique_number:02}"
         container_name = f"{container_name}_{unique_number:02}{suffix}"
-
+        asset_path = unreal_pipeline.has_asset_existing_directory(asset_name)
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
 
             path = self.filepath_from_context(context)
-            task = self.get_task(path, asset_dir, asset_name, False)
+            if not asset_path:
+                task = self.get_task(path, asset_dir, asset_name, False)
 
-            unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])  # noqa: E501
+                unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])  # noqa: E501
 
             # Create Asset Container
             unreal_pipeline.create_container(
                 container=container_name, path=asset_dir)
 
-        product_type = context["product"]["productType"]
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
@@ -127,11 +127,13 @@ class YetiLoader(plugin.Loader):
             "loader": str(self.__class__.__name__),
             "representation": context["representation"]["id"],
             "parent": context["representation"]["versionId"],
-            "product_type": product_type,
+            "product_type": context["product"]["productType"],
             # TODO these shold be probably removed
             "asset": folder_path,
-            "family": product_type,
+            "family": context["product"]["productType"],
         }
+        if asset_path:
+            data["asset_path"] = asset_path
         unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
@@ -148,20 +150,22 @@ class YetiLoader(plugin.Loader):
         name = container["asset_name"]
         source_path = get_representation_path(repre_entity)
         destination_path = container["namespace"]
+        imprinted_data = {
+                "representation": repre_entity["id"],
+                "parent": repre_entity["versionId"],
+            }
+        asset_path = unreal_pipeline.has_asset_existing_directory(name)
+        if not asset_path:
+            task = self.get_task(source_path, destination_path, name, True)
 
-        task = self.get_task(source_path, destination_path, name, True)
-
-        # do import fbx and replace existing data
-        unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+            # do import fbx and replace existing data
+            unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+        else:
+            imprinted_data["asset_path"] = asset_path
 
         container_path = f'{container["namespace"]}/{container["objectName"]}'
         # update metadata
-        unreal_pipeline.imprint(
-            container_path,
-            {
-                "representation": repre_entity["id"],
-                "parent": repre_entity["versionId"],
-            })
+        unreal_pipeline.imprint(container_path, imprinted_data)
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
             destination_path, recursive=True, include_folder=True

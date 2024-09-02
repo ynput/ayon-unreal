@@ -11,6 +11,7 @@ from ayon_unreal.api.pipeline import (
     AYON_ASSET_DIR,
     create_container,
     imprint,
+    has_asset_existing_directory
 )
 
 import unreal  # noqa
@@ -66,7 +67,7 @@ class TexturePNGLoader(plugin.Loader):
 
     @classmethod
     def import_and_containerize(  
-        self, filepath, asset_dir, asset_name, container_name  
+        self, filepath, asset_dir, asset_name, container_name, asset_path=None
     ):  
         unreal.EditorAssetLibrary.make_directory(asset_dir)  
 
@@ -107,9 +108,10 @@ class TexturePNGLoader(plugin.Loader):
 
         else:
             self.log.info("Import using deferred method")
-            task = self.get_task(filepath, asset_dir, asset_name, False)
-            unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks(
-                [task])
+            if not asset_path:
+                task = self.get_task(filepath, asset_dir, asset_name, False)
+                unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks(
+                    [task])
 
         # Create Asset Container
         create_container(container=container_name, path=asset_dir)
@@ -121,7 +123,8 @@ class TexturePNGLoader(plugin.Loader):
             container_name,
             asset_name,
             repre_entity,
-            product_type
+            product_type,
+            asset_path=None
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -138,6 +141,8 @@ class TexturePNGLoader(plugin.Loader):
             "asset": folder_path,
             "family": product_type,
         }
+        if asset_path:
+            data["asset_path"] = asset_path
         imprint(f"{asset_dir}/{container_name}", data)
 
     def load(self, context, name, namespace, options):
@@ -173,12 +178,17 @@ class TexturePNGLoader(plugin.Loader):
         )
 
         container_name += suffix
-
+        asset_path = (
+            has_asset_existing_directory(asset_name)
+            if not self.use_interchange else None
+        )
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             path = self.filepath_from_context(context)
 
             self.import_and_containerize(
-                path, asset_dir, asset_name, container_name)
+                path, asset_dir, asset_name,
+                container_name, asset_path=asset_path
+            )
 
         self.imprint(
             folder_path,
@@ -186,7 +196,8 @@ class TexturePNGLoader(plugin.Loader):
             container_name,
             asset_name,
             context["representation"],
-            context["product"]["productType"]
+            context["product"]["productType"],
+            asset_path=asset_path
         )
 
         asset_contents = unreal.EditorAssetLibrary.list_assets(
@@ -220,12 +231,16 @@ class TexturePNGLoader(plugin.Loader):
             f"{self.root}/{folder_name}/{name_version}", suffix="")
 
         container_name += suffix
-
+        asset_path = (
+            has_asset_existing_directory(asset_name)
+            if not self.use_interchange else None
+        )
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             path = get_representation_path(repre_entity)
 
             self.import_and_containerize(
-                path, asset_dir, asset_name, container_name)
+                path, asset_dir, asset_name,
+                container_name, asset_path=asset_path)
 
         self.imprint(
             folder_path,
@@ -234,6 +249,7 @@ class TexturePNGLoader(plugin.Loader):
             asset_name,
             repre_entity,
             product_type,
+            asset_path=asset_path
         )
 
         asset_contents = unreal.EditorAssetLibrary.list_assets(
@@ -244,14 +260,5 @@ class TexturePNGLoader(plugin.Loader):
 
     def remove(self, container):
         path = container["namespace"]
-        parent_path = os.path.dirname(path)
-
-        unreal.EditorAssetLibrary.delete_directory(path)
-
-        asset_contents = unreal.EditorAssetLibrary.list_assets(
-            parent_path, recursive=False
-        )
-
-        if len(asset_contents) == 0:
-            unreal.EditorAssetLibrary.delete_directory(parent_path)
-
+        if unreal.EditorAssetLibrary.does_directory_exist(path):
+            unreal.EditorAssetLibrary.delete_directory(path)

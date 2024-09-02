@@ -232,45 +232,45 @@ class AnimationFBXLoader(plugin.Loader):
 
     def _import_animation_with_json(self, path, context, hierarchy,
                                     asset_dir, folder_name,
-                                    asset_name):
+                                    asset_name, asset_path=None):
             libpath = path.replace(".fbx", ".json")
 
             master_level = None
+            if not asset_path:
+                # check if json file exists.
+                if os.path.exists(libpath):
+                    ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
-            # check if json file exists.
-            if os.path.exists(libpath):
-                ar = unreal.AssetRegistryHelpers.get_asset_registry()
+                    _filter = unreal.ARFilter(
+                        class_names=["World"],
+                        package_paths=[f"{self.root}/{hierarchy[0]}"],
+                        recursive_paths=False)
+                    levels = ar.get_assets(_filter)
+                    master_level = levels[0].get_asset().get_path_name()
 
-                _filter = unreal.ARFilter(
-                    class_names=["World"],
-                    package_paths=[f"{self.root}/{hierarchy[0]}"],
-                    recursive_paths=False)
-                levels = ar.get_assets(_filter)
-                master_level = levels[0].get_asset().get_path_name()
+                    hierarchy_dir = self.root
+                    for h in hierarchy:
+                        hierarchy_dir = f"{hierarchy_dir}/{h}"
+                    hierarchy_dir = f"{hierarchy_dir}/{folder_name}"
 
-                hierarchy_dir = self.root
-                for h in hierarchy:
-                    hierarchy_dir = f"{hierarchy_dir}/{h}"
-                hierarchy_dir = f"{hierarchy_dir}/{folder_name}"
+                    _filter = unreal.ARFilter(
+                        class_names=["World"],
+                        package_paths=[f"{hierarchy_dir}/"],
+                        recursive_paths=True)
+                    levels = ar.get_assets(_filter)
+                    level = levels[0].get_asset().get_path_name()
 
-                _filter = unreal.ARFilter(
-                    class_names=["World"],
-                    package_paths=[f"{hierarchy_dir}/"],
-                    recursive_paths=True)
-                levels = ar.get_assets(_filter)
-                level = levels[0].get_asset().get_path_name()
+                    unreal.EditorLevelLibrary.save_all_dirty_levels()
+                    unreal.EditorLevelLibrary.load_level(level)
 
-                unreal.EditorLevelLibrary.save_all_dirty_levels()
-                unreal.EditorLevelLibrary.load_level(level)
+                    EditorAssetLibrary.make_directory(asset_dir)
 
-                EditorAssetLibrary.make_directory(asset_dir)
-
-                self._load_from_json(
-                    libpath, path, asset_dir, asset_name, hierarchy_dir)
-            else:
-                version_id = context["representation"]["versionId"]
-                self._load_standalone_animation(
-                    path, asset_dir, asset_name, version_id)
+                    self._load_from_json(
+                        libpath, path, asset_dir, asset_name, hierarchy_dir)
+                else:
+                    version_id = context["representation"]["versionId"]
+                    self._load_standalone_animation(
+                        path, asset_dir, asset_name, version_id)
 
             return master_level
 
@@ -281,7 +281,8 @@ class AnimationFBXLoader(plugin.Loader):
         container_name,
         asset_name,
         representation,
-        product_type
+        product_type,
+        asset_path=None
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -298,6 +299,8 @@ class AnimationFBXLoader(plugin.Loader):
             "asset": folder_path,
             "family": product_type
         }
+        if asset_path:
+            data["asset_path"] = asset_path
         unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
 
     def load(self, context, name, namespace, options=None):
@@ -345,7 +348,7 @@ class AnimationFBXLoader(plugin.Loader):
             f"{self.root}/Animations/{folder_name}/{name_version}", suffix=f"_{ext}")
 
         container_name += suffix
-
+        asset_path = unreal_pipeline.has_asset_existing_directory(asset_name)
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             master_level = self._import_animation_with_json(
                 path, context, hierarchy,
@@ -361,7 +364,8 @@ class AnimationFBXLoader(plugin.Loader):
             container_name,
             asset_name,
             context["representation"],
-            product_type
+            product_type,
+            asset_path=asset_path
         )
 
         imported_content = EditorAssetLibrary.list_assets(
@@ -409,12 +413,12 @@ class AnimationFBXLoader(plugin.Loader):
             f"{self.root}/Animations/{folder_name}/{name_version}", suffix=f"_{ext}")
 
         container_name += suffix
-
+        asset_path = unreal_pipeline.has_asset_existing_directory(asset_name)
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             master_level = self._import_animation_with_json(
                 source_path, context, hierarchy,
                 asset_dir, folder_name,
-                asset_name
+                asset_name, asset_path=asset_path
             )
             unreal_pipeline.create_container(
                 container=container_name, path=asset_dir)
@@ -425,7 +429,8 @@ class AnimationFBXLoader(plugin.Loader):
             container_name,
             asset_name,
             repre_entity,
-            product_type
+            product_type,
+            asset_path=asset_path
         )
 
         asset_content = EditorAssetLibrary.list_assets(
