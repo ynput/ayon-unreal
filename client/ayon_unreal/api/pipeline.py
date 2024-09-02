@@ -3,7 +3,7 @@ import os
 import json
 import clique
 import logging
-from typing import List
+from typing import List, Any
 from contextlib import contextmanager
 import time
 
@@ -853,7 +853,7 @@ def get_sequence(files):
     return [os.path.basename(filename) for filename in collections[0]]
 
 
-def find_camera_actors_in_camera_tracks(sequence):
+def find_camera_actors_in_camera_tracks(sequence) -> list[Any]:
     """Find the camera actors in the tracks from the Level Sequence
 
     Args:
