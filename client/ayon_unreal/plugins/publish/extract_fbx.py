@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import unreal
-
+import os
 from ayon_core.pipeline import publish
 
 
@@ -25,19 +25,18 @@ class ExtractFbx(publish.Extractor):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
         task = unreal.AssetExportTask()
-        task.set_editor_property('exporter', fbx_exporter)
-        task.set_editor_property('options', options)
+        task.exporter = fbx_exporter
+        task.options = options
 
         for member in instance.data.get("members"):
             target_asset = ar.get_asset_by_object_path(member).get_asset()
-            asset_names = target_asset.get_name()
-            task.set_editor_property('automated', True)
-            task.set_editor_property('object', asset_names)
-
-        task.set_editor_property(
-            'filename', f"{staging_dir}/{fbx_filename}")
-        task.set_editor_property('prompt', False)
-        task.set_editor_property('selected', False)
+            task.object = target_asset
+        task.automated = True
+        task.filename = os.path.join(staging_dir, fbx_filename).replace("\\", "/")
+        task.prompt = True
+        task.selected = True
+        task.use_file_archive = False
+        task.write_empty_files = True
 
         unreal.Exporter.run_asset_export_task(task)
 
@@ -52,3 +51,4 @@ class ExtractFbx(publish.Extractor):
         }
 
         instance.data["representations"].append(representation)
+        self.log.debug(f"{staging_dir}/{fbx_filename}")
