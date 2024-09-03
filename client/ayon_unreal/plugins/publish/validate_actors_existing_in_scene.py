@@ -3,9 +3,9 @@ import unreal
 import pyblish.api
 from ayon_unreal.api.pipeline import imprint
 from ayon_core.pipeline.publish import (
-    PublishValidationError,
-    RepairAction
+    PublishValidationError
 )
+from ayon_unreal.api.action import SelectActorsAsInstanceMemberAction
 
 
 class ValidateActorExistingInLayout(pyblish.api.InstancePlugin):
@@ -16,7 +16,7 @@ class ValidateActorExistingInLayout(pyblish.api.InstancePlugin):
     label = "Layout Actors Existing in Scene"
     families = ["layout"]
     hosts = ["unreal"]
-    actions = [RepairAction]
+    actions = [SelectActorsAsInstanceMemberAction]
 
     def process(self, instance):
         eas = unreal.EditorActorSubsystem()
@@ -40,4 +40,5 @@ class ValidateActorExistingInLayout(pyblish.api.InstancePlugin):
         actor_subsystem = unreal.EditorActorSubsystem()
         sel_actors = actor_subsystem.get_selected_level_actors()
         instance.data["members"] = [a.get_path_name() for a in sel_actors]
+        instance_node = f"/Game/Ayon/AyonPublishInstances/{instance.name}"
         imprint(instance_node, {"members": instance.data["members"]})
