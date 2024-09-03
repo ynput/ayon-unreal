@@ -21,11 +21,8 @@ class ValidateActorExistingInLayout(pyblish.api.InstancePlugin):
     def process(self, instance):
         eas = unreal.EditorActorSubsystem()
         sel_actors = eas.get_all_level_actors()
-        members = instance.data.get("members", [])
-        if not members:
-            raise PublishValidationError("No members found for publishing layout.")
-
-        actors = [a for a in sel_actors if a.get_path_name() in members]
+        members_lookup = set(members)
+        actors = [a for a in sel_actors if a.get_path_name() in members_lookup]
         if not actors:
             raise PublishValidationError(
                 "Invalid actors for layout publish\n\n"
