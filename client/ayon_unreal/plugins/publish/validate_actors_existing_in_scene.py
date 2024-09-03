@@ -37,7 +37,6 @@ class ValidateActorExistingInLayout(pyblish.api.InstancePlugin):
 
     @classmethod
     def repair(cls, instance):
-        instance_node = f"/Game/Ayon/AyonPublishInstances/{instance.name}"
         actor_subsystem = unreal.EditorActorSubsystem()
         sel_actors = actor_subsystem.get_selected_level_actors()
         instance.data["members"] = [a.get_path_name() for a in sel_actors]
