@@ -272,20 +272,6 @@ class UnrealActorCreator(UnrealBaseCreator):
                 CreatorError(f"Creator error: {er}"),
                 sys.exc_info()[2])
 
-    def collect_instances(self):
-        # cache instances if missing
-        self.get_cached_instances(self.collection_shared_data)
-        for instance in self.collection_shared_data[
-                "unreal_cached_subsets"].get(self.identifier, []):
-            # Unreal saves metadata as string, so we need to convert it back
-            instance['creator_attributes'] = ast.literal_eval(
-                instance.get('creator_attributes', '{}'))
-            instance['publish_attributes'] = ast.literal_eval(
-                instance.get('publish_attributes', '{}'))
-            instance['members'] = ast.literal_eval(
-                instance.get('members', '[]'))
-            created_instance = CreatedInstance.from_existing(instance, self)
-            self._add_instance_to_context(created_instance)
 
     def get_pre_create_attr_defs(self):
         return [
