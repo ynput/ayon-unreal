@@ -3,7 +3,7 @@ import os
 import json
 import clique
 import logging
-from typing import List
+from typing import List, Any
 from contextlib import contextmanager
 import time
 
@@ -20,6 +20,9 @@ from ayon_core.pipeline import (
     deregister_inventory_action_path,
     AYON_CONTAINER_ID,
     get_current_project_name,
+)
+from ayon_core.pipeline.context_tools import (
+    get_current_folder_entity
 )
 from ayon_core.tools.utils import host_tools
 from ayon_core.host import HostBase, ILoadHost, IPublishHost
@@ -798,6 +801,28 @@ def maintained_selection():
         pass
 
 
+@contextmanager
+def select_camera(sequence):
+    """Select camera during context
+    Args:
+        sequence (Objects): Level Sequence Object
+    """
+    camera_actors = find_camera_actors_in_camera_tracks(sequence)
+    actor_subsys = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+    selected_actors = actor_subsys.get_selected_level_actors()
+    actor_subsys.select_nothing()
+    for actor in camera_actors:
+        actor_subsys.set_actor_selection_state(actor, True)
+    try:
+        yield
+    finally:
+        for actor in camera_actors:
+            if actor in selected_actors:
+                actor_subsys.set_actor_selection_state(actor, True)
+            else:
+                actor_subsys.set_actor_selection_state(actor, False)
+
+
 def get_sequence(files):
     """Get sequence from filename.
 
@@ -826,3 +851,81 @@ def get_sequence(files):
             "This is a bug.")
 
     return [os.path.basename(filename) for filename in collections[0]]
+
+
+def find_camera_actors_in_camera_tracks(sequence) -> list[Any]:
+    """Find the camera actors in the tracks from the Level Sequence
+
+    Args:
+        tracks (Object): Level Seqence Asset
+
+    Returns:
+        Object: Camera Actor
+    """
+    camera_tracks = []
+    camera_objects = []
+    camera_tracks = get_camera_tracks(sequence)
+    if camera_tracks:
+        for camera_track in camera_tracks:
+            sections = camera_track.get_sections()
+            for section in sections:
+                binding_id = section.get_camera_binding_id()
+                bound_objects = unreal.LevelSequenceEditorBlueprintLibrary.get_bound_objects(
+                    binding_id)
+                for camera_object in bound_objects:
+                    camera_objects.append(camera_object.get_path_name())
+    world =  unreal.EditorLevelLibrary.get_editor_world()
+    sel_actors = unreal.GameplayStatics().get_all_actors_of_class(
+        world, unreal.CameraActor)
+    actors = [a for a in sel_actors if a.get_path_name() in camera_objects]
+    return actors
+
+
+def get_frame_range(sequence):
+    """Get the Clip in/out value from the camera tracks located inside
+    the level sequence
+
+    Args:
+        sequence (Object): Level Sequence
+
+    Returns:
+        int32, int32 : Start Frame, End Frame
+    """
+    camera_tracks = get_camera_tracks(sequence)
+    if not camera_tracks:
+        return sequence.get_playback_start(), sequence.get_playback_end()
+    for camera_track in camera_tracks:
+        sections = camera_track.get_sections()
+        for section in sections:
+            return section.get_start_frame(), section.get_end_frame()
+
+
+def get_camera_tracks(sequence):
+    """Get the list of movie scene camera cut tracks in the level sequence
+
+    Args:
+        sequence (Object): Level Sequence
+
+    Returns:
+        list: list of movie scene camera cut tracks
+    """
+    camera_tracks = []
+    tracks = sequence.get_master_tracks()
+    for track in tracks:
+        if str(track).count("MovieSceneCameraCutTrack"):
+            camera_tracks.append(track)
+    return camera_tracks
+
+
+def get_frame_range_from_folder_attributes(folder_entity=None):
+    """Get the current clip In/Out value
+    Args:
+        folder_entity (dict): folder Entity.
+
+    Returns:
+        int, int: clipIn, clipOut.
+    """
+    if folder_entity is None:
+        folder_entity = get_current_folder_entity(fields={"attrib"})
+    folder_attributes = folder_entity["attrib"]
+    return int(folder_attributes["clipIn"]), int(folder_attributes["clipOut"])
