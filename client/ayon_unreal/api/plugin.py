@@ -272,7 +272,6 @@ class UnrealActorCreator(UnrealBaseCreator):
                 CreatorError(f"Creator error: {er}"),
                 sys.exc_info()[2])
 
-
     def get_pre_create_attr_defs(self):
         return [
             UILabelDef("Select actors to create instance from them."),
