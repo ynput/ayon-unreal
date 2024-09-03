@@ -27,18 +27,13 @@ class ValidateActorExistingInLayout(pyblish.api.InstancePlugin):
 
         actors = [a for a in sel_actors if a.get_path_name() in members]
         if not actors:
-            bullet_point_invalid_statement = (
-                "Selected actors for publishing layout do not "
-                f"exist in the Unreal Scene: {actors}"
-            )
-            report = (
-                "Invalid actors for layout publish\n\n"
-                f"{bullet_point_invalid_statement}\n\n"
-                "You can select the actors and use repair action to update "
-                "the actors which you want to publish for the layout."
-            )
             raise PublishValidationError(
-                report, title="Non-existent Actors for Layout Publish")
+                "Invalid actors for layout publish\n\n"
+                "Selected actors for publishing layout do not exist in "
+                f"the Unreal Scene: {actors}\n\n"
+                "You can select the actors and use repair action to update "
+                "the actors which you want to publish for the layout.",
+                title="Non-existent Actors for Layout Publish")
 
     @classmethod
     def repair(cls, instance):
