@@ -278,6 +278,7 @@ class UnrealActorCreator(UnrealBaseCreator):
             UILabelDef("Select actors to create instance from them."),
         ]
 
+
 class Loader(LoaderPlugin, ABC):
     """This serves as skeleton for future Ayon specific functionality"""
     pass
