@@ -14,7 +14,7 @@ class SelectActorsAsInstanceMemberAction(RepairAction):
 
     label = "Set selected actors as instance members"
     on = "failed"  # This action is only available on a failed plug-in
-    icon = "object-group"  #
+    icon = "object-group"
 
 
 class ValidateActorExistingInLayout(pyblish.api.InstancePlugin):
