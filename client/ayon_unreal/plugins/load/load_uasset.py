@@ -116,7 +116,6 @@ class UAssetLoader(plugin.Loader):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
         asset_dir = container["namespace"]
-        asset_name = container["asset_name"]
         repre_entity = context["representation"]
 
         destination_path = asset_dir.replace(
