@@ -127,15 +127,16 @@ class StaticMeshAlembicLoader(plugin.Loader):
         loaded_options, asset_path=None
     ):
         unreal.EditorAssetLibrary.make_directory(asset_dir)
+        task = None
         if asset_path:
-            asset_dir = unreal.Paths.split(asset_path)[0]
+            loaded_asset_dir = unreal.Paths.split(asset_path)[0]
             task = self.get_task(
-                filepath, asset_dir, asset_name, True, loaded_options)
+                filepath, loaded_asset_dir, asset_name, True, loaded_options)
         else:
             task = self.get_task(
                 filepath, asset_dir, asset_name, False, loaded_options)
 
-            unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+        unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
 
         # Create Asset Container
         create_container(container=container_name, path=asset_dir)
@@ -288,6 +289,16 @@ class StaticMeshAlembicLoader(plugin.Loader):
 
         for a in asset_content:
             unreal.EditorAssetLibrary.save_asset(a)
+        if asset_path:
+            loaded_asset_dir = unreal.Paths.split(asset_path)[0]
+            loaded_asset_name = unreal.Paths.split(asset_path)[1]
+            loaded_asset_content = unreal.EditorAssetLibrary.list_assets(
+                loaded_asset_dir, recursive=True, include_folder=False
+            )
+            for asset in loaded_asset_content:
+                if  unreal.Paths.split(asset)[1] == loaded_asset_name:
+                    unreal.EditorAssetLibrary.load_asset(asset)
+                    unreal.EditorAssetLibrary.get_tag_values(asset)
 
     def remove(self, container):
         path = container["namespace"]

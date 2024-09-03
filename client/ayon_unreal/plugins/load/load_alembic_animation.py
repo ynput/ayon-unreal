@@ -85,9 +85,10 @@ class AnimationAlembicLoader(plugin.Loader):
         asset_path=None
     ):
         unreal.EditorAssetLibrary.make_directory(asset_dir)
+        task = None
         if asset_path:
-            asset_dir = os.path.dirname(asset_path)
-            task = self.get_task(filepath, asset_dir, asset_name, True, loaded_options)
+            loaded_asset_dir = os.path.dirname(asset_path)
+            task = self.get_task(filepath, loaded_asset_dir, asset_name, True, loaded_options)
         else:
             task = self.get_task(filepath, asset_dir, asset_name, False, loaded_options)
 

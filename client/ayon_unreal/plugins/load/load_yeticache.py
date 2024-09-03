@@ -106,14 +106,15 @@ class YetiLoader(plugin.Loader):
         asset_path = unreal_pipeline.has_asset_existing_directory(asset_name)
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
-
+            task = None
             path = self.filepath_from_context(context)
             if asset_path:
-                asset_dir = unreal.Paths.split(asset_path)[0]
-                task = self.get_task(path, asset_dir, asset_name, True)
+                loaded_asset_dir = unreal.Paths.split(asset_path)[0]
+                task = self.get_task(path, loaded_asset_dir, asset_name, True)
             else:
                 task = self.get_task(path, asset_dir, asset_name, False)
-                unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])  # noqa: E501
+
+            unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])  # noqa: E501
 
             # Create Asset Container
             unreal_pipeline.create_container(
@@ -157,14 +158,15 @@ class YetiLoader(plugin.Loader):
                 "parent": repre_entity["versionId"],
                 "asset_path": asset_path
             }
+        task = None
         if asset_path:
-            asset_dir = unreal.Paths.split(asset_path)[0]
-            task = self.get_task(source_path, asset_dir, name, True)
+            loaded_asset_dir = unreal.Paths.split(asset_path)[0]
+            task = self.get_task(source_path, loaded_asset_dir, name, True)
         else:
             task = self.get_task(source_path, destination_path, name, False)
 
             # do import fbx and replace existing data
-            unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+        unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
 
         container_path = f'{container["namespace"]}/{container["objectName"]}'
         # update metadata
