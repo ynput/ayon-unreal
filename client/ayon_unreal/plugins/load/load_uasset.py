@@ -92,6 +92,15 @@ class UAssetLoader(plugin.Loader):
             "family": context["product"]["productType"],
             "asset_path": asset_path
         }
+
+        if asset_path:
+            if not unreal.EditorAssetLibrary.does_asset_exist(
+                f"{asset_dir}/{asset_name}"):
+                    unreal.EditorAssetLibrary.rename_asset(
+                        f"{asset_path}/{asset_name}",
+                        f"{asset_dir}/{asset_name}"
+                    )
+
         unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
@@ -122,22 +131,19 @@ class UAssetLoader(plugin.Loader):
             if obj.get_class().get_name() != "AyonAssetContainer":
                 unreal.EditorAssetLibrary.delete_asset(asset)
 
-
-        asset_path = unreal_pipeline.has_asset_existing_directory(asset_name)
-        imprinted_data = {
-                "representation": repre_entity["id"],
-                "parent": repre_entity["versionId"],
-                "asset_path": asset_path
-            }
         update_filepath = get_representation_path(repre_entity)
         new_asset_name = os.path.basename(update_filepath)
-        if asset_path:
-            destination_path = unreal.Paths.split(asset_path)[0]
         shutil.copy(update_filepath, f"{destination_path}/{new_asset_name}")
 
         container_path = f'{container["namespace"]}/{container["objectName"]}'
         # update metadata
-        unreal_pipeline.imprint(container_path, imprinted_data)
+        unreal_pipeline.imprint(
+            container_path,
+            {
+                "representation": repre_entity["id"],
+                "parent": repre_entity["versionId"],
+            }
+        )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=True

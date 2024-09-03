@@ -141,8 +141,7 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
         representation,
         product_type,
         frameStart,
-        frameEnd,
-        asset_path=None
+        frameEnd
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -159,8 +158,7 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             "frameEnd": frameEnd,
             # TODO these should be probably removed
             "asset": folder_path,
-            "family": product_type,
-            "asset_path": asset_path
+            "family": product_type
         }
 
         imprint(f"{asset_dir}/{container_name}", data)
@@ -216,6 +214,13 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
                                          container_name, loaded_options,
                                          asset_path=asset_path)
 
+        if asset_path:
+            if not unreal.EditorAssetLibrary.does_asset_exist(
+                f"{asset_dir}/{asset_name}"):
+                    unreal.EditorAssetLibrary.rename_asset(
+                        f"{asset_path}/{asset_name}",
+                        f"{asset_dir}/{asset_name}"
+                    )
         product_type = context["product"]["productType"]
         self.imprint(
             folder_path,
@@ -226,7 +231,6 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             product_type,
             folder_entity["attrib"]["frameStart"],
             folder_entity["attrib"]["frameEnd"],
-            asset_path=asset_path
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
@@ -263,7 +267,6 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             f"{self.root}/{folder_name}/{name_version}", suffix=f"_{ext}")
 
         container_name += suffix
-        asset_path = has_asset_existing_directory(asset_name)
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             path = get_representation_path(repre_entity)
             loaded_options = {
@@ -273,8 +276,7 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
                 "frameEnd": container.get("frameEnd", 1)
             }
             self.import_and_containerize(path, asset_dir, asset_name,
-                                         container_name, loaded_options,
-                                         asset_path=asset_path)
+                                         container_name, loaded_options)
 
         self.imprint(
             folder_path,
@@ -284,8 +286,7 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             repre_entity,
             product_type,
             container.get("frameStart", 1),
-            container.get("frameEnd", 1),
-            asset_path=asset_path
+            container.get("frameEnd", 1)
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(

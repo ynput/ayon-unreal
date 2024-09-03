@@ -133,9 +133,17 @@ class YetiLoader(plugin.Loader):
             "product_type": context["product"]["productType"],
             # TODO these shold be probably removed
             "asset": folder_path,
-            "family": context["product"]["productType"],
-            "asset_path": asset_path
+            "family": context["product"]["productType"]
         }
+
+        if asset_path:
+            if not unreal.EditorAssetLibrary.does_asset_exist(
+                f"{asset_dir}/{asset_name}"):
+                    unreal.EditorAssetLibrary.rename_asset(
+                        f"{asset_path}/{asset_name}",
+                        f"{asset_dir}/{asset_name}"
+                    )
+
         unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
@@ -152,25 +160,21 @@ class YetiLoader(plugin.Loader):
         name = container["asset_name"]
         source_path = get_representation_path(repre_entity)
         destination_path = container["namespace"]
-        asset_path = unreal_pipeline.has_asset_existing_directory(name)
-        imprinted_data = {
-                "representation": repre_entity["id"],
-                "parent": repre_entity["versionId"],
-                "asset_path": asset_path
-            }
-        task = None
-        if asset_path:
-            loaded_asset_dir = unreal.Paths.split(asset_path)[0]
-            task = self.get_task(source_path, loaded_asset_dir, name, True)
-        else:
-            task = self.get_task(source_path, destination_path, name, False)
 
-            # do import fbx and replace existing data
+        task = self.get_task(source_path, destination_path, name, False)
+
+        # do import fbx and replace existing data
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
 
         container_path = f'{container["namespace"]}/{container["objectName"]}'
         # update metadata
-        unreal_pipeline.imprint(container_path, imprinted_data)
+        unreal_pipeline.imprint(
+            container_path,
+            {
+                "representation": repre_entity["id"],
+                "parent": repre_entity["versionId"]
+            }
+        )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
             destination_path, recursive=True, include_folder=True

@@ -89,8 +89,7 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         container_name,
         asset_name,
         representation,
-        product_type,
-        asset_path=None
+        product_type
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -105,8 +104,7 @@ class SkeletalMeshFBXLoader(plugin.Loader):
             "product_type": product_type,
             # TODO these should be probably removed
             "asset": folder_path,
-            "family": product_type,
-            "asset_path": asset_path
+            "family": product_type
         }
         imprint(f"{asset_dir}/{container_name}", data)
 
@@ -152,6 +150,13 @@ class SkeletalMeshFBXLoader(plugin.Loader):
                 path, asset_dir, asset_name,
                 container_name, asset_path=asset_path
             )
+        if asset_path:
+            if not unreal.EditorAssetLibrary.does_asset_exist(
+                f"{asset_dir}/{asset_name}"):
+                    unreal.EditorAssetLibrary.rename_asset(
+                        f"{asset_path}/{asset_name}",
+                        f"{asset_dir}/{asset_name}"
+                    )
 
         self.imprint(
             folder_name,
@@ -159,8 +164,7 @@ class SkeletalMeshFBXLoader(plugin.Loader):
             container_name,
             asset_name,
             context["representation"],
-            product_type,
-            asset_path=asset_path
+            product_type
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
@@ -197,11 +201,9 @@ class SkeletalMeshFBXLoader(plugin.Loader):
             f"{self.root}/{folder_name}/{name_version}", suffix=f"_{ext}")
 
         container_name += suffix
-        asset_path = has_asset_existing_directory(asset_name)
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             self.import_and_containerize(
-                path, asset_dir, asset_name, container_name,
-                asset_path=asset_path)
+                path, asset_dir, asset_name, container_name)
 
         self.imprint(
             folder_path, 
@@ -209,8 +211,7 @@ class SkeletalMeshFBXLoader(plugin.Loader):
             container_name,
             asset_name,
             repre_entity,
-            product_type,
-            asset_path=asset_path
+            product_type
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(

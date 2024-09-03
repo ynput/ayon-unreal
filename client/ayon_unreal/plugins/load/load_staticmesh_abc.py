@@ -148,8 +148,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
         container_name,
         asset_name,
         representation,
-        product_type,
-        asset_path=None
+        product_type
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -164,8 +163,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
             "product_type": product_type,
             # TODO these should be probably removed
             "asset": folder_path,
-            "family": product_type,
-            "asset_path": asset_path
+            "family": product_type
         }
         imprint(f"{asset_dir}/{container_name}", data)
 
@@ -224,10 +222,16 @@ class StaticMeshAlembicLoader(plugin.Loader):
             container_name,
             asset_name,
             context["representation"],
-            product_type,
-            asset_path=asset_path
+            product_type
         )
-
+        if asset_path:
+            if not unreal.EditorAssetLibrary.does_asset_exist(
+                f"{asset_dir}/{asset_name}"):
+                    unreal.EditorAssetLibrary.rename_asset(
+                        f"{asset_path}/{asset_name}",
+                        f"{asset_dir}/{asset_name}"
+                    )
+            unreal.log("asset dir")
         asset_content = unreal.EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=False
         )
@@ -262,7 +266,6 @@ class StaticMeshAlembicLoader(plugin.Loader):
             f"{self.root}/{folder_name}/{name_version}", suffix=f"_{ext}")
 
         container_name += suffix
-        asset_path = has_asset_existing_directory(asset_name)
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             path = get_representation_path(repre_entity)
             loaded_options = {
@@ -270,8 +273,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
                 "abc_conversion_preset": self.abc_conversion_preset
             }
             self.import_and_containerize(path, asset_dir, asset_name,
-                                         container_name, loaded_options,
-                                         asset_path=asset_path)
+                                         container_name, loaded_options)
 
         self.imprint(
             folder_path,
@@ -279,8 +281,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
             container_name,
             asset_name,
             repre_entity,
-            product_type,
-            asset_path=asset_path
+            product_type
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
@@ -289,16 +290,6 @@ class StaticMeshAlembicLoader(plugin.Loader):
 
         for a in asset_content:
             unreal.EditorAssetLibrary.save_asset(a)
-        if asset_path:
-            loaded_asset_dir = unreal.Paths.split(asset_path)[0]
-            loaded_asset_name = unreal.Paths.split(asset_path)[1]
-            loaded_asset_content = unreal.EditorAssetLibrary.list_assets(
-                loaded_asset_dir, recursive=True, include_folder=False
-            )
-            for asset in loaded_asset_content:
-                if  unreal.Paths.split(asset)[1] == loaded_asset_name:
-                    unreal.EditorAssetLibrary.load_asset(asset)
-                    unreal.EditorAssetLibrary.get_tag_values(asset)
 
     def remove(self, container):
         path = container["namespace"]

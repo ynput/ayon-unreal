@@ -282,8 +282,7 @@ class AnimationFBXLoader(plugin.Loader):
         container_name,
         asset_name,
         representation,
-        product_type,
-        asset_path=None
+        product_type
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -298,8 +297,7 @@ class AnimationFBXLoader(plugin.Loader):
             "product_type": product_type,
             # TODO these shold be probably removed
             "asset": folder_path,
-            "family": product_type,
-            "asset_path": asset_path
+            "family": product_type
         }
         unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
 
@@ -353,19 +351,24 @@ class AnimationFBXLoader(plugin.Loader):
             master_level = self._import_animation_with_json(
                 path, context, hierarchy,
                 asset_dir, folder_name,
-                asset_name
+                asset_name, asset_path=asset_path
             )
             unreal_pipeline.create_container(
                 container=container_name, path=asset_dir)
-
+        if asset_path:
+            if not unreal.EditorAssetLibrary.does_asset_exist(
+                f"{asset_dir}/{asset_name}"):
+                    unreal.EditorAssetLibrary.rename_asset(
+                        f"{asset_path}/{asset_name}",
+                        f"{asset_dir}/{asset_name}"
+                    )
         self.imprint(
             folder_path,
             asset_dir,
             container_name,
             asset_name,
             context["representation"],
-            product_type,
-            asset_path=asset_path
+            product_type
         )
 
         imported_content = EditorAssetLibrary.list_assets(
@@ -413,12 +416,10 @@ class AnimationFBXLoader(plugin.Loader):
             f"{self.root}/Animations/{folder_name}/{name_version}", suffix=f"_{ext}")
 
         container_name += suffix
-        asset_path = unreal_pipeline.has_asset_existing_directory(asset_name)
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             master_level = self._import_animation_with_json(
                 source_path, context, hierarchy,
-                asset_dir, folder_name,
-                asset_name, asset_path=asset_path
+                asset_dir, folder_name, asset_name
             )
             unreal_pipeline.create_container(
                 container=container_name, path=asset_dir)
@@ -429,8 +430,7 @@ class AnimationFBXLoader(plugin.Loader):
             container_name,
             asset_name,
             repre_entity,
-            product_type,
-            asset_path=asset_path
+            product_type
         )
 
         asset_content = EditorAssetLibrary.list_assets(
