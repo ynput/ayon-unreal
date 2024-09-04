@@ -100,29 +100,16 @@ class CameraLoader(plugin.Loader):
             hierarchy_dir_list.append(hierarchy_dir)
         suffix = "_CON"
         asset_name = f"{folder_name}_{name}" if folder_name else name
-
+        version = context["version"]["version"]
+        # Check if version is hero version and use different name
+        if version < 0:
+            name_version = f"{name}_hero"
+        else:
+            name_version = f"{name}_v{version:03d}"
         tools = unreal.AssetToolsHelpers().get_asset_tools()
 
-        # Create a unique name for the camera directory
-        unique_number = 1
-        if EditorAssetLibrary.does_directory_exist(
-            f"{hierarchy_dir}/{folder_name}"
-        ):
-            asset_content = EditorAssetLibrary.list_assets(
-                f"{root}/{folder_name}", recursive=False, include_folder=True
-            )
-
-            # Get highest number to make a unique name
-            folders = [a for a in asset_content
-                       if a[-1] == "/" and f"{name}_" in a]
-            # Get number from folder name. Splits the string by "_" and
-            # removes the last element (which is a "/").
-            f_numbers = [int(f.split("_")[-1][:-1]) for f in folders]
-            f_numbers.sort()
-            unique_number = f_numbers[-1] + 1 if f_numbers else 1
-
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{hierarchy_dir}/{folder_name}/{name}_{unique_number:02d}", suffix="")
+            f"{hierarchy_dir}/{folder_name}/{name_version}", suffix="")
 
         container_name += suffix
 
@@ -137,11 +124,11 @@ class CameraLoader(plugin.Loader):
             EditorLevelLibrary.new_level(f"{h_dir}/{h_asset}_map")
 
         level = (
-            f"{asset_dir}/{folder_name}_map_camera.{folder_name}_map_camera"
+            f"{asset_dir}/{folder_name}_{name_version}_map_camera.{folder_name}_{name_version}_map_camera"
         )
         if not EditorAssetLibrary.does_asset_exist(level):
             EditorLevelLibrary.new_level(
-                f"{asset_dir}/{folder_name}_map_camera"
+                f"{asset_dir}/{folder_name}_{name_version}_map_camera"
             )
 
             EditorLevelLibrary.load_level(master_level)
@@ -183,7 +170,7 @@ class CameraLoader(plugin.Loader):
         EditorAssetLibrary.make_directory(asset_dir)
 
         cam_seq = tools.create_asset(
-            asset_name=f"{folder_name}_camera",
+            asset_name=f"{folder_name}_{name_version}_camera",
             package_path=asset_dir,
             asset_class=unreal.LevelSequence,
             factory=unreal.LevelSequenceFactoryNew()
