@@ -104,8 +104,7 @@ class AnimationAlembicLoader(plugin.Loader):
         container_name,
         asset_name,
         representation,
-        product_type,
-        asset_path=None
+        product_type
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -120,8 +119,7 @@ class AnimationAlembicLoader(plugin.Loader):
             "product_type": product_type,
             # TODO these should be probably removed
             "asset": folder_path,
-            "family": product_type,
-            "asset_path": asset_path
+            "family": product_type
         }
         unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
 
@@ -193,12 +191,10 @@ class AnimationAlembicLoader(plugin.Loader):
                 container=container_name, path=asset_dir)
 
         if asset_path:
-            if not unreal.EditorAssetLibrary.does_asset_exist(
-                f"{asset_dir}/{asset_name}"):
-                    unreal.EditorAssetLibrary.rename_asset(
-                        f"{asset_path}/{asset_name}",
-                        f"{asset_dir}/{asset_name}"
-                    )
+            unreal.EditorAssetLibrary.rename_asset(
+                f"{asset_path}",
+                f"{asset_dir}/{asset_name}.{asset_name}"
+            )
 
         self.imprint(
             folder_path,

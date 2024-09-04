@@ -356,12 +356,10 @@ class AnimationFBXLoader(plugin.Loader):
             unreal_pipeline.create_container(
                 container=container_name, path=asset_dir)
         if asset_path:
-            if not unreal.EditorAssetLibrary.does_asset_exist(
-                f"{asset_dir}/{asset_name}"):
-                    unreal.EditorAssetLibrary.rename_asset(
-                        f"{asset_path}/{asset_name}",
-                        f"{asset_dir}/{asset_name}"
-                    )
+            unreal.EditorAssetLibrary.rename_asset(
+                f"{asset_path}",
+                f"{asset_dir}/{asset_name}.{asset_name}"
+            )
         self.imprint(
             folder_path,
             asset_dir,

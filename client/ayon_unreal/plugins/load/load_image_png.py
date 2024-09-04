@@ -125,8 +125,7 @@ class TexturePNGLoader(plugin.Loader):
             container_name,
             asset_name,
             repre_entity,
-            product_type,
-            asset_path=None
+            product_type
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -141,8 +140,7 @@ class TexturePNGLoader(plugin.Loader):
             "product_type": product_type,
             # TODO these shold be probably removed
             "asset": folder_path,
-            "family": product_type,
-            "asset_path": asset_path
+            "family": product_type
         }
         imprint(f"{asset_dir}/{container_name}", data)
 
@@ -191,14 +189,18 @@ class TexturePNGLoader(plugin.Loader):
                 container_name, asset_path=asset_path
             )
 
+        if asset_path:
+            unreal.EditorAssetLibrary.rename_asset(
+                f"{asset_path}",
+                f"{asset_dir}/{asset_name}.{asset_name}"
+            )
         self.imprint(
             folder_path,
             asset_dir,
             container_name,
             asset_name,
             context["representation"],
-            context["product"]["productType"],
-            asset_path=asset_path
+            context["product"]["productType"]
         )
 
         asset_contents = unreal.EditorAssetLibrary.list_assets(
@@ -249,8 +251,7 @@ class TexturePNGLoader(plugin.Loader):
             container_name,
             asset_name,
             repre_entity,
-            product_type,
-            asset_path=asset_path
+            product_type
         )
 
         asset_contents = unreal.EditorAssetLibrary.list_assets(

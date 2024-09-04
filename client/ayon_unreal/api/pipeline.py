@@ -943,5 +943,7 @@ def has_asset_existing_directory(asset_name):
     all_assets = asset_registry.get_assets_by_path('/Game', recursive=True)
     for game_asset in all_assets:
         if game_asset.asset_name == asset_name:
-            return game_asset.package_path
+            unreal.log("game asset")
+            unreal.log(game_asset.get_asset().get_path_name())
+            return game_asset.get_asset().get_path_name()
     return None

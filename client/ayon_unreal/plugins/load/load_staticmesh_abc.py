@@ -225,13 +225,10 @@ class StaticMeshAlembicLoader(plugin.Loader):
             product_type
         )
         if asset_path:
-            if not unreal.EditorAssetLibrary.does_asset_exist(
-                f"{asset_dir}/{asset_name}"):
-                    unreal.EditorAssetLibrary.rename_asset(
-                        f"{asset_path}/{asset_name}",
-                        f"{asset_dir}/{asset_name}"
-                    )
-            unreal.log("asset dir")
+            unreal.EditorAssetLibrary.rename_asset(
+                f"{asset_path}",
+                f"{asset_dir}/{asset_name}.{asset_name}"
+            )
         asset_content = unreal.EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=False
         )

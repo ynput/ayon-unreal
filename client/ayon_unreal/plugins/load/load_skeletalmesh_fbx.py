@@ -151,12 +151,10 @@ class SkeletalMeshFBXLoader(plugin.Loader):
                 container_name, asset_path=asset_path
             )
         if asset_path:
-            if not unreal.EditorAssetLibrary.does_asset_exist(
-                f"{asset_dir}/{asset_name}"):
-                    unreal.EditorAssetLibrary.rename_asset(
-                        f"{asset_path}/{asset_name}",
-                        f"{asset_dir}/{asset_name}"
-                    )
+            unreal.EditorAssetLibrary.rename_asset(
+                f"{asset_path}",
+                f"{asset_dir}/{asset_name}.{asset_name}"
+            )
 
         self.imprint(
             folder_name,

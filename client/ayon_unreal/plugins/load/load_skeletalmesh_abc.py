@@ -215,12 +215,11 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
                                          asset_path=asset_path)
 
         if asset_path:
-            if not unreal.EditorAssetLibrary.does_asset_exist(
-                f"{asset_dir}/{asset_name}"):
-                    unreal.EditorAssetLibrary.rename_asset(
-                        f"{asset_path}/{asset_name}",
-                        f"{asset_dir}/{asset_name}"
-                    )
+            unreal.EditorAssetLibrary.rename_asset(
+                f"{asset_path}",
+                f"{asset_dir}/{asset_name}.{asset_name}"
+            )
+
         product_type = context["product"]["productType"]
         self.imprint(
             folder_path,
