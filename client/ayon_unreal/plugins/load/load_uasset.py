@@ -94,12 +94,10 @@ class UAssetLoader(plugin.Loader):
         }
 
         if asset_path:
-            if not unreal.EditorAssetLibrary.does_asset_exist(
-                f"{asset_dir}/{asset_name}"):
-                    unreal.EditorAssetLibrary.rename_asset(
-                        f"{asset_path}/{asset_name}",
-                        f"{asset_dir}/{asset_name}"
-                    )
+            unreal.EditorAssetLibrary.rename_asset(
+                f"{asset_path}",
+                f"{asset_dir}/{asset_name}.{asset_name}"
+            )
 
         unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
 
