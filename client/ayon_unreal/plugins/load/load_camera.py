@@ -124,11 +124,11 @@ class CameraLoader(plugin.Loader):
             EditorLevelLibrary.new_level(f"{h_dir}/{h_asset}_map")
 
         level = (
-            f"{asset_dir}/{folder_name}_map_camera.{folder_name}_map_camera"
+            f"{asset_dir}/{folder_name}_{name_version}_map_camera.{folder_name}_{name_version}_map_camera"
         )
         if not EditorAssetLibrary.does_asset_exist(level):
             EditorLevelLibrary.new_level(
-                f"{asset_dir}/{folder_name}_map_camera"
+                f"{asset_dir}/{folder_name}_{name_version}_map_camera"
             )
 
             EditorLevelLibrary.load_level(master_level)
@@ -170,7 +170,7 @@ class CameraLoader(plugin.Loader):
         EditorAssetLibrary.make_directory(asset_dir)
 
         cam_seq = tools.create_asset(
-            asset_name=f"{folder_name}_camera",
+            asset_name=f"{folder_name}_{name_version}_camera",
             package_path=asset_dir,
             asset_class=unreal.LevelSequence,
             factory=unreal.LevelSequenceFactoryNew()
