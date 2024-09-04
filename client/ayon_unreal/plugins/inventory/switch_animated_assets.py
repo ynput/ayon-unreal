@@ -1,23 +1,8 @@
 import unreal
-import json
 from pathlib import Path
-from ayon_api import get_representation_by_id
 
-from ayon_core.pipeline import (
-    InventoryAction,
-    get_current_project_name,
-    get_representation_path
-)
+from ayon_core.pipeline import InventoryAction
 
-
-def read_representation_data(lib_path):
-    representation_ids = []
-
-    with open(lib_path, "r") as fp:
-        data = json.load(fp)
-    for element in data:
-        representation_ids.append(element["representation"])
-    return representation_ids
 
 
 class SwitchAnimatedAssets(InventoryAction):
@@ -53,7 +38,7 @@ class SwitchAnimatedAssets(InventoryAction):
             asset_content = unreal.EditorAssetLibrary.list_assets(
                 anim_path, recursive=False, include_folder=False
             )
-
+            bindings = []
             animation = None
 
             for a in asset_content:
@@ -66,53 +51,53 @@ class SwitchAnimatedAssets(InventoryAction):
                     break
 
             if sequence:
-                # Add animation to the sequencer
-
                 ar = unreal.AssetRegistryHelpers.get_asset_registry()
-                tracks = sequence.get_tracks()
-                seq_track = None
-                for track in tracks:
-                    if str(track).count("MovieSceneSkeletalAnimationTrack"):
-                        seq_track = track
+                # Add animation to the sequencer
+                binding = None
+                for p in sequence.get_possessables():
+                    if p.get_possessed_object_class().get_name() == "SkeletalMeshActor":
+                        binding = p
+                        break
+                bindings.append(binding)
+                anim_section = None
+                for binding in bindings:
+                    tracks = binding.get_tracks()
+                    track = None
+                    track = tracks[0] if tracks else binding.add_track(
+                        unreal.MovieSceneSkeletalAnimationTrack)
+
+                    sections = track.get_sections()
+
+                    if not sections:
+                        anim_section = track.add_section()
                     else:
-                        seq_track = sequence.add_track(
-                    unreal.MovieSceneSkeletalAnimationTrack)
+                        anim_section = sections[0]
+                        sec_params = anim_section.get_editor_property('params')
+                        curr_anim = sec_params.get_editor_property('animation')
 
-                sections = seq_track.get_sections()
-                unreal.log(sections)
-                unreal.log(sections)
-                section = None
-                if not sections:
-                    section = seq_track.add_section()
-                else:
-                    section = sections[0]
+                        if curr_anim:
+                            # Checks if the animation path has a container.
+                            # If it does, it means that the animation is
+                            # already in the sequencer.
+                            anim_path = str(Path(
+                                curr_anim.get_path_name()).parent
+                            ).replace('\\', '/')
 
-                    sec_params = section.get_editor_property('params')
-                    curr_anim = sec_params.get_editor_property('animation')
+                            _filter = unreal.ARFilter(
+                                class_names=["AyonAssetContainer"],
+                                package_paths=[anim_path],
+                                recursive_paths=False)
+                            containers = ar.get_assets(_filter)
 
-                    if curr_anim:
-                        # Checks if the animation path has a container.
-                        # If it does, it means that the animation is
-                        # already in the sequencer.
-                        anim_path = str(Path(
-                            curr_anim.get_path_name()).parent
-                        ).replace('\\', '/')
+                            if len(containers) > 0:
+                                return
 
-                        _filter = unreal.ARFilter(
-                            class_names=["AyonAssetContainer"],
-                            package_paths=[anim_path],
-                            recursive_paths=False)
-                        containers = ar.get_assets(_filter)
-
-                        if len(containers) > 0:
-                            return
-
-                section.set_range(
+                anim_section.set_range(
                     sequence.get_playback_start(),
                     sequence.get_playback_end())
-                sec_params = section.get_editor_property('params')
-                sec_params.set_editor_property('animation', animation)
 
+                sec_params = anim_section.get_editor_property('params')
+                sec_params.set_editor_property('animation', animation)
 
     def get_level_sequence(self, containers):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
