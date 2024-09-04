@@ -142,8 +142,9 @@ class AnimationAlembicLoader(plugin.Loader):
 
         # Create directory for asset and ayon container
         folder_entity = context["folder"]
-        folder_name = context["folder"]["name"]
         folder_path = context["folder"]["path"]
+        hierarchy = folder_path.lstrip("/").split("/")
+        folder_name = hierarchy.pop(-1)
         product_type = context["product"]["productType"]
         suffix = "_CON"
         path = self.filepath_from_context(context)
@@ -215,7 +216,8 @@ class AnimationAlembicLoader(plugin.Loader):
 
     def update(self, container, context):
         folder_path = context["folder"]["path"]
-        folder_name = context["folder"]["name"]
+        hierarchy = folder_path.lstrip("/").split("/")
+        folder_name = hierarchy.pop(-1)
         product_name = context["product"]["name"]
         product_type = context["product"]["productType"]
         version = context["version"]["version"]
