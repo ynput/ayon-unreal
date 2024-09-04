@@ -1,5 +1,6 @@
 import unreal
 import json
+from pathlib import Path
 from ayon_api import get_representation_by_id
 
 from ayon_core.pipeline import (
@@ -29,53 +30,101 @@ class SwitchAnimatedAssets(InventoryAction):
     order = 1
 
     def process(self, containers):
-        allowed_families = ["animation", "layout", "pointcache"]
-        ar = unreal.AssetRegistryHelpers.get_asset_registry()
-        container_dir = None
+        allowed_families = ["animation", "layout"]
+        sequence = None
         for container in containers:
             container_dir = container.get("namespace")
             if container.get("family") not in allowed_families:
                 unreal.log_warning(
                     f"Container {container_dir} is not supported.")
                 continue
-            sa_containers = []
-            if container.get("family") == "layout":
-                project_name = get_current_project_name()
-                repre_entity = get_representation_by_id(
-                    project_name, container["representation"])
-                path = get_representation_path(repre_entity)
-                representation_ids = read_representation_data(path)
-                for repre_id in representation_ids:
-                    model_repre_entity = get_representation_by_id(
-                        project_name, repre_id)
-                    folder_name = model_repre_entity["context"]["folder"]["name"]
-                    subset_name = model_repre_entity["context"]["subset"]
-                    # find name of asset_modelMain
-                    repre_entity_folder = f"{folder_name}_{subset_name}"
-                    sa_containers.append(repre_entity_folder)
-            transform_list = []
-            actorsList = unreal.EditorLevelLibrary.get_all_level_actors()
-            for name in sa_containers:
-                for actor in actorsList:
-                    if name in actor.get_actor_label():
-                        transform_list.append({"transform": actor.get_actor_location()})
-                        unreal.EditorLevelLibrary.destroy_actor(actor)
+        sequence = self.get_level_sequence(containers)
+        if not sequence:
+            raise RuntimeError(
+                "No level sequence found in layout asset directory")
+        self._import_animation(containers, sequence)
 
+
+    def _import_animation(self, containers, sequence):
+        anim_path = next((
+            container.get("namespace") for container in containers
+            if container.get("family") == "animation"), None)
+        if anim_path:
+            asset_content = unreal.EditorAssetLibrary.list_assets(
+                anim_path, recursive=False, include_folder=False
+            )
+
+            animation = None
+
+            for a in asset_content:
+                unreal.EditorAssetLibrary.save_asset(a)
+                imported_asset_data = unreal.EditorAssetLibrary.find_asset_data(a)
+                imported_asset = unreal.AssetRegistryHelpers.get_asset(
+                    imported_asset_data)
+                if imported_asset.__class__ == unreal.AnimSequence:
+                    animation = imported_asset
+                    break
+
+            if sequence:
+                # Add animation to the sequencer
+
+                ar = unreal.AssetRegistryHelpers.get_asset_registry()
+                tracks = sequence.get_tracks()
+                seq_track = None
+                for track in tracks:
+                    if str(track).count("MovieSceneSkeletalAnimationTrack"):
+                        seq_track = track
+                    else:
+                        seq_track = sequence.add_track(
+                    unreal.MovieSceneSkeletalAnimationTrack)
+
+                sections = seq_track.get_sections()
+                unreal.log(sections)
+                unreal.log(sections)
+                section = None
+                if not sections:
+                    section = seq_track.add_section()
+                else:
+                    section = sections[0]
+
+                    sec_params = section.get_editor_property('params')
+                    curr_anim = sec_params.get_editor_property('animation')
+
+                    if curr_anim:
+                        # Checks if the animation path has a container.
+                        # If it does, it means that the animation is
+                        # already in the sequencer.
+                        anim_path = str(Path(
+                            curr_anim.get_path_name()).parent
+                        ).replace('\\', '/')
+
+                        _filter = unreal.ARFilter(
+                            class_names=["AyonAssetContainer"],
+                            package_paths=[anim_path],
+                            recursive_paths=False)
+                        containers = ar.get_assets(_filter)
+
+                        if len(containers) > 0:
+                            return
+
+                section.set_range(
+                    sequence.get_playback_start(),
+                    sequence.get_playback_end())
+                sec_params = section.get_editor_property('params')
+                sec_params.set_editor_property('animation', animation)
+
+
+    def get_level_sequence(self, containers):
+        ar = unreal.AssetRegistryHelpers.get_asset_registry()
+        layout_path = next((
+            container.get("namespace") for container in containers
+            if container.get("family") == "layout"), None)
+        if not layout_path:
+            return None
         asset_content = unreal.EditorAssetLibrary.list_assets(
-            container_dir, recursive=True, include_folder=False
+            layout_path, recursive=False, include_folder=False
         )
         for asset in asset_content:
-            obj = ar.get_asset_by_object_path(asset).get_asset()
-            if obj.get_class().get_name() == "SkeletalMesh":
-                for transform_dict in transform_list:
-                    t = transform_dict["transform"]
-                    actor = unreal.EditorLevelLibrary.spawn_actor_from_object(
-                        obj, t.translation
-                    )
-                    actor.set_actor_rotation(t.rotation.rotator(), False)
-                    actor.set_actor_scale3d(t.scale3d)
-                    skm_comp = actor.get_editor_property(
-                        'skeletal_mesh_component')
-                    skm_comp.set_bounds_scale(10.0)
-
-            unreal.EditorLevelLibrary.save_current_level()
+            data = ar.get_asset_by_object_path(asset)
+            if data.asset_class_path.asset_name == "LevelSequence":
+                return data.get_asset()
