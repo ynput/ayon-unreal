@@ -33,6 +33,12 @@ class ConnectAnimationToLevelSequence(InventoryAction):
         anim_path = next((
             container.get("namespace") for container in containers
             if container.get("family") == "animation"), None)
+        frameStart = next((
+            int(container.get("frameStart")) for container in containers
+            if container.get("family") == "animation"), None)
+        frameEnd = next((
+            int(container.get("frameEnd")) for container in containers
+            if container.get("family") == "animation"), None)
         if anim_path:
             asset_content = unreal.EditorAssetLibrary.list_assets(
                 anim_path, recursive=False, include_folder=False
@@ -70,11 +76,13 @@ class ConnectAnimationToLevelSequence(InventoryAction):
                 params = unreal.MovieSceneSkeletalAnimationParams()
                 params.set_editor_property('Animation', animation)
                 anim_section.set_editor_property('Params', params)
-                for container in containers:
-                    anim_section.set_range(
-                        int(container.get("frameStart")),
-                        int(container.get("frameEnd"))
-                    )
+                display_rate = sequence.get_display_rate()
+                fps = float(display_rate.numerator) / float(display_rate.denominator)
+                anim_section.set_range(frameStart, frameEnd)
+                sequence.set_playback_start(frameStart)
+                sequence.set_playback_end(frameEnd)
+                sequence.set_work_range_start(frameStart / fps)
+                sequence.set_work_range_end(frameEnd / fps)
 
     def get_level_sequence(self, containers):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()

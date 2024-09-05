@@ -301,6 +301,7 @@ class AnimationFBXLoader(plugin.Loader):
             "frameStart": folder_entity["attrib"]["frameStart"],
             "frameEnd": folder_entity["attrib"]["frameEnd"]
         }
+        unreal.log(data)
         unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
 
     def load(self, context, name, namespace, options=None):
@@ -396,6 +397,7 @@ class AnimationFBXLoader(plugin.Loader):
         product_type = context["product"]["productType"]
         version = context["version"]["version"]
         repre_entity = context["representation"]
+        folder_entity = context["folder"]
 
         suffix = "_CON"
         source_path = get_representation_path(repre_entity)
@@ -430,7 +432,8 @@ class AnimationFBXLoader(plugin.Loader):
             container_name,
             asset_name,
             repre_entity,
-            product_type
+            product_type,
+            folder_entity
         )
 
         asset_content = EditorAssetLibrary.list_assets(
