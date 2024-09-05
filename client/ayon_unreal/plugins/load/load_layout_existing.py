@@ -125,10 +125,16 @@ class ExistingLayoutLoader(plugin.Loader):
 
         transform = lasset.get('transform_matrix')
         basis = lasset.get('basis')
+        rotation = lasset.get("rotation", {})
 
         computed_transform = self._transform_from_basis(transform, basis)
 
         actor.set_actor_transform(computed_transform, False, True)
+        if rotation:
+            actor_rotation = unreal.Rotator(
+                roll=rotation["x"], pitch=rotation["z"],
+                yaw=-rotation["y"])
+            actor.set_actor_rotation(actor_rotation, False)
 
     @staticmethod
     def _get_fbx_loader(loaders, family):
@@ -257,8 +263,8 @@ class ExistingLayoutLoader(plugin.Loader):
             layout_data.append((repre_entity, element))
             version_ids.add(repre_entity["versionId"])
 
-        repre_parents_by_id = ayon_api.get_representation_parents(
-            project_name, repre_entities_by_id.keys()
+        repre_parents_by_id = ayon_api.get_representations_parents(
+            project_name, list(repre_entities_by_id.keys())
         )
 
         # Prequery valid repre documents for all elements at once
@@ -295,6 +301,7 @@ class ExistingLayoutLoader(plugin.Loader):
 
                 if (not path.name or
                         path.name not in repre_entity["attrib"]["path"]):
+                    unreal.log("Path is not found in representation entity")
                     continue
 
                 actor.set_actor_label(lasset.get('instance_name'))
@@ -315,11 +322,15 @@ class ExistingLayoutLoader(plugin.Loader):
                 # Set the transform for the actor.
                 transform = lasset.get('transform_matrix')
                 basis = lasset.get('basis')
-
+                rotation = lasset.get("rotation", {})
                 computed_transform = self._transform_from_basis(
                     transform, basis)
                 actor.set_actor_transform(computed_transform, False, True)
-
+                if rotation:
+                    actor_rotation = unreal.Rotator(
+                        roll=rotation["x"], pitch=rotation["z"],
+                        yaw=-rotation["y"])
+                    actor.set_actor_rotation(actor_rotation, False)
                 actors_matched.append(actor)
                 found = True
                 break
@@ -391,12 +402,28 @@ class ExistingLayoutLoader(plugin.Loader):
     def load(self, context, name, namespace, options):
         print("Loading Layout and Match Assets")
 
-        folder_name = context["folder"]["name"]
-        folder_path = context["folder"]["path"]
+        # Create directory for asset and Ayon container
+        folder_entity = context["folder"]
+        folder_path = folder_entity["path"]
+        hierarchy = folder_path.lstrip("/").split("/")
+        # Remove folder name
+        folder_name = hierarchy.pop(-1)
         product_type = context["product"]["productType"]
-        asset_name = f"{folder_name}_{name}" if folder_name else name
-        container_name = f"{folder_name}_{name}_CON"
+        root = self.ASSET_ROOT
+        hierarchy_dir = root
+        hierarchy_dir_list = []
+        for h in hierarchy:
+            hierarchy_dir = f"{hierarchy_dir}/{h}"
+            hierarchy_dir_list.append(hierarchy_dir)
 
+        suffix = "_CON"
+        asset_name = f"{folder_name}_{name}" if folder_name else name
+
+        tools = unreal.AssetToolsHelpers().get_asset_tools()
+        asset_dir, container_name = tools.create_unique_asset_name(
+            "{}/{}/{}".format(hierarchy_dir, folder_name, name),
+            suffix=""
+        )
         curr_level = self._get_current_level()
 
         if not curr_level:
@@ -405,10 +432,13 @@ class ExistingLayoutLoader(plugin.Loader):
         project_name = context["project"]["name"]
         path = self.filepath_from_context(context)
         containers = self._process(path, project_name)
-
         curr_level_path = Path(
             curr_level.get_outer().get_path_name()).parent.as_posix()
-
+        if curr_level_path == "/Temp":
+            curr_level_path = asset_dir
+        #TODO: make sure curr_level_path is not a temp path,
+        # create new level for layout level
+        container_name += suffix
         if not unreal.EditorAssetLibrary.does_asset_exist(
             f"{curr_level_path}/{container_name}"
         ):

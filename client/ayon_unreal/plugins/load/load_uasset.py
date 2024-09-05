@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Load UAsset."""
 from pathlib import Path
+import os
 import shutil
 
 from ayon_core.pipeline import (
@@ -45,7 +46,6 @@ class UAssetLoader(plugin.Loader):
         folder_path = context["folder"]["path"]
         folder_name = context["folder"]["name"]
         suffix = "_CON"
-        asset_name = f"{folder_name}_{name}" if folder_name else f"{name}"
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             f"{root}/{folder_name}/{name}", suffix=""
@@ -66,9 +66,10 @@ class UAssetLoader(plugin.Loader):
             "/Game", Path(unreal.Paths.project_content_dir()).as_posix(), 1)
 
         path = self.filepath_from_context(context)
+        asset_name = os.path.basename(path)
         shutil.copy(
             path,
-            f"{destination_path}/{name}_{unique_number:02}.{self.extension}")
+            f"{destination_path}/{asset_name}")
 
         # Create Asset Container
         unreal_pipeline.create_container(
@@ -106,10 +107,7 @@ class UAssetLoader(plugin.Loader):
 
         asset_dir = container["namespace"]
 
-        product_name = context["product"]["name"]
         repre_entity = context["representation"]
-
-        unique_number = container["container_name"].split("_")[-2]
 
         destination_path = asset_dir.replace(
             "/Game", Path(unreal.Paths.project_content_dir()).as_posix(), 1)
@@ -124,11 +122,8 @@ class UAssetLoader(plugin.Loader):
                 unreal.EditorAssetLibrary.delete_asset(asset)
 
         update_filepath = get_representation_path(repre_entity)
-
-        shutil.copy(
-            update_filepath,
-            f"{destination_path}/{product_name}_{unique_number}.{self.extension}"
-        )
+        new_asset_name = os.path.basename(update_filepath)
+        shutil.copy(update_filepath, f"{destination_path}/{new_asset_name}")
 
         container_path = f'{container["namespace"]}/{container["objectName"]}'
         # update metadata
@@ -149,16 +144,8 @@ class UAssetLoader(plugin.Loader):
 
     def remove(self, container):
         path = container["namespace"]
-        parent_path = Path(path).parent.as_posix()
-
-        unreal.EditorAssetLibrary.delete_directory(path)
-
-        asset_content = unreal.EditorAssetLibrary.list_assets(
-            parent_path, recursive=False
-        )
-
-        if len(asset_content) == 0:
-            unreal.EditorAssetLibrary.delete_directory(parent_path)
+        if unreal.EditorAssetLibrary.does_directory_exist(path):
+            unreal.EditorAssetLibrary.delete_directory(path)
 
 
 class UMapLoader(UAssetLoader):

@@ -1,34 +1,26 @@
-import os
 from pathlib import Path
 
 import unreal
-import pyblish.api
 
 from ayon_core.pipeline import get_current_project_name
 from ayon_core.pipeline import Anatomy
 from ayon_unreal.api import pipeline
+import pyblish.api
 
 
-class CollectRenderInstances(pyblish.api.InstancePlugin):
-    """ Marks instance to be rendered locally or on the farm
+class CollectRenderFiles(pyblish.api.InstancePlugin):
+    """ This collector will try to find all the rendered frames.
 
+    Secondary step after local rendering. Should collect all rendered files and
+    add them as representation.
     """
     order = pyblish.api.CollectorOrder
     hosts = ["unreal"]
-    families = ["render"]
-    label = "Collect Render Instances"
+    families = ["render.local"]
+    label = "Collect Render Files"
 
     def process(self, instance):
-        self.log.debug("Preparing Rendering Instances")
-
-        render_target = (instance.data["creator_attributes"].
-                         get("render_target"))
-        if render_target == "farm":
-            instance.data["families"].append("render.farm")
-            instance.data["farm"] = True
-        else:
-            instance.data["families"].append("render.local")
-
+        self.log.debug("Collecting rendered files")
         context = instance.context
 
         data = instance.data
@@ -74,7 +66,7 @@ class CollectRenderInstances(pyblish.api.InstancePlugin):
 
                     new_data = new_instance.data
 
-                    new_data["folderPath"] = instance.data["folderPath"]
+                    new_data["folderPath"] = f"/{s.get('output')}"
                     new_data["setMembers"] = seq_name
                     new_data["productName"] = new_product_name
                     new_data["productType"] = product_type
@@ -82,7 +74,7 @@ class CollectRenderInstances(pyblish.api.InstancePlugin):
                     new_data["families"] = [product_type, "review"]
                     new_data["parent"] = data.get("parent")
                     new_data["level"] = data.get("level")
-                    new_data["output"] = s['output']
+                    new_data["output"] = s.get('output')
                     new_data["fps"] = seq.get_display_rate().numerator
                     new_data["frameStart"] = int(s.get('frame_range')[0])
                     new_data["frameEnd"] = int(s.get('frame_range')[1])
@@ -103,11 +95,12 @@ class CollectRenderInstances(pyblish.api.InstancePlugin):
 
                     render_dir = f"{root}/{project}/{s.get('output')}"
                     render_path = Path(render_dir)
-                    self.log.debug(f"Collecting render path: {render_path}")
-                    frames = [str(x) for x in render_path.iterdir() if x.is_file()]
-                    frames = pipeline.get_sequence(frames)
-                    image_format = next((os.path.splitext(x)[-1].lstrip(".")
-                                         for x in frames), "exr")
+
+                    frames = []
+
+                    for x in render_path.iterdir():
+                        if x.is_file() and x.suffix == '.png':
+                            frames.append(str(x.name))
 
                     if "representations" not in new_instance.data:
                         new_instance.data["representations"] = []
@@ -115,8 +108,8 @@ class CollectRenderInstances(pyblish.api.InstancePlugin):
                     repr = {
                         'frameStart': instance.data["frameStart"],
                         'frameEnd': instance.data["frameEnd"],
-                        'name': image_format,
-                        'ext': image_format,
+                        'name': 'png',
+                        'ext': 'png',
                         'files': frames,
                         'stagingDir': render_dir,
                         'tags': ['review']
