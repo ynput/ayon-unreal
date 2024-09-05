@@ -281,7 +281,8 @@ class AnimationFBXLoader(plugin.Loader):
         container_name,
         asset_name,
         representation,
-        product_type
+        product_type,
+        folder_entity
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -296,7 +297,9 @@ class AnimationFBXLoader(plugin.Loader):
             "product_type": product_type,
             # TODO these shold be probably removed
             "asset": folder_path,
-            "family": product_type
+            "family": product_type,
+            "frameStart": folder_entity["attrib"]["frameStart"],
+            "frameEnd": folder_entity["attrib"]["frameEnd"]
         }
         unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
 
@@ -323,7 +326,8 @@ class AnimationFBXLoader(plugin.Loader):
             list(str): list of container content
         """
         # Create directory for asset and Ayon container
-        folder_path = context["folder"]["path"]
+        folder_entity = context["folder"]
+        folder_path = folder_entity["path"]
         hierarchy = folder_path.lstrip("/").split("/")
         folder_name = hierarchy.pop(-1)
         product_type = context["product"]["productType"]
@@ -361,7 +365,8 @@ class AnimationFBXLoader(plugin.Loader):
             container_name,
             asset_name,
             context["representation"],
-            product_type
+            product_type,
+            folder_entity
         )
 
         imported_content = EditorAssetLibrary.list_assets(

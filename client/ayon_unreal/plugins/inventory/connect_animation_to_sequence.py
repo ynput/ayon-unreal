@@ -1,15 +1,14 @@
 import unreal
-from pathlib import Path
-
 from ayon_core.pipeline import InventoryAction
 
 
-
-class SwitchAnimatedAssets(InventoryAction):
-    """Switch Animated Assets from the static ones.
+class ConnectAnimationToLevelSequence(InventoryAction):
+    """Add Animation Sequence to Level Sequence when the skeletal Mesh
+    already binds into the Sequence. Applied only for animation and
+    layout product type
     """
 
-    label = "Switch animated assets"
+    label = "Connect Animation to Level Sequence"
     icon = "arrow-up"
     color = "red"
     order = 1
@@ -28,7 +27,7 @@ class SwitchAnimatedAssets(InventoryAction):
             raise RuntimeError(
                 "No level sequence found in layout asset directory")
         self._import_animation(containers, sequence)
-
+        self.save_layout_asset(containers)
 
     def _import_animation(self, containers, sequence):
         anim_path = next((
@@ -41,17 +40,13 @@ class SwitchAnimatedAssets(InventoryAction):
             bindings = []
             animation = None
 
+            ar = unreal.AssetRegistryHelpers.get_asset_registry()
             for a in asset_content:
-                unreal.EditorAssetLibrary.save_asset(a)
-                imported_asset_data = unreal.EditorAssetLibrary.find_asset_data(a)
-                imported_asset = unreal.AssetRegistryHelpers.get_asset(
-                    imported_asset_data)
-                if imported_asset.__class__ == unreal.AnimSequence:
-                    animation = imported_asset
+                imported_asset_data = ar.get_asset_by_object_path(a).get_asset()
+                if imported_asset_data.get_class().get_name() == "AnimSequence":
+                    animation = imported_asset_data
                     break
-
             if sequence:
-                ar = unreal.AssetRegistryHelpers.get_asset_registry()
                 # Add animation to the sequencer
                 binding = None
                 for p in sequence.get_possessables():
@@ -67,37 +62,19 @@ class SwitchAnimatedAssets(InventoryAction):
                         unreal.MovieSceneSkeletalAnimationTrack)
 
                     sections = track.get_sections()
-
                     if not sections:
                         anim_section = track.add_section()
                     else:
                         anim_section = sections[0]
-                        sec_params = anim_section.get_editor_property('params')
-                        curr_anim = sec_params.get_editor_property('animation')
 
-                        if curr_anim:
-                            # Checks if the animation path has a container.
-                            # If it does, it means that the animation is
-                            # already in the sequencer.
-                            anim_path = str(Path(
-                                curr_anim.get_path_name()).parent
-                            ).replace('\\', '/')
-
-                            _filter = unreal.ARFilter(
-                                class_names=["AyonAssetContainer"],
-                                package_paths=[anim_path],
-                                recursive_paths=False)
-                            containers = ar.get_assets(_filter)
-
-                            if len(containers) > 0:
-                                return
-
-                anim_section.set_range(
-                    sequence.get_playback_start(),
-                    sequence.get_playback_end())
-
-                sec_params = anim_section.get_editor_property('params')
-                sec_params.set_editor_property('animation', animation)
+                params = unreal.MovieSceneSkeletalAnimationParams()
+                params.set_editor_property('Animation', animation)
+                anim_section.set_editor_property('Params', params)
+                for container in containers:
+                    anim_section.set_range(
+                        int(container.get("frameStart")),
+                        int(container.get("frameEnd"))
+                    )
 
     def get_level_sequence(self, containers):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
@@ -113,3 +90,13 @@ class SwitchAnimatedAssets(InventoryAction):
             data = ar.get_asset_by_object_path(asset)
             if data.asset_class_path.asset_name == "LevelSequence":
                 return data.get_asset()
+
+    def save_layout_asset(self, containers):
+        layout_path = next((
+            container.get("namespace") for container in containers
+            if container.get("family") == "layout"), None)
+        asset_content = unreal.EditorAssetLibrary.list_assets(
+            layout_path, recursive=False, include_folder=False
+        )
+        for asset in asset_content:
+            unreal.EditorAssetLibrary.save_asset(asset)
