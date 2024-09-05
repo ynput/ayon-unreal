@@ -21,7 +21,7 @@ class AnimationAlembicLoader(plugin.Loader):
     icon = "cube"
     color = "orange"
     abc_conversion_preset = "maya"
-    root = unreal_pipeline.AYON_ASSET_DIR
+    root = "/Game/Ayon"
 
     @classmethod
     def apply_settings(cls, project_settings):
