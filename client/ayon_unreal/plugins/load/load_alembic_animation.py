@@ -21,7 +21,7 @@ class AnimationAlembicLoader(plugin.Loader):
     icon = "cube"
     color = "orange"
     abc_conversion_preset = "maya"
-    root = unreal_pipeline.AYON_ASSET_DIR
+    root = "/Game/Ayon"
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -142,8 +142,9 @@ class AnimationAlembicLoader(plugin.Loader):
 
         # Create directory for asset and ayon container
         folder_entity = context["folder"]
-        folder_name = context["folder"]["name"]
         folder_path = context["folder"]["path"]
+        hierarchy = folder_path.lstrip("/").split("/")
+        folder_name = hierarchy.pop(-1)
         product_type = context["product"]["productType"]
         suffix = "_CON"
         path = self.filepath_from_context(context)
@@ -161,14 +162,15 @@ class AnimationAlembicLoader(plugin.Loader):
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{self.root}/{folder_name}/{name_version}", suffix=f"_{ext}")
+            f"{self.root}/Animations/{folder_name}/{name_version}", suffix=f"_{ext}")
 
         container_name += suffix
 
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
             loaded_options = {
-                "abc_conversion_preset": options.get("abc_conversion_preset", self.abc_conversion_preset),
+                "abc_conversion_preset": options.get(
+                    "abc_conversion_preset", self.abc_conversion_preset),
                 "frameStart": folder_entity["attrib"]["frameStart"],
                 "frameEnd": folder_entity["attrib"]["frameEnd"]
             }
@@ -214,7 +216,8 @@ class AnimationAlembicLoader(plugin.Loader):
 
     def update(self, container, context):
         folder_path = context["folder"]["path"]
-        folder_name = context["folder"]["name"]
+        hierarchy = folder_path.lstrip("/").split("/")
+        folder_name = hierarchy.pop(-1)
         product_name = context["product"]["name"]
         product_type = context["product"]["productType"]
         version = context["version"]["version"]
@@ -236,7 +239,7 @@ class AnimationAlembicLoader(plugin.Loader):
         # do import fbx and replace existing data
         asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
         asset_dir, container_name = asset_tools.create_unique_asset_name(
-            f"{self.root}/{folder_name}/{name_version}", suffix=f"_{ext}")
+            f"{self.root}/Animations/{folder_name}/{name_version}", suffix=f"_{ext}")
 
         container_name += suffix
 
