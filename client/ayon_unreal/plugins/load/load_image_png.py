@@ -67,8 +67,6 @@ class TexturePNGLoader(plugin.Loader):
     def import_and_containerize(  
         self, filepath, asset_dir, asset_name, container_name, asset_path=None
     ):  
-        unreal.EditorAssetLibrary.make_directory(asset_dir)  
-
         if self.use_interchange:  
             print("Import using interchange method")  
 
@@ -111,12 +109,16 @@ class TexturePNGLoader(plugin.Loader):
                 loaded_asset_dir = unreal.Paths.split(asset_path)[0]
                 task = self.get_task(filepath, loaded_asset_dir, asset_name, True)
             else:
-                task = self.get_task(filepath, asset_dir, asset_name, False)
+                if not unreal.EditorAssetLibrary.does_asset_exist(
+                    f"{asset_dir}/{asset_name}"):
+                        task = self.get_task(filepath, asset_dir, asset_name, False)
 
             unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
 
-        # Create Asset Container
-        create_container(container=container_name, path=asset_dir)
+        if not unreal.EditorAssetLibrary.does_asset_exist(
+            f"{asset_dir}/{container_name}"):
+                # Create Asset Container
+                create_container(container=container_name, path=asset_dir)
 
     def imprint(
             self,
@@ -182,12 +184,14 @@ class TexturePNGLoader(plugin.Loader):
             if not self.use_interchange else None
         )
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            path = self.filepath_from_context(context)
+            unreal.EditorAssetLibrary.make_directory(asset_dir)
 
-            self.import_and_containerize(
-                path, asset_dir, asset_name,
-                container_name, asset_path=asset_path
-            )
+        path = self.filepath_from_context(context)
+
+        self.import_and_containerize(
+            path, asset_dir, asset_name,
+            container_name, asset_path=asset_path
+        )
 
         if asset_path:
             unreal.EditorAssetLibrary.rename_asset(
@@ -239,11 +243,12 @@ class TexturePNGLoader(plugin.Loader):
             if not self.use_interchange else None
         )
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            path = get_representation_path(repre_entity)
+            unreal.EditorAssetLibrary.make_directory(asset_dir)
+        path = get_representation_path(repre_entity)
 
-            self.import_and_containerize(
-                path, asset_dir, asset_name,
-                container_name, asset_path=asset_path)
+        self.import_and_containerize(
+            path, asset_dir, asset_name,
+            container_name, asset_path=asset_path)
 
         self.imprint(
             folder_path,

@@ -264,14 +264,14 @@ class AnimationFBXLoader(plugin.Loader):
                 unreal.EditorLevelLibrary.save_all_dirty_levels()
                 unreal.EditorLevelLibrary.load_level(level)
 
-                EditorAssetLibrary.make_directory(asset_dir)
-
                 self._load_from_json(
                     libpath, path, asset_dir, asset_name, hierarchy_dir)
             else:
                 version_id = context["representation"]["versionId"]
-                self._load_standalone_animation(
-                    path, asset_dir, asset_name, version_id)
+                if not unreal.EditorAssetLibrary.does_asset_exist(
+                    f"{asset_dir}/{asset_name}"):
+                        self._load_standalone_animation(
+                            path, asset_dir, asset_name, version_id)
 
             return master_level
 
@@ -348,13 +348,16 @@ class AnimationFBXLoader(plugin.Loader):
         container_name += suffix
         asset_path = unreal_pipeline.has_asset_existing_directory(asset_name)
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            master_level = self._import_animation_with_json(
-                path, context, hierarchy,
-                asset_dir, folder_name,
-                asset_name, asset_path=asset_path
-            )
-            unreal_pipeline.create_container(
-                container=container_name, path=asset_dir)
+            EditorAssetLibrary.make_directory(asset_dir)
+        master_level = self._import_animation_with_json(
+            path, context, hierarchy,
+            asset_dir, folder_name,
+            asset_name, asset_path=asset_path
+        )
+        if not unreal.EditorAssetLibrary.does_asset_exist(
+            f"{asset_dir}/{container_name}"):
+                unreal_pipeline.create_container(
+                    container=container_name, path=asset_dir)
         if asset_path:
             unreal.EditorAssetLibrary.rename_asset(
                 f"{asset_path}",
@@ -415,12 +418,18 @@ class AnimationFBXLoader(plugin.Loader):
 
         container_name += suffix
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            master_level = self._import_animation_with_json(
-                source_path, context, hierarchy,
-                asset_dir, folder_name, asset_name
-            )
-            unreal_pipeline.create_container(
-                container=container_name, path=asset_dir)
+            EditorAssetLibrary.make_directory(asset_dir)
+
+        master_level = self._import_animation_with_json(
+            source_path, context, hierarchy,
+            asset_dir, folder_name, asset_name
+        )
+        if not unreal.EditorAssetLibrary.does_asset_exist(
+            f"{asset_dir}/{container_name}"):
+                # Create Asset Container
+                unreal_pipeline.create_container(
+                    container=container_name, path=asset_dir
+                )
         # update metadata
         self.imprint(
             folder_path,

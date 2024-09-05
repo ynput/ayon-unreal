@@ -59,8 +59,8 @@ class UAssetLoader(plugin.Loader):
 
         asset_dir = f"{asset_dir}_{unique_number:02}"
         container_name = f"{container_name}_{unique_number:02}{suffix}"
-
-        unreal.EditorAssetLibrary.make_directory(asset_dir)
+        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+            unreal.EditorAssetLibrary.make_directory(asset_dir)
 
         destination_path = asset_dir.replace(
             "/Game", Path(unreal.Paths.project_content_dir()).as_posix(), 1)
@@ -72,9 +72,11 @@ class UAssetLoader(plugin.Loader):
             destination_path = unreal.Paths.split(asset_path)[0]
         shutil.copy(path, f"{destination_path}/{asset_name}")
 
-        # Create Asset Container
-        unreal_pipeline.create_container(
-            container=container_name, path=asset_dir)
+        if not unreal.EditorAssetLibrary.does_asset_exist(
+            f"{asset_dir}/{container_name}"):
+                # Create Asset Container
+                unreal_pipeline.create_container(
+                    container=container_name, path=asset_dir)
 
         data = {
             "schema": "ayon:container-2.0",
