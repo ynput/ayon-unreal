@@ -31,6 +31,7 @@ class CameraLoader(plugin.Loader):
     representations = {"fbx"}
     icon = "cube"
     color = "orange"
+    root = "/Game/Ayon"
 
     def _import_camera(
         self, world, sequence, bindings, import_fbx_settings, import_filename
@@ -92,8 +93,7 @@ class CameraLoader(plugin.Loader):
         # Pop folder name
         folder_name = hierarchy_parts.pop(-1)
 
-        root = "/Game/Ayon"
-        hierarchy_dir = root
+        hierarchy_dir = self.root
         hierarchy_dir_list = []
         for h in hierarchy_parts:
             hierarchy_dir = f"{hierarchy_dir}/{h}"
@@ -316,8 +316,7 @@ class CameraLoader(plugin.Loader):
         # Remove the Level Sequence from the parent.
         # We need to traverse the hierarchy from the master sequence to find
         # the level sequence.
-        root = "/Game/Ayon"
-        namespace = container.get('namespace').replace(f"{root}/", "")
+        namespace = container.get('namespace').replace(f"{self.root}/", "")
         ms_asset = namespace.split('/')[0]
 
         EditorAssetLibrary.delete_asset(level_sequence.get_path_name())
@@ -384,7 +383,7 @@ class CameraLoader(plugin.Loader):
         EditorLevelLibrary.save_current_level()
 
         asset_content = EditorAssetLibrary.list_assets(
-            f"{root}/{ms_asset}", recursive=True, include_folder=False)
+            f"{self.root}/{ms_asset}", recursive=True, include_folder=False)
 
         for a in asset_content:
             EditorAssetLibrary.save_asset(a)
@@ -399,12 +398,11 @@ class CameraLoader(plugin.Loader):
         editor_subsystem.set_level_viewport_camera_info(vp_loc, vp_rot)
 
     def remove(self, container):
-        root = "/Game/Ayon"
         asset_dir = container.get('namespace')
         # Create a temporary level to delete the layout level.
         EditorLevelLibrary.save_all_dirty_levels()
-        EditorAssetLibrary.make_directory(f"{root}/tmp")
-        tmp_level = f"{root}/tmp/temp_map"
+        EditorAssetLibrary.make_directory(f"{self.root}/tmp")
+        tmp_level = f"{self.root}/tmp/temp_map"
         if not EditorAssetLibrary.does_asset_exist(f"{tmp_level}.temp_map"):
             EditorLevelLibrary.new_level(tmp_level)
         else:
@@ -416,4 +414,4 @@ class CameraLoader(plugin.Loader):
         # Load the default level
         default_level_path = "/Engine/Maps/Templates/OpenWorld"
         EditorLevelLibrary.load_level(default_level_path)
-        EditorAssetLibrary.delete_directory(f"{root}/tmp")
+        EditorAssetLibrary.delete_directory(f"{self.root}/tmp")
