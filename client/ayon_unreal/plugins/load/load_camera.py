@@ -100,12 +100,6 @@ class CameraLoader(plugin.Loader):
             hierarchy_dir_list.append(hierarchy_dir)
         suffix = "_CON"
         asset_name = f"{folder_name}_{name}" if folder_name else name
-        version = context["version"]["version"]
-        # Check if version is hero version and use different name
-        if version < 0:
-            name_version = f"{name}_hero"
-        else:
-            name_version = f"{name}_v{version:03d}"
         tools = unreal.AssetToolsHelpers().get_asset_tools()
 
         asset_dir, container_name = tools.create_unique_asset_name(
@@ -325,14 +319,6 @@ class CameraLoader(plugin.Loader):
         root = "/Game/Ayon"
         namespace = container.get('namespace').replace(f"{root}/", "")
         ms_asset = namespace.split('/')[0]
-        # _filter = unreal.ARFilter(
-        #     class_names=["World"],
-        #     package_paths=[f"{root}/{ms_asset}"],
-        #     recursive_paths=False)
-        # levels = ar.get_assets(_filter)
-        # master_level = unreal.AssetRegistryHelpers.get_asset(levels[0]).get_path_name()
-        # self.log.debug("master level")
-        # self.log.debug(master_level)
 
         EditorAssetLibrary.delete_asset(level_sequence.get_path_name())
 
