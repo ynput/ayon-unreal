@@ -43,6 +43,14 @@ class ConnectAnimationToLevelSequence(InventoryAction):
             asset_content = unreal.EditorAssetLibrary.list_assets(
                 anim_path, recursive=False, include_folder=False
             )
+            extension = anim_path.split("/")[-1].rsplit("_")[-1]
+            if extension == "fbx":
+                self._import_animation_sequence(
+                    asset_content, sequence, frameStart, frameEnd)
+            elif extension == "abc":
+                pass
+
+    def _import_animation_sequence(self, asset_content, sequence, frameStart, frameEnd):
             bindings = []
             animation = None
 
@@ -50,6 +58,7 @@ class ConnectAnimationToLevelSequence(InventoryAction):
             for a in asset_content:
                 imported_asset_data = ar.get_asset_by_object_path(a).get_asset()
                 if imported_asset_data.get_class().get_name() == "AnimSequence":
+
                     animation = imported_asset_data
                     break
             if sequence:
@@ -77,13 +86,8 @@ class ConnectAnimationToLevelSequence(InventoryAction):
                 params = unreal.MovieSceneSkeletalAnimationParams()
                 params.set_editor_property('Animation', animation)
                 anim_section.set_editor_property('Params', params)
-                display_rate = sequence.get_display_rate()
-                fps = float(display_rate.numerator) / float(display_rate.denominator)
                 anim_section.set_range(frameStart, frameEnd)
-                sequence.set_playback_start(frameStart)
-                sequence.set_playback_end(frameEnd)
-                sequence.set_work_range_start(frameStart / fps)
-                sequence.set_work_range_end(frameEnd / fps)
+                self.set_sequence_frame_range(sequence, frameStart, frameEnd)
 
     def get_level_sequence(self, containers):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
@@ -109,3 +113,11 @@ class ConnectAnimationToLevelSequence(InventoryAction):
         )
         for asset in asset_content:
             unreal.EditorAssetLibrary.save_asset(asset)
+
+    def set_sequence_frame_range(self, sequence, frameStart, frameEnd):
+        display_rate = sequence.get_display_rate()
+        fps = float(display_rate.numerator) / float(display_rate.denominator)
+        sequence.set_playback_start(frameStart)
+        sequence.set_playback_end(frameEnd)
+        sequence.set_work_range_start(frameStart / fps)
+        sequence.set_work_range_end(frameEnd / fps)
