@@ -109,7 +109,7 @@ class CameraLoader(plugin.Loader):
         tools = unreal.AssetToolsHelpers().get_asset_tools()
 
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{hierarchy_dir}/{folder_name}/{name_version}", suffix="")
+            f"{hierarchy_dir}/{folder_name}/{name}", suffix="")
 
         container_name += suffix
 
@@ -124,11 +124,11 @@ class CameraLoader(plugin.Loader):
             EditorLevelLibrary.new_level(f"{h_dir}/{h_asset}_map")
 
         level = (
-            f"{asset_dir}/{folder_name}_{name_version}_map_camera.{folder_name}_{name_version}_map_camera"
+            f"{asset_dir}/{folder_name}_{name}_map_camera.{folder_name}_{name}_map_camera"
         )
         if not EditorAssetLibrary.does_asset_exist(level):
             EditorLevelLibrary.new_level(
-                f"{asset_dir}/{folder_name}_{name_version}_map_camera"
+                f"{asset_dir}/{folder_name}_{name}_map_camera"
             )
 
             EditorLevelLibrary.load_level(master_level)
@@ -170,7 +170,7 @@ class CameraLoader(plugin.Loader):
         EditorAssetLibrary.make_directory(asset_dir)
 
         cam_seq = tools.create_asset(
-            asset_name=f"{folder_name}_{name_version}_camera",
+            asset_name=f"{folder_name}_{name}_camera",
             package_path=asset_dir,
             asset_class=unreal.LevelSequence,
             factory=unreal.LevelSequenceFactoryNew()
@@ -297,7 +297,7 @@ class CameraLoader(plugin.Loader):
         playback_start = level_sequence.get_playback_start()
         playback_end = level_sequence.get_playback_end()
 
-        sequence_name = f"{container.get('asset')}_camera"
+        sequence_name = f"{container.get('asset_name')}_camera"
 
         # Get the actors in the level sequence.
         objs = unreal.SequencerTools.get_bound_objects(
@@ -325,12 +325,14 @@ class CameraLoader(plugin.Loader):
         root = "/Game/Ayon"
         namespace = container.get('namespace').replace(f"{root}/", "")
         ms_asset = namespace.split('/')[0]
-        _filter = unreal.ARFilter(
-            class_names=["World"],
-            package_paths=[f"{root}/{ms_asset}"],
-            recursive_paths=False)
-        levels = ar.get_assets(_filter)
-        master_level = levels[0].get_path_name()        # AssetData
+        # _filter = unreal.ARFilter(
+        #     class_names=["World"],
+        #     package_paths=[f"{root}/{ms_asset}"],
+        #     recursive_paths=False)
+        # levels = ar.get_assets(_filter)
+        # master_level = unreal.AssetRegistryHelpers.get_asset(levels[0]).get_path_name()
+        # self.log.debug("master level")
+        # self.log.debug(master_level)
 
         EditorAssetLibrary.delete_asset(level_sequence.get_path_name())
 
@@ -401,7 +403,7 @@ class CameraLoader(plugin.Loader):
         for a in asset_content:
             EditorAssetLibrary.save_asset(a)
 
-        EditorLevelLibrary.load_level(master_level)
+        # EditorLevelLibrary.load_level(master_level)
 
         if curr_level_sequence:
             LevelSequenceLib.open_level_sequence(curr_level_sequence)
