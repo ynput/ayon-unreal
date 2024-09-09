@@ -239,17 +239,11 @@ class TexturePNGLoader(plugin.Loader):
             f"{self.root}/{folder_name}/{name_version}", suffix="")
 
         container_name += suffix
-        asset_path = (
-            has_asset_existing_directory(asset_name)
-            if not self.use_interchange else None
-        )
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
         path = get_representation_path(repre_entity)
 
-        self.import_and_containerize(
-            path, asset_dir, asset_name,
-            container_name, asset_path=asset_path)
+        self.import_and_containerize(path, asset_dir, asset_name, container_name)
 
         self.imprint(
             folder_path,
