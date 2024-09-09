@@ -58,7 +58,6 @@ class ConnectAnimationToLevelSequence(InventoryAction):
             for a in asset_content:
                 imported_asset_data = ar.get_asset_by_object_path(a).get_asset()
                 if imported_asset_data.get_class().get_name() == "AnimSequence":
-
                     animation = imported_asset_data
                     break
             if sequence:
