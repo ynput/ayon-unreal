@@ -4,6 +4,11 @@ from .import_settings import UnrealImportModel
 
 
 class ProjectSetup(BaseSettingsModel):
+    allow_project_creation: bool = SettingsField(
+        True,
+        title="Allow project creation",
+        description="Whether to create a new project when none is found. Disable when using external source controll (Perforce)"
+    )
     dev_mode: bool = SettingsField(
         False,
         title="Dev mode"

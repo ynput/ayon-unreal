@@ -31,6 +31,7 @@ class CameraLoader(plugin.Loader):
     representations = {"fbx"}
     icon = "cube"
     color = "orange"
+    root = "/Game/Ayon"
 
     def _import_camera(
         self, world, sequence, bindings, import_fbx_settings, import_filename
@@ -92,37 +93,17 @@ class CameraLoader(plugin.Loader):
         # Pop folder name
         folder_name = hierarchy_parts.pop(-1)
 
-        root = "/Game/Ayon"
-        hierarchy_dir = root
+        hierarchy_dir = self.root
         hierarchy_dir_list = []
         for h in hierarchy_parts:
             hierarchy_dir = f"{hierarchy_dir}/{h}"
             hierarchy_dir_list.append(hierarchy_dir)
         suffix = "_CON"
         asset_name = f"{folder_name}_{name}" if folder_name else name
-
         tools = unreal.AssetToolsHelpers().get_asset_tools()
 
-        # Create a unique name for the camera directory
-        unique_number = 1
-        if EditorAssetLibrary.does_directory_exist(
-            f"{hierarchy_dir}/{folder_name}"
-        ):
-            asset_content = EditorAssetLibrary.list_assets(
-                f"{root}/{folder_name}", recursive=False, include_folder=True
-            )
-
-            # Get highest number to make a unique name
-            folders = [a for a in asset_content
-                       if a[-1] == "/" and f"{name}_" in a]
-            # Get number from folder name. Splits the string by "_" and
-            # removes the last element (which is a "/").
-            f_numbers = [int(f.split("_")[-1][:-1]) for f in folders]
-            f_numbers.sort()
-            unique_number = f_numbers[-1] + 1 if f_numbers else 1
-
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{hierarchy_dir}/{folder_name}/{name}_{unique_number:02d}", suffix="")
+            f"{hierarchy_dir}/{folder_name}/{name}", suffix="")
 
         container_name += suffix
 
@@ -137,11 +118,11 @@ class CameraLoader(plugin.Loader):
             EditorLevelLibrary.new_level(f"{h_dir}/{h_asset}_map")
 
         level = (
-            f"{asset_dir}/{folder_name}_map_camera.{folder_name}_map_camera"
+            f"{asset_dir}/{folder_name}_{name}_map_camera.{folder_name}_{name}_map_camera"
         )
         if not EditorAssetLibrary.does_asset_exist(level):
             EditorLevelLibrary.new_level(
-                f"{asset_dir}/{folder_name}_map_camera"
+                f"{asset_dir}/{folder_name}_{name}_map_camera"
             )
 
             EditorLevelLibrary.load_level(master_level)
@@ -183,7 +164,7 @@ class CameraLoader(plugin.Loader):
         EditorAssetLibrary.make_directory(asset_dir)
 
         cam_seq = tools.create_asset(
-            asset_name=f"{folder_name}_camera",
+            asset_name=f"{folder_name}_{name}_camera",
             package_path=asset_dir,
             asset_class=unreal.LevelSequence,
             factory=unreal.LevelSequenceFactoryNew()
@@ -310,7 +291,7 @@ class CameraLoader(plugin.Loader):
         playback_start = level_sequence.get_playback_start()
         playback_end = level_sequence.get_playback_end()
 
-        sequence_name = f"{container.get('asset')}_camera"
+        sequence_name = f"{container.get('asset_name')}_camera"
 
         # Get the actors in the level sequence.
         objs = unreal.SequencerTools.get_bound_objects(
@@ -335,46 +316,8 @@ class CameraLoader(plugin.Loader):
         # Remove the Level Sequence from the parent.
         # We need to traverse the hierarchy from the master sequence to find
         # the level sequence.
-        root = "/Game/Ayon"
-        namespace = container.get('namespace').replace(f"{root}/", "")
+        namespace = container.get('namespace').replace(f"{self.root}/", "")
         ms_asset = namespace.split('/')[0]
-        _filter = unreal.ARFilter(
-            class_names=["LevelSequence"],
-            package_paths=[f"{root}/{ms_asset}"],
-            recursive_paths=False)
-        sequences = ar.get_assets(_filter)
-        master_sequence = sequences[0].get_asset()
-        _filter = unreal.ARFilter(
-            class_names=["World"],
-            package_paths=[f"{root}/{ms_asset}"],
-            recursive_paths=False)
-        levels = ar.get_assets(_filter)
-        master_level = levels[0].get_asset().get_path_name()
-
-        sequences = [master_sequence]
-
-        parent = None
-        sub_scene = None
-        for s in sequences:
-            tracks = s.get_master_tracks()
-            subscene_track = None
-            for t in tracks:
-                if t.get_class() == unreal.MovieSceneSubTrack.static_class():
-                    subscene_track = t
-            if subscene_track:
-                sections = subscene_track.get_sections()
-                for ss in sections:
-                    if ss.get_sequence().get_name() == sequence_name:
-                        parent = s
-                        sub_scene = ss
-                        break
-                    sequences.append(ss.get_sequence())
-                for i, ss in enumerate(sections):
-                    ss.set_row_index(i)
-            if parent:
-                break
-
-            assert parent, "Could not find the parent sequence"
 
         EditorAssetLibrary.delete_asset(level_sequence.get_path_name())
 
@@ -392,8 +335,6 @@ class CameraLoader(plugin.Loader):
         new_sequence.set_display_rate(display_rate)
         new_sequence.set_playback_start(playback_start)
         new_sequence.set_playback_end(playback_end)
-
-        sub_scene.set_sequence(new_sequence)
 
         repre_entity = context["representation"]
         repre_path = get_representation_path(repre_entity)
@@ -442,12 +383,12 @@ class CameraLoader(plugin.Loader):
         EditorLevelLibrary.save_current_level()
 
         asset_content = EditorAssetLibrary.list_assets(
-            f"{root}/{ms_asset}", recursive=True, include_folder=False)
+            f"{self.root}/{ms_asset}", recursive=True, include_folder=False)
 
         for a in asset_content:
             EditorAssetLibrary.save_asset(a)
 
-        EditorLevelLibrary.load_level(master_level)
+        # EditorLevelLibrary.load_level(master_level)
 
         if curr_level_sequence:
             LevelSequenceLib.open_level_sequence(curr_level_sequence)
@@ -458,123 +399,19 @@ class CameraLoader(plugin.Loader):
 
     def remove(self, container):
         asset_dir = container.get('namespace')
-
-        ar = unreal.AssetRegistryHelpers.get_asset_registry()
-        _filter = unreal.ARFilter(
-            class_names=["LevelSequence"],
-            package_paths=[asset_dir],
-            recursive_paths=False)
-        sequences = ar.get_assets(_filter)
-
-        if not sequences:
-            raise Exception("Could not find sequence.")
-
-        world = ar.get_asset_by_object_path(
-            EditorLevelLibrary.get_editor_world().get_path_name())
-
-        _filter = unreal.ARFilter(
-            class_names=["World"],
-            package_paths=[asset_dir],
-            recursive_paths=True)
-        maps = ar.get_assets(_filter)
-
-        # There should be only one map in the list
-        if not maps:
-            raise Exception("Could not find map.")
-
-        map = maps[0]
-
-        EditorLevelLibrary.save_all_dirty_levels()
-        EditorLevelLibrary.load_level(map.get_asset().get_path_name())
-
-        # Remove the camera from the level.
-        actors = EditorLevelLibrary.get_all_level_actors()
-
-        for a in actors:
-            if a.__class__ == unreal.CineCameraActor:
-                EditorLevelLibrary.destroy_actor(a)
-
-        EditorLevelLibrary.save_all_dirty_levels()
-        EditorLevelLibrary.load_level(world.get_asset().get_path_name())
-
-        # There should be only one sequence in the path.
-        sequence_name = sequences[0].asset_name
-
-        # Remove the Level Sequence from the parent.
-        # We need to traverse the hierarchy from the master sequence to find
-        # the level sequence.
-        root = "/Game/Ayon"
-        namespace = container.get('namespace').replace(f"{root}/", "")
-        ms_asset = namespace.split('/')[0]
-        _filter = unreal.ARFilter(
-            class_names=["LevelSequence"],
-            package_paths=[f"{root}/{ms_asset}"],
-            recursive_paths=False)
-        sequences = ar.get_assets(_filter)
-        master_sequence = sequences[0].get_asset()
-        _filter = unreal.ARFilter(
-            class_names=["World"],
-            package_paths=[f"{root}/{ms_asset}"],
-            recursive_paths=False)
-        levels = ar.get_assets(_filter)
-        master_level = levels[0].get_full_name()
-
-        sequences = [master_sequence]
-
-        parent = None
-        for s in sequences:
-            tracks = s.get_master_tracks()
-            subscene_track = None
-            visibility_track = None
-            for t in tracks:
-                if t.get_class() == unreal.MovieSceneSubTrack.static_class():
-                    subscene_track = t
-                if (t.get_class() ==
-                        unreal.MovieSceneLevelVisibilityTrack.static_class()):
-                    visibility_track = t
-            if subscene_track:
-                sections = subscene_track.get_sections()
-                for ss in sections:
-                    if ss.get_sequence().get_name() == sequence_name:
-                        parent = s
-                        subscene_track.remove_section(ss)
-                        break
-                    sequences.append(ss.get_sequence())
-                # Update subscenes indexes.
-                for i, ss in enumerate(sections):
-                    ss.set_row_index(i)
-
-            if visibility_track:
-                sections = visibility_track.get_sections()
-                for ss in sections:
-                    if (unreal.Name(f"{container.get('asset')}_map_camera")
-                            in ss.get_level_names()):
-                        visibility_track.remove_section(ss)
-                # Update visibility sections indexes.
-                i = -1
-                prev_name = []
-                for ss in sections:
-                    if prev_name != ss.get_level_names():
-                        i += 1
-                    ss.set_row_index(i)
-                    prev_name = ss.get_level_names()
-            if parent:
-                break
-
-        assert parent, "Could not find the parent sequence"
-
         # Create a temporary level to delete the layout level.
         EditorLevelLibrary.save_all_dirty_levels()
-        EditorAssetLibrary.make_directory(f"{root}/tmp")
-        tmp_level = f"{root}/tmp/temp_map"
+        EditorAssetLibrary.make_directory(f"{self.root}/tmp")
+        tmp_level = f"{self.root}/tmp/temp_map"
         if not EditorAssetLibrary.does_asset_exist(f"{tmp_level}.temp_map"):
             EditorLevelLibrary.new_level(tmp_level)
         else:
             EditorLevelLibrary.load_level(tmp_level)
-
+        EditorLevelLibrary.save_all_dirty_levels()
         # Delete the camera directory.
         if EditorAssetLibrary.does_directory_exist(asset_dir):
             EditorAssetLibrary.delete_directory(asset_dir)
-
-        EditorLevelLibrary.load_level(master_level)
-        EditorAssetLibrary.delete_directory(f"{root}/tmp")
+        # Load the default level
+        default_level_path = "/Engine/Maps/Templates/OpenWorld"
+        EditorLevelLibrary.load_level(default_level_path)
+        EditorAssetLibrary.delete_directory(f"{self.root}/tmp")

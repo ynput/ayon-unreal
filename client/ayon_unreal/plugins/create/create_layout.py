@@ -2,6 +2,7 @@
 from ayon_unreal.api.plugin import (
     UnrealActorCreator,
 )
+from ayon_core.lib import BoolDef
 
 
 class CreateLayout(UnrealActorCreator):
@@ -11,3 +12,13 @@ class CreateLayout(UnrealActorCreator):
     label = "Layout"
     product_type = "layout"
     icon = "cubes"
+
+    def get_pre_create_attr_defs(self):
+        defs = super(CreateLayout, self).get_pre_create_attr_defs()
+        return defs + [
+            BoolDef(
+                "export_blender",
+                label="Export to Blender",
+                default=False
+            )
+        ]

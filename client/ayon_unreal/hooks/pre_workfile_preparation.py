@@ -14,6 +14,8 @@ from ayon_applications import (
     ApplicationLaunchFailed,
     LaunchTypes,
 )
+from ayon_core.settings import get_project_settings
+from ayon_core.pipeline import get_current_project_name
 from ayon_core.pipeline.workfile import get_workfile_template_key
 import ayon_unreal.lib as unreal_lib
 from ayon_unreal.ue_workers import (
@@ -232,24 +234,38 @@ class UnrealPrelaunchHook(PreLaunchHook):
         project_file = project_path / unreal_project_filename
 
         if not project_file.is_file():
-            with tempfile.TemporaryDirectory() as temp_dir:
-                self.exec_ue_project_gen(engine_version,
-                                         unreal_project_name,
-                                         engine_path,
-                                         Path(temp_dir))
-                try:
-                    self.log.info((
-                        f"Moving from {temp_dir} to "
-                        f"{project_path.as_posix()}"
-                    ))
-                    shutil.copytree(
-                        temp_dir, project_path, dirs_exist_ok=True)
 
-                except shutil.Error as e:
-                    raise ApplicationLaunchFailed((
-                        f"{self.signature} Cannot copy directory {temp_dir} "
-                        f"to {project_path.as_posix()} - {e}"
-                    )) from e
+            #Get project settings -> allow project creation
+            current_project = get_current_project_name()
+            unreal_settings = get_project_settings(current_project).get("unreal")
+            allow_project_creation = unreal_settings["project_setup"].get(
+            "allow_project_creation")
+            if allow_project_creation:
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    self.exec_ue_project_gen(engine_version,
+                                             unreal_project_name,
+                                             engine_path,
+                                             Path(temp_dir))
+                    try:
+                        self.log.info((
+                            f"Moving from {temp_dir} to "
+                            f"{project_path.as_posix()}"
+                        ))
+                        shutil.copytree(
+                            temp_dir, project_path, dirs_exist_ok=True)
+
+                    except shutil.Error as e:
+                        raise ApplicationLaunchFailed((
+                            f"{self.signature} Cannot copy directory {temp_dir} "
+                            f"to {project_path.as_posix()} - {e}"
+                        )) from e
+            else:
+                raise ApplicationLaunchFailed(
+                    f"Could not open project; Project file not found.\n\n"
+                    f"'{project_path.as_posix()}' \n\n"
+                    f"Please contact administrator.\n"
+                    f"Make sure the project is in the correct folder. Or enable 'allow project creation' in studio settings"
+                )
 
         self.launch_context.env["AYON_UNREAL_VERSION"] = engine_version
         # Append project file to launch arguments

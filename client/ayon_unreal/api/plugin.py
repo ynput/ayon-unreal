@@ -259,7 +259,6 @@ class UnrealActorCreator(UnrealBaseCreator):
                 selection = [a.get_path_name() for a in sel_actors]
 
                 instance_data["members"] = selection
-
             instance_data["level"] = world.get_path_name()
 
             super(UnrealActorCreator, self).create(
@@ -275,7 +274,7 @@ class UnrealActorCreator(UnrealBaseCreator):
 
     def get_pre_create_attr_defs(self):
         return [
-            UILabelDef("Select actors to create instance from them.")
+            UILabelDef("Select actors to create instance from them."),
         ]
 
 
