@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Load textures from PNG."""
+import os
 from ayon_core.pipeline import (
     get_representation_path,
     AYON_CONTAINER_ID
@@ -9,7 +10,7 @@ from ayon_unreal.api.pipeline import (
     AYON_ASSET_DIR,
     create_container,
     imprint,
-    has_asset_existing_directory
+    has_asset_directory_pattern_matched
 )
 
 import unreal  # noqa
@@ -165,7 +166,9 @@ class TexturePNGLoader(plugin.Loader):
         folder_path = context["folder"]["path"]
         folder_name = context["folder"]["name"]
         suffix = "_CON"
-        asset_name = f"{folder_name}_{name}" if folder_name else f"{name}"
+        path = self.filepath_from_context(context)
+        ext = os.path.splitext(path)[-1].lstrip(".")
+        asset_name = f"{folder_name}_{name}_{ext}" if folder_name else f"{name}_{ext}"
         version = context["version"]["version"]
         # Check if version is hero version and use different name
         if version < 0:
@@ -175,18 +178,16 @@ class TexturePNGLoader(plugin.Loader):
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{self.root}/{folder_name}/{name_version}", suffix=""
+            f"{self.root}/{folder_name}/{name_version}", suffix=f"_{ext}"
         )
 
         container_name += suffix
         asset_path = (
-            has_asset_existing_directory(asset_name)
+            has_asset_directory_pattern_matched(asset_name, asset_dir, name, extension=ext)
             if not self.use_interchange else None
         )
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
-
-        path = self.filepath_from_context(context)
 
         self.import_and_containerize(
             path, asset_dir, asset_name,

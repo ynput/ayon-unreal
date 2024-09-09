@@ -175,7 +175,8 @@ class AnimationAlembicLoader(plugin.Loader):
             f"{self.root}/Animations/{folder_name}/{name_version}", suffix=f"_{ext}")
 
         container_name += suffix
-        asset_path = unreal_pipeline.has_asset_existing_directory(asset_name)
+        asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
+            asset_name, asset_dir, folder_name, extension=ext)
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
             loaded_options = {

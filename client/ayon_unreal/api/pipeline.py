@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import re
 import json
 import clique
 import logging
@@ -931,7 +932,7 @@ def get_frame_range_from_folder_attributes(folder_entity=None):
     return int(folder_attributes["clipIn"]), int(folder_attributes["clipOut"])
 
 
-def has_asset_existing_directory(asset_name):
+def has_asset_existing_directory(asset_name, asset_dir):
     """Check if the asset already existed
     Args:
         asset_name (str): asset name
@@ -943,7 +944,29 @@ def has_asset_existing_directory(asset_name):
     all_assets = asset_registry.get_assets_by_path('/Game', recursive=True)
     for game_asset in all_assets:
         if game_asset.asset_name == asset_name:
-            unreal.log("game asset")
-            unreal.log(game_asset.get_asset().get_path_name())
-            return game_asset.get_asset().get_path_name()
+            asset_path = game_asset.get_asset().get_path_name()
+            existing_asset_dir = unreal.Paths.split(asset_path)[0]
+            existing_version_folder = existing_asset_dir.split("/")[-1]
+            existing_asset_dir = existing_asset_dir.replace(existing_version_folder, "")
+            if existing_asset_dir != asset_dir:
+                return asset_path
+    return None
+
+def has_asset_directory_pattern_matched(asset_name, asset_dir, name, extension=None):
+    version_folder = asset_dir.split("/")[-1]
+    target_asset_dir = asset_dir.replace(version_folder, "")
+    asset_path = has_asset_existing_directory(asset_name, target_asset_dir)
+    if not asset_path:
+        return None
+    existing_asset_dir = unreal.Paths.split(asset_path)[0]
+    existing_version_folder = existing_asset_dir.split("/")[-1]
+    # TODO: make it not hardcoded
+    pattern = f"{name}_\d{{3}}"
+    if extension:
+        pattern = f"{name}_v\d{{3}}_{extension}"
+    is_version_folder_matched = re.match(pattern, version_folder)
+    is_existing_version_folder_matched = re.match(pattern, existing_version_folder)
+    if not is_version_folder_matched or not is_existing_version_folder_matched:
+        return asset_path
+
     return None

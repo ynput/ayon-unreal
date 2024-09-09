@@ -11,7 +11,7 @@ from ayon_unreal.api.pipeline import (
     AYON_ASSET_DIR,
     create_container,
     imprint,
-    has_asset_existing_directory
+    has_asset_directory_pattern_matched
 )
 from ayon_core.lib import EnumDef, BoolDef
 import unreal  # noqa
@@ -211,7 +211,8 @@ class StaticMeshAlembicLoader(plugin.Loader):
             f"{self.root}/{folder_name}/{name_version}", suffix=f"_{ext}")
 
         container_name += suffix
-        asset_path = has_asset_existing_directory(asset_name)
+        asset_path = has_asset_directory_pattern_matched(
+            asset_name, asset_dir, name, extension=ext)
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
             self.import_and_containerize(path, asset_dir, asset_name,

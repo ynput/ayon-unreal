@@ -67,7 +67,8 @@ class UAssetLoader(plugin.Loader):
 
         path = self.filepath_from_context(context)
         asset_name = os.path.basename(path)
-        asset_path = unreal_pipeline.has_asset_existing_directory(asset_name)
+        asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
+            asset_name, asset_dir, name)
         if asset_path:
             destination_path = unreal.Paths.split(asset_path)[0]
         shutil.copy(path, f"{destination_path}/{asset_name}")
