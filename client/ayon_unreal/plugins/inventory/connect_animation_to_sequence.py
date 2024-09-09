@@ -52,16 +52,15 @@ class ConnectAnimationToLevelSequence(InventoryAction):
                 self._import_animation_sequence(
                     asset_content, sequence, frameStart, frameEnd)
 
-    def _update_skeletal_mesh(self, asset_content, sequence):
+    def _update_skeletal_mesh(self, asset_content, sequence, extension="abc"):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
-        skeletal_mesh_alembic = None
-
+        skeletal_mesh_asset = None
         for a in asset_content:
             imported_skeletal_mesh = ar.get_asset_by_object_path(a).get_asset()
             if imported_skeletal_mesh.get_class().get_name() == "SkeletalMesh":
-                skeletal_mesh_alembic = imported_skeletal_mesh
+                skeletal_mesh_asset = imported_skeletal_mesh
                 break
-        if sequence:
+        if sequence and skeletal_mesh_asset:
             # Get the EditorActorSubsystem instance
             editor_actor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
 
@@ -83,7 +82,8 @@ class ConnectAnimationToLevelSequence(InventoryAction):
                         skeletal_mesh = skeletal_mesh_component.skeletal_mesh
                         if skeletal_mesh:
                            skel_mesh_comp = actor.get_editor_property('skeletal_mesh_component')
-                           skel_mesh_comp.set_editor_property('skeletal_mesh', skeletal_mesh_alembic)
+                           if skel_mesh_comp.get_editor_property("skeletal_mesh") != imported_skeletal_mesh:
+                                skel_mesh_comp.set_editor_property('skeletal_mesh', skeletal_mesh_asset)
 
     def _import_animation_sequence(self, asset_content, sequence, frameStart, frameEnd):
             bindings = []
