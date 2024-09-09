@@ -52,7 +52,7 @@ class ConnectAnimationToLevelSequence(InventoryAction):
                 self._import_animation_sequence(
                     asset_content, sequence, frameStart, frameEnd)
 
-    def _update_skeletal_mesh(self, asset_content, sequence, extension="abc"):
+    def _update_skeletal_mesh(self, asset_content, sequence):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
         skeletal_mesh_asset = None
         for a in asset_content:
