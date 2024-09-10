@@ -145,8 +145,6 @@ class ExistingLayoutLoader(plugin.Loader):
             name = "StaticMeshFBXLoader"
         elif family == 'camera':
             name = "CameraLoader"
-        elif family == 'animation':
-            name = "AnimationFBXLoader"
 
         if name == "":
             return None
@@ -164,8 +162,6 @@ class ExistingLayoutLoader(plugin.Loader):
             name = "SkeletalMeshAlembicLoader"
         elif family == 'model':
             name = "StaticMeshAlembicLoader"
-        elif family == 'animation':
-            name = "AnimationAlembicLoader"
 
         if name == "":
             return None

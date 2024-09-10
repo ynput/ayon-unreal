@@ -120,8 +120,6 @@ class LayoutLoader(plugin.Loader):
             name = "SkeletalMeshAlembicLoader"
         elif family in ['model', 'staticMesh']:
             name = "StaticMeshAlembicLoader"
-        elif family == 'animation':
-            name = "AnimationAlembicLoader"
 
         if name == "":
             return None
