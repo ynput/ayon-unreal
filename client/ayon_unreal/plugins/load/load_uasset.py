@@ -71,9 +71,12 @@ class UAssetLoader(plugin.Loader):
             path,
             f"{destination_path}/{asset_name}")
 
-        # Create Asset Container
-        unreal_pipeline.create_container(
-            container=container_name, path=asset_dir)
+        # avoid duplicate container asset data being created
+        if not unreal.EditorAssetLibrary.does_asset_exist(
+            f"{asset_dir}/{container_name}"):
+            # Create Asset Container
+            unreal_pipeline.create_container(
+                container=container_name, path=asset_dir)
 
         product_type = context["product"]["productType"]
         data = {
