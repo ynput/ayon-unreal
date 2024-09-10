@@ -100,10 +100,16 @@ class CameraLoader(plugin.Loader):
             hierarchy_dir_list.append(hierarchy_dir)
         suffix = "_CON"
         asset_name = f"{folder_name}_{name}" if folder_name else name
+        version = context["version"]["version"]
+        # Check if version is hero version and use different name
+        if version < 0:
+            name_version = f"{name}_hero"
+        else:
+            name_version = f"{name}_v{version:03d}"
         tools = unreal.AssetToolsHelpers().get_asset_tools()
 
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{hierarchy_dir}/{folder_name}/{name}", suffix="")
+            f"{hierarchy_dir}/{folder_name}/{name_version}", suffix="")
 
         container_name += suffix
 

@@ -1,14 +1,18 @@
 import unreal
 from ayon_core.pipeline import InventoryAction
+from ayon_unreal.api.lib import (
+    update_skeletal_mesh,
+    import_animation_sequence
+)
 
 
-class ConnectAnimationToLevelSequence(InventoryAction):
+class ConnectFbxAnimation(InventoryAction):
     """Add Animation Sequence to Level Sequence when the skeletal Mesh
     already binds into the Sequence. Applied only for animation and
     layout product type
     """
 
-    label = "Connect Animation to Level Sequence"
+    label = "Connect Fbx Animation to Level Sequence"
     icon = "arrow-up"
     color = "red"
     order = 1
@@ -20,108 +24,17 @@ class ConnectAnimationToLevelSequence(InventoryAction):
             container_dir = container.get("namespace")
             if container.get("family") not in allowed_families:
                 unreal.log_warning(
-                    f"Container {container_dir} is not supported.")
+                    f"Container {container_dir} is not supported."
+                )
                 continue
         sequence = self.get_level_sequence(containers)
         if not sequence:
             raise RuntimeError(
-                "No level sequence found in layout asset directory")
-        self._import_animation(containers, sequence)
-        self.save_layout_asset(containers)
-
-    def _import_animation(self, containers, sequence):
-        anim_path = next((
-            container.get("namespace") for container in containers
-            if container.get("family") == "animation"), None)
-        frameStart = next((
-            int(container.get("frameStart")) for container in containers
-            if container.get("family") == "animation"), None)
-        frameEnd = next((
-            int(container.get("frameEnd")) for container in containers
-            if container.get("family") == "animation"), None)
-        if anim_path:
-            asset_content = unreal.EditorAssetLibrary.list_assets(
-                anim_path, recursive=False, include_folder=False
+                "No level sequence found in layout asset directory. "
+                "Please select the layout container."
             )
-            extension = anim_path.split("/")[-1].rsplit("_")[-1]
-            if extension == "fbx":
-                self._import_animation_sequence(
-                    asset_content, sequence, frameStart, frameEnd)
-            elif extension == "abc":
-                self._update_skeletal_mesh(asset_content, sequence)
-                self._import_animation_sequence(
-                    asset_content, sequence, frameStart, frameEnd)
-
-    def _update_skeletal_mesh(self, asset_content, sequence):
-        ar = unreal.AssetRegistryHelpers.get_asset_registry()
-        skeletal_mesh_asset = None
-        for a in asset_content:
-            imported_skeletal_mesh = ar.get_asset_by_object_path(a).get_asset()
-            if imported_skeletal_mesh.get_class().get_name() == "SkeletalMesh":
-                skeletal_mesh_asset = imported_skeletal_mesh
-                break
-        if sequence and skeletal_mesh_asset:
-            # Get the EditorActorSubsystem instance
-            editor_actor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
-
-            # Get all level actors
-            all_level_actors = editor_actor_subsystem.get_all_level_actors()
-
-            for p in sequence.get_possessables():
-                matching_actor = next(
-                    (actor.get_name() for actor in all_level_actors
-                    if actor.get_actor_label() == p.get_name()), None)
-
-                actor = unreal.EditorLevelLibrary.get_actor_reference(f"PersistentLevel.{matching_actor}")
-                # Ensure the actor is valid
-                if actor:
-                    # Get the skeletal mesh component
-                    skeletal_mesh_component = actor.get_component_by_class(unreal.SkeletalMeshComponent)
-                    if skeletal_mesh_component:
-                        # Get the skeletal mesh
-                        skeletal_mesh = skeletal_mesh_component.skeletal_mesh
-                        if skeletal_mesh:
-                           skel_mesh_comp = actor.get_editor_property('skeletal_mesh_component')
-                           if skel_mesh_comp.get_editor_property("skeletal_mesh") != imported_skeletal_mesh:
-                                skel_mesh_comp.set_editor_property('skeletal_mesh', skeletal_mesh_asset)
-
-    def _import_animation_sequence(self, asset_content, sequence, frameStart, frameEnd):
-            bindings = []
-            animation = None
-
-            ar = unreal.AssetRegistryHelpers.get_asset_registry()
-            for a in asset_content:
-                imported_asset_data = ar.get_asset_by_object_path(a).get_asset()
-                if imported_asset_data.get_class().get_name() == "AnimSequence":
-                    animation = imported_asset_data
-                    break
-            if sequence:
-                # Add animation to the sequencer
-                binding = None
-                for p in sequence.get_possessables():
-                    if p.get_possessed_object_class().get_name() == "SkeletalMeshActor":
-                        binding = p
-                        break
-                bindings.append(binding)
-                anim_section = None
-                for binding in bindings:
-                    tracks = binding.get_tracks()
-                    track = None
-                    track = tracks[0] if tracks else binding.add_track(
-                        unreal.MovieSceneSkeletalAnimationTrack)
-
-                    sections = track.get_sections()
-                    if not sections:
-                        anim_section = track.add_section()
-                    else:
-                        anim_section = track.add_section()
-                        anim_section = sections[-1]
-
-                params = unreal.MovieSceneSkeletalAnimationParams()
-                params.set_editor_property('Animation', animation)
-                anim_section.set_editor_property('Params', params)
-                anim_section.set_range(frameStart, frameEnd)
-                self.set_sequence_frame_range(sequence, frameStart, frameEnd)
+        self.import_animation(containers, sequence)
+        self.save_layout_asset(containers)
 
     def get_level_sequence(self, containers):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
@@ -138,6 +51,26 @@ class ConnectAnimationToLevelSequence(InventoryAction):
             if data.asset_class_path.asset_name == "LevelSequence":
                 return data.get_asset()
 
+    def import_animation(self, containers, sequence):
+        anim_path = next((
+            container.get("namespace") for container in containers
+            if container.get("family") == "animation"), None)
+        frameStart = next((
+            int(container.get("frameStart")) for container in containers
+            if container.get("family") == "animation"), None)
+        frameEnd = next((
+            int(container.get("frameEnd")) for container in containers
+            if container.get("family") == "animation"), None)
+        if anim_path:
+            asset_content = unreal.EditorAssetLibrary.list_assets(
+                anim_path, recursive=False, include_folder=False
+            )
+            self.import_animation_sequence(
+                asset_content, sequence, frameStart, frameEnd)
+
+    def import_animation_sequence(self, asset_content, sequence, frameStart, frameEnd):
+        import_animation_sequence(asset_content, sequence, frameStart, frameEnd)
+
     def save_layout_asset(self, containers):
         layout_path = next((
             container.get("namespace") for container in containers
@@ -148,10 +81,17 @@ class ConnectAnimationToLevelSequence(InventoryAction):
         for asset in asset_content:
             unreal.EditorAssetLibrary.save_asset(asset)
 
-    def set_sequence_frame_range(self, sequence, frameStart, frameEnd):
-        display_rate = sequence.get_display_rate()
-        fps = float(display_rate.numerator) / float(display_rate.denominator)
-        sequence.set_playback_start(frameStart)
-        sequence.set_playback_end(frameEnd)
-        sequence.set_work_range_start(frameStart / fps)
-        sequence.set_work_range_end(frameEnd / fps)
+class ConnectAlembicAnimation(ConnectFbxAnimation):
+    """Add Animation Sequence to Level Sequence when the skeletal Mesh
+    already binds into the Sequence. Applied only for animation and
+    layout product type
+    """
+
+    label = "Connect Alembic Animation to Level Sequence"
+    icon = "arrow-up"
+    color = "red"
+    order = 1
+
+    def import_animation_sequence(self, asset_content, sequence, frameStart, frameEnd):
+        update_skeletal_mesh(asset_content, sequence)
+        import_animation_sequence(asset_content, sequence, frameStart, frameEnd)
