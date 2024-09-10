@@ -352,8 +352,12 @@ class AnimationFBXLoader(plugin.Loader):
                 asset_dir, folder_name,
                 asset_name
             )
-            unreal_pipeline.create_container(
-                container=container_name, path=asset_dir)
+            # avoid duplicate container asset data being created
+            if not unreal.EditorAssetLibrary.does_asset_exist(
+                f"{asset_dir}/{container_name}"):
+                # Create Asset Container
+                unreal_pipeline.create_container(
+                    container=container_name, path=asset_dir)
 
         self.imprint(
             folder_path,
@@ -416,8 +420,12 @@ class AnimationFBXLoader(plugin.Loader):
                 asset_dir, folder_name,
                 asset_name
             )
-            unreal_pipeline.create_container(
-                container=container_name, path=asset_dir)
+            # avoid duplicate container asset data being created
+            if not unreal.EditorAssetLibrary.does_asset_exist(
+                f"{asset_dir}/{container_name}"):
+                # Create Asset Container
+                unreal_pipeline.create_container(
+                    container=container_name, path=asset_dir)
         # update metadata
         self.imprint(
             folder_path,

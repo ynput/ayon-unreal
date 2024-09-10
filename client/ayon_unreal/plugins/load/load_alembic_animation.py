@@ -89,8 +89,12 @@ class AnimationAlembicLoader(plugin.Loader):
 
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
 
-        # Create Asset Container
-        unreal_pipeline.create_container(container=container_name, path=asset_dir)
+        # avoid duplicate container asset data being created
+        if not unreal.EditorAssetLibrary.does_asset_exist(
+            f"{asset_dir}/{container_name}"):
+            # Create Asset Container
+            unreal_pipeline.create_container(
+                container=container_name, path=asset_dir)
 
     def imprint(
         self,
@@ -176,34 +180,19 @@ class AnimationAlembicLoader(plugin.Loader):
             }
 
             path = self.filepath_from_context(context)
-            task = self.get_task(path, asset_dir, asset_name, False, loaded_options)
+            self.import_and_containerize(
+                path, asset_dir, asset_name, container_name, loaded_options
+            )
 
-            asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
-            asset_tools.import_asset_tasks([task])
-
-            # Create Asset Container
-            unreal_pipeline.create_container(
-                container=container_name, path=asset_dir)
-
-        data = {
-            "schema": "ayon:container-2.0",
-            "id": AYON_CONTAINER_ID,
-            "folder_path": folder_path,
-            "namespace": asset_dir,
-            "container_name": container_name,
-            "asset_name": asset_name,
-            "loader": str(self.__class__.__name__),
-            "representation": context["representation"]["id"],
-            "parent": context["representation"]["versionId"],
-            "product_type": product_type,
-            "frameStart": folder_entity["attrib"]["frameStart"],
-            "frameEnd": folder_entity["attrib"]["frameEnd"],
-            # TODO these should be probably removed
-            "asset": folder_path,
-            "family": product_type,
-        }
-        unreal_pipeline.imprint(
-            f"{asset_dir}/{container_name}", data)
+        # update metadata
+        self.imprint(
+            folder_path,
+            asset_dir,
+            container_name,
+            asset_name,
+            context["representation"],
+            product_type
+        )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=True

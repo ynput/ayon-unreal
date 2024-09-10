@@ -40,8 +40,8 @@ class ExistingLayoutLoader(plugin.Loader):
             project_settings["unreal"]["delete_unmatched_assets"]
         )
 
-    @staticmethod
     def _create_container(
+        self,
         asset_name,
         asset_dir,
         folder_path,
@@ -68,7 +68,7 @@ class ExistingLayoutLoader(plugin.Loader):
             "namespace": asset_dir,
             "container_name": container_name,
             "asset_name": asset_name,
-            # "loader": str(self.__class__.__name__),
+            "loader": str(self.__class__.__name__),
             "representation": representation,
             "parent": version_id,
             "product_type": product_type,
