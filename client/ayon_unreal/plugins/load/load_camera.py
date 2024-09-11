@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 """Load camera from FBX."""
-import ayon_api
-
 import unreal
 from unreal import (
     EditorAssetLibrary,
