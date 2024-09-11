@@ -59,56 +59,35 @@ class CameraLoader(plugin.Loader):
         else:
             raise NotImplementedError(
                 f"Unreal version {ue_major} not supported")
+    def imprint(
+        self,
+        folder_path,
+        asset_dir,
+        container_name,
+        asset_name,
+        representation,
+        folder_name,
+        product_type):
+        data = {
+            "schema": "ayon:container-2.0",
+            "id": AYON_CONTAINER_ID,
+            "folder_path": folder_path,
+            "namespace": asset_dir,
+            "container_name": container_name,
+            "asset_name": asset_name,
+            "loader": str(self.__class__.__name__),
+            "representation": representation["id"],
+            "parent": representation["versionId"],
+            "product_type": product_type,
+            # TODO these should be probably removed
+            "asset": folder_name,
+            "family": product_type,
+        }
+        imprint(f"{asset_dir}/{container_name}", data)
 
-    def load(self, context, name, namespace, data):
-        """
-        Load and containerise representation into Content Browser.
-
-        This is two step process. First, import FBX to temporary path and
-        then call `containerise()` on it - this moves all content to new
-        directory and then it will create AssetContainer there and imprint it
-        with metadata. This will mark this path as container.
-
-        Args:
-            context (dict): application context
-            name (str): Product name
-            namespace (str): in Unreal this is basically path to container.
-                             This is not passed here, so namespace is set
-                             by `containerise()` because only then we know
-                             real path.
-            data (dict): Those would be data to be imprinted. This is not used
-                         now, data are imprinted by `containerise()`.
-
-        Returns:
-            list(str): list of container content
-        """
-
-        # Create directory for asset and Ayon container
-        folder_entity = context["folder"]
-        folder_attributes = folder_entity["attrib"]
-        folder_path = folder_entity["path"]
-        hierarchy_parts = folder_path.split("/")
-        # Remove empty string
-        hierarchy_parts.pop(0)
-        # Pop folder name
-        folder_name = hierarchy_parts.pop(-1)
-
-        hierarchy_dir = self.root
-        hierarchy_dir_list = []
-        for h in hierarchy_parts:
-            hierarchy_dir = f"{hierarchy_dir}/{h}"
-            hierarchy_dir_list.append(hierarchy_dir)
-        suffix = "_CON"
-        asset_name = f"{folder_name}_{name}" if folder_name else name
-        tools = unreal.AssetToolsHelpers().get_asset_tools()
-
-        asset_dir, container_name = tools.create_unique_asset_name(
-            f"{hierarchy_dir}/{folder_name}/{name}", suffix="")
-
-        container_name += suffix
-        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            EditorAssetLibrary.make_directory(asset_dir)
-
+    def _create_map_camera(self, context, path, tools, hierarchy_dir_list,
+                           hierarchy_dir, hierarchy_parts,
+                           asset_dir, asset_name):
         # Create map for the shot, and create hierarchy of map. If the maps
         # already exist, we will use them.
         h_dir = hierarchy_dir_list[0]
@@ -118,11 +97,11 @@ class CameraLoader(plugin.Loader):
             EditorLevelLibrary.new_level(f"{h_dir}/{h_asset}_map")
 
         level = (
-            f"{asset_dir}/{folder_name}_{name}_map_camera.{folder_name}_{name}_map_camera"
+            f"{asset_dir}/{asset_name}_map_camera.{asset_name}_map_camera"
         )
         if not EditorAssetLibrary.does_asset_exist(level):
             EditorLevelLibrary.new_level(
-                f"{asset_dir}/{folder_name}_{name}_map_camera"
+                f"{asset_dir}/{asset_name}_map_camera"
             )
 
             EditorLevelLibrary.load_level(master_level)
@@ -161,10 +140,8 @@ class CameraLoader(plugin.Loader):
                 sequences.append(sequence)
                 frame_ranges.append(frame_range)
 
-        EditorAssetLibrary.make_directory(asset_dir)
-
         cam_seq = tools.create_asset(
-            asset_name=f"{folder_name}_{name}_camera",
+            asset_name=f"{asset_name}_camera",
             package_path=asset_dir,
             asset_class=unreal.LevelSequence,
             factory=unreal.LevelSequenceFactoryNew()
@@ -178,6 +155,8 @@ class CameraLoader(plugin.Loader):
                 frame_ranges[i + 1][0], frame_ranges[i + 1][1],
                 [level])
 
+        folder_entity = context["folder"]
+        folder_attributes = folder_entity["attrib"]
         clip_in = folder_attributes.get("clipIn")
         clip_out = folder_attributes.get("clipOut")
 
@@ -195,7 +174,6 @@ class CameraLoader(plugin.Loader):
         settings.set_editor_property('reduce_keys', False)
 
         if cam_seq:
-            path = self.filepath_from_context(context)
             self._import_camera(
                 EditorLevelLibrary.get_editor_world(),
                 cam_seq,
@@ -221,6 +199,67 @@ class CameraLoader(plugin.Loader):
                                 clip_in - folder_attributes.get('frameStart')
                             )
                             key.set_time(unreal.FrameNumber(value=new_time))
+        return master_level
+
+    def load(self, context, name, namespace, data):
+        """
+        Load and containerise representation into Content Browser.
+
+        This is two step process. First, import FBX to temporary path and
+        then call `containerise()` on it - this moves all content to new
+        directory and then it will create AssetContainer there and imprint it
+        with metadata. This will mark this path as container.
+
+        Args:
+            context (dict): application context
+            name (str): Product name
+            namespace (str): in Unreal this is basically path to container.
+                             This is not passed here, so namespace is set
+                             by `containerise()` because only then we know
+                             real path.
+            data (dict): Those would be data to be imprinted. This is not used
+                         now, data are imprinted by `containerise()`.
+
+        Returns:
+            list(str): list of container content
+        """
+
+        # Create directory for asset and Ayon container
+        folder_entity = context["folder"]
+        folder_path = folder_entity["path"]
+        hierarchy_parts = folder_path.split("/")
+        # Remove empty string
+        hierarchy_parts.pop(0)
+        # Pop folder name
+        folder_name = hierarchy_parts.pop(-1)
+
+        hierarchy_dir = self.root
+        hierarchy_dir_list = []
+        for h in hierarchy_parts:
+            hierarchy_dir = f"{hierarchy_dir}/{h}"
+            hierarchy_dir_list.append(hierarchy_dir)
+        suffix = "_CON"
+        asset_name = f"{folder_name}_{name}" if folder_name else name
+        tools = unreal.AssetToolsHelpers().get_asset_tools()
+        version = context["version"]["version"]
+        # Check if version is hero version and use different name
+        if version < 0:
+            name_version = f"{name}_hero"
+        else:
+            name_version = f"{name}_v{version:03d}"
+        asset_dir, container_name = tools.create_unique_asset_name(
+            f"{hierarchy_dir}/{folder_name}/{name_version}", suffix="")
+
+        container_name += suffix
+        master_level = None
+        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+            EditorAssetLibrary.make_directory(asset_dir)
+            path = self.filepath_from_context(context)
+            master_level = self._create_map_camera(
+                context, path, tools, hierarchy_dir_list,
+                hierarchy_dir, hierarchy_parts,
+                asset_dir, asset_name
+            )
 
         # Create Asset Container
         if not unreal.EditorAssetLibrary.does_asset_exist(
@@ -229,23 +268,16 @@ class CameraLoader(plugin.Loader):
             create_container(
                 container=container_name, path=asset_dir)
 
-            product_type = context["product"]["productType"]
-            data = {
-                "schema": "ayon:container-2.0",
-                "id": AYON_CONTAINER_ID,
-                "folder_path": folder_path,
-                "namespace": asset_dir,
-                "container_name": container_name,
-                "asset_name": asset_name,
-                "loader": str(self.__class__.__name__),
-                "representation": context["representation"]["id"],
-                "parent": context["representation"]["versionId"],
-                "product_type": product_type,
-                # TODO these should be probably removed
-                "asset": folder_name,
-                "family": product_type,
-            }
-            imprint(f"{asset_dir}/{container_name}", data)
+
+        self.imprint(
+            folder_path,
+            asset_dir,
+            container_name,
+            asset_name,
+            context["representation"],
+            folder_name,
+            context["product"]["productType"]
+        )
 
         EditorLevelLibrary.save_all_dirty_levels()
         EditorLevelLibrary.load_level(master_level)
