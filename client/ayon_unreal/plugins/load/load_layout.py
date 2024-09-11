@@ -100,8 +100,6 @@ class LayoutLoader(plugin.Loader):
             name = "StaticMeshFBXLoader"
         elif family == 'camera':
             name = "CameraLoader"
-        elif family == 'animation':
-            name = "AnimationFBXLoader"
 
         if name == "":
 
