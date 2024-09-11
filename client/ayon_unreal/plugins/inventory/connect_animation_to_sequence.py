@@ -57,10 +57,10 @@ class ConnectFbxAnimation(InventoryAction):
             if container.get("family") == "animation"), None)
         frameStart = next((
             int(container.get("frameStart")) for container in containers
-            if container.get("family") == "animation"), None)
+            if container.get("family") == "animation"), 1)
         frameEnd = next((
             int(container.get("frameEnd")) for container in containers
-            if container.get("family") == "animation"), None)
+            if container.get("family") == "animation"), 1)
         if anim_path:
             asset_content = unreal.EditorAssetLibrary.list_assets(
                 anim_path, recursive=False, include_folder=False

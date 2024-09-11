@@ -98,6 +98,8 @@ class AnimationAlembicLoader(plugin.Loader):
         asset_dir,
         container_name,
         asset_name,
+        frameStart,
+        frameEnd,
         representation,
         product_type,
     ):
@@ -112,6 +114,8 @@ class AnimationAlembicLoader(plugin.Loader):
             "representation": representation["id"],
             "parent": representation["versionId"],
             "product_type": product_type,
+            "frameStart": frameStart,
+            "frameEnd": frameEnd,
             # TODO these should be probably removed
             "asset": folder_path,
             "family": product_type
@@ -185,25 +189,17 @@ class AnimationAlembicLoader(plugin.Loader):
             unreal_pipeline.create_container(
                 container=container_name, path=asset_dir)
 
-        data = {
-            "schema": "ayon:container-2.0",
-            "id": AYON_CONTAINER_ID,
-            "folder_path": folder_path,
-            "namespace": asset_dir,
-            "container_name": container_name,
-            "asset_name": asset_name,
-            "loader": str(self.__class__.__name__),
-            "representation": context["representation"]["id"],
-            "parent": context["representation"]["versionId"],
-            "product_type": product_type,
-            "frameStart": folder_entity["attrib"]["frameStart"],
-            "frameEnd": folder_entity["attrib"]["frameEnd"],
-            # TODO these should be probably removed
-            "asset": folder_path,
-            "family": product_type,
-        }
-        unreal_pipeline.imprint(
-            f"{asset_dir}/{container_name}", data)
+        # update metadata
+        self.imprint(
+            folder_path,
+            asset_dir,
+            container_name,
+            asset_name,
+            folder_entity["attrib"]["frameStart"],
+            folder_entity["attrib"]["frameEnd"],
+            context["representation"],
+            product_type
+        )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=True
@@ -259,6 +255,8 @@ class AnimationAlembicLoader(plugin.Loader):
             asset_dir,
             container_name,
             asset_name,
+            container.get("frameStart", "1"),
+            container.get("frameEnd", "1"),
             repre_entity,
             product_type
         )
