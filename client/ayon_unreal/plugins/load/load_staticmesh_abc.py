@@ -140,8 +140,8 @@ class StaticMeshAlembicLoader(plugin.Loader):
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
         if not unreal.EditorAssetLibrary.does_asset_exist(
             f"{asset_dir}/{container_name}"):
-            # Create Asset Container
-            create_container(container=container_name, path=asset_dir)
+                # Create Asset Container
+                create_container(container=container_name, path=asset_dir)
 
     def imprint(
         self,

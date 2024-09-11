@@ -121,8 +121,8 @@ class StaticMeshFBXLoader(plugin.Loader):
         # avoid duplicate container asset data being created
         if not unreal.EditorAssetLibrary.does_asset_exist(
             f"{asset_dir}/{container_name}"):
-            # Create Asset Container
-            create_container(container=container_name, path=asset_dir)
+                # Create Asset Container
+                create_container(container=container_name, path=asset_dir)
 
     def imprint(
         self,
