@@ -397,6 +397,9 @@ class CameraLoader(plugin.Loader):
 
         editor_subsystem.set_level_viewport_camera_info(vp_loc, vp_rot)
 
+    def switch(self, container, context):
+        self.update(container, context)
+
     def remove(self, container):
         asset_dir = container.get('namespace')
         # Create a temporary level to delete the layout level.
