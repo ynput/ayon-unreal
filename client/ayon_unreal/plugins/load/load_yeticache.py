@@ -103,20 +103,28 @@ class YetiLoader(plugin.Loader):
 
         asset_dir = f"{asset_dir}_{unique_number:02}"
         container_name = f"{container_name}_{unique_number:02}{suffix}"
-
+        asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
+            asset_name, asset_dir, name)
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
+        task = None
+        path = self.filepath_from_context(context)
+        if asset_path:
+            loaded_asset_dir = unreal.Paths.split(asset_path)[0]
+            task = self.get_task(path, loaded_asset_dir, asset_name, True)
+        else:
+            if not unreal.EditorAssetLibrary.does_asset_exist(
+                f"{asset_dir}/{asset_name}"):
+                    task = self.get_task(path, asset_dir, asset_name, False)
 
-            path = self.filepath_from_context(context)
-            task = self.get_task(path, asset_dir, asset_name, False)
+        unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])  # noqa: E501
 
-            unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])  # noqa: E501
+        if not unreal.EditorAssetLibrary.does_asset_exist(
+            f"{asset_dir}/{container_name}"):
+                # Create Asset Container
+                unreal_pipeline.create_container(
+                    container=container_name, path=asset_dir)
 
-            # Create Asset Container
-            unreal_pipeline.create_container(
-                container=container_name, path=asset_dir)
-
-        product_type = context["product"]["productType"]
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
@@ -127,11 +135,17 @@ class YetiLoader(plugin.Loader):
             "loader": str(self.__class__.__name__),
             "representation": context["representation"]["id"],
             "parent": context["representation"]["versionId"],
-            "product_type": product_type,
+            "product_type": context["product"]["productType"],
             # TODO these shold be probably removed
             "asset": folder_path,
-            "family": product_type,
+            "family": context["product"]["productType"]
         }
+
+        if asset_path:
+            unreal.EditorAssetLibrary.rename_asset(
+                f"{asset_path}",
+                f"{asset_dir}/{asset_name}.{asset_name}"
+            )
         unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
@@ -149,7 +163,7 @@ class YetiLoader(plugin.Loader):
         source_path = get_representation_path(repre_entity)
         destination_path = container["namespace"]
 
-        task = self.get_task(source_path, destination_path, name, True)
+        task = self.get_task(source_path, destination_path, name, False)
 
         # do import fbx and replace existing data
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
@@ -160,8 +174,9 @@ class YetiLoader(plugin.Loader):
             container_path,
             {
                 "representation": repre_entity["id"],
-                "parent": repre_entity["versionId"],
-            })
+                "parent": repre_entity["versionId"]
+            }
+        )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
             destination_path, recursive=True, include_folder=True

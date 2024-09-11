@@ -81,16 +81,26 @@ class AnimationAlembicLoader(plugin.Loader):
         return task
 
     def import_and_containerize(
-        self, filepath, asset_dir, asset_name, container_name, loaded_options
+        self, filepath, asset_dir, asset_name, container_name, loaded_options,
+        asset_path=None
     ):
-        unreal.EditorAssetLibrary.make_directory(asset_dir)
-
-        task = self.get_task(filepath, asset_dir, asset_name, False, loaded_options)
+        task = None
+        if asset_path:
+            loaded_asset_dir = os.path.dirname(asset_path)
+            task = self.get_task(filepath, loaded_asset_dir, asset_name, True, loaded_options)
+        else:
+            if not unreal.EditorAssetLibrary.does_asset_exist(
+                f"{asset_dir}/{asset_name}"):
+                    task = self.get_task(
+                        filepath, asset_dir, asset_name, False, loaded_options
+                    )
 
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
-
-        # Create Asset Container
-        unreal_pipeline.create_container(container=container_name, path=asset_dir)
+        if not unreal.EditorAssetLibrary.does_asset_exist(
+            f"{asset_dir}/{container_name}"):
+                # Create Asset Container
+                unreal_pipeline.create_container(
+                    container=container_name, path=asset_dir)
 
     def imprint(
         self,
@@ -99,7 +109,7 @@ class AnimationAlembicLoader(plugin.Loader):
         container_name,
         asset_name,
         representation,
-        product_type,
+        product_type
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -165,7 +175,8 @@ class AnimationAlembicLoader(plugin.Loader):
             f"{self.root}/Animations/{folder_name}/{name_version}", suffix=f"_{ext}")
 
         container_name += suffix
-
+        asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
+            asset_name, asset_dir, folder_name, extension=ext)
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
             loaded_options = {
@@ -175,36 +186,33 @@ class AnimationAlembicLoader(plugin.Loader):
                 "frameEnd": folder_entity["attrib"]["frameEnd"]
             }
 
-            path = self.filepath_from_context(context)
-            task = self.get_task(path, asset_dir, asset_name, False, loaded_options)
+        path = self.filepath_from_context(context)
+        self.import_and_containerize(
+            path, asset_dir, asset_name,
+            container_name, loaded_options,
+            asset_path=asset_path
+        )
 
-            asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
-            asset_tools.import_asset_tasks([task])
+        if not unreal.EditorAssetLibrary.does_asset_exist(
+            f"{asset_dir}/{container_name}"):
+                # Create Asset Container
+                unreal_pipeline.create_container(
+                    container=container_name, path=asset_dir)
 
-            # Create Asset Container
-            unreal_pipeline.create_container(
-                container=container_name, path=asset_dir)
+        if asset_path:
+            unreal.EditorAssetLibrary.rename_asset(
+                f"{asset_path}",
+                f"{asset_dir}/{asset_name}.{asset_name}"
+            )
 
-        data = {
-            "schema": "ayon:container-2.0",
-            "id": AYON_CONTAINER_ID,
-            "folder_path": folder_path,
-            "namespace": asset_dir,
-            "container_name": container_name,
-            "asset_name": asset_name,
-            "loader": str(self.__class__.__name__),
-            "representation": context["representation"]["id"],
-            "parent": context["representation"]["versionId"],
-            "product_type": product_type,
-            "frameStart": folder_entity["attrib"]["frameStart"],
-            "frameEnd": folder_entity["attrib"]["frameEnd"],
-            # TODO these should be probably removed
-            "asset": folder_path,
-            "family": product_type,
-        }
-        unreal_pipeline.imprint(
-            f"{asset_dir}/{container_name}", data)
-
+        self.imprint(
+            folder_path,
+            asset_dir,
+            container_name,
+            asset_name,
+            context["representation"],
+            product_type
+        )
         asset_content = unreal.EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=True
         )
@@ -242,16 +250,18 @@ class AnimationAlembicLoader(plugin.Loader):
             f"{self.root}/Animations/{folder_name}/{name_version}", suffix=f"_{ext}")
 
         container_name += suffix
-
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            loaded_options = {
-                "abc_conversion_preset": self.abc_conversion_preset,
-                "frameStart": int(container.get("frameStart", "1")),
-                "frameEnd": int(container.get("frameEnd", "1"))
-            }
-            self.import_and_containerize(
-                source_path, asset_dir, asset_name, container_name, loaded_options
-            )
+            unreal.EditorAssetLibrary.make_directory(asset_dir)
+        loaded_options = {
+            "abc_conversion_preset": self.abc_conversion_preset,
+            "frameStart": int(container.get("frameStart", "1")),
+            "frameEnd": int(container.get("frameEnd", "1"))
+        }
+
+        self.import_and_containerize(
+            source_path, asset_dir, asset_name,
+            container_name, loaded_options
+        )
 
         # update metadata
         self.imprint(
