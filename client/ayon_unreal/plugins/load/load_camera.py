@@ -1,17 +1,13 @@
 # -*- coding: utf-8 -*-
 """Load camera from FBX."""
-import ayon_api
-
 import unreal
 from unreal import (
     EditorAssetLibrary,
     EditorLevelLibrary,
-    EditorLevelUtils,
-    LevelSequenceEditorBlueprintLibrary as LevelSequenceLib,
+    EditorLevelUtils
 )
 from ayon_core.pipeline import (
     AYON_CONTAINER_ID,
-    get_current_project_name,
     get_representation_path,
 )
 from ayon_unreal.api import plugin
@@ -59,56 +55,35 @@ class CameraLoader(plugin.Loader):
         else:
             raise NotImplementedError(
                 f"Unreal version {ue_major} not supported")
+    def imprint(
+        self,
+        folder_path,
+        asset_dir,
+        container_name,
+        asset_name,
+        representation,
+        folder_name,
+        product_type):
+        data = {
+            "schema": "ayon:container-2.0",
+            "id": AYON_CONTAINER_ID,
+            "folder_path": folder_path,
+            "namespace": asset_dir,
+            "container_name": container_name,
+            "asset_name": asset_name,
+            "loader": str(self.__class__.__name__),
+            "representation": representation["id"],
+            "parent": representation["versionId"],
+            "product_type": product_type,
+            # TODO these should be probably removed
+            "asset": folder_name,
+            "family": product_type,
+        }
+        imprint(f"{asset_dir}/{container_name}", data)
 
-    def load(self, context, name, namespace, data):
-        """
-        Load and containerise representation into Content Browser.
-
-        This is two step process. First, import FBX to temporary path and
-        then call `containerise()` on it - this moves all content to new
-        directory and then it will create AssetContainer there and imprint it
-        with metadata. This will mark this path as container.
-
-        Args:
-            context (dict): application context
-            name (str): Product name
-            namespace (str): in Unreal this is basically path to container.
-                             This is not passed here, so namespace is set
-                             by `containerise()` because only then we know
-                             real path.
-            data (dict): Those would be data to be imprinted. This is not used
-                         now, data are imprinted by `containerise()`.
-
-        Returns:
-            list(str): list of container content
-        """
-
-        # Create directory for asset and Ayon container
-        folder_entity = context["folder"]
-        folder_attributes = folder_entity["attrib"]
-        folder_path = folder_entity["path"]
-        hierarchy_parts = folder_path.split("/")
-        # Remove empty string
-        hierarchy_parts.pop(0)
-        # Pop folder name
-        folder_name = hierarchy_parts.pop(-1)
-
-        hierarchy_dir = self.root
-        hierarchy_dir_list = []
-        for h in hierarchy_parts:
-            hierarchy_dir = f"{hierarchy_dir}/{h}"
-            hierarchy_dir_list.append(hierarchy_dir)
-        suffix = "_CON"
-        asset_name = f"{folder_name}_{name}" if folder_name else name
-        tools = unreal.AssetToolsHelpers().get_asset_tools()
-
-        asset_dir, container_name = tools.create_unique_asset_name(
-            f"{hierarchy_dir}/{folder_name}/{name}", suffix="")
-
-        container_name += suffix
-
-        EditorAssetLibrary.make_directory(asset_dir)
-
+    def _create_map_camera(self, context, path, tools, hierarchy_dir_list,
+                           hierarchy_dir, hierarchy_parts,
+                           asset_dir, asset_name):
         # Create map for the shot, and create hierarchy of map. If the maps
         # already exist, we will use them.
         h_dir = hierarchy_dir_list[0]
@@ -118,11 +93,11 @@ class CameraLoader(plugin.Loader):
             EditorLevelLibrary.new_level(f"{h_dir}/{h_asset}_map")
 
         level = (
-            f"{asset_dir}/{folder_name}_{name}_map_camera.{folder_name}_{name}_map_camera"
+            f"{asset_dir}/{asset_name}_map_camera.{asset_name}_map_camera"
         )
         if not EditorAssetLibrary.does_asset_exist(level):
             EditorLevelLibrary.new_level(
-                f"{asset_dir}/{folder_name}_{name}_map_camera"
+                f"{asset_dir}/{asset_name}_map_camera"
             )
 
             EditorLevelLibrary.load_level(master_level)
@@ -161,10 +136,8 @@ class CameraLoader(plugin.Loader):
                 sequences.append(sequence)
                 frame_ranges.append(frame_range)
 
-        EditorAssetLibrary.make_directory(asset_dir)
-
         cam_seq = tools.create_asset(
-            asset_name=f"{folder_name}_{name}_camera",
+            asset_name=f"{asset_name}_camera",
             package_path=asset_dir,
             asset_class=unreal.LevelSequence,
             factory=unreal.LevelSequenceFactoryNew()
@@ -178,6 +151,8 @@ class CameraLoader(plugin.Loader):
                 frame_ranges[i + 1][0], frame_ranges[i + 1][1],
                 [level])
 
+        folder_entity = context["folder"]
+        folder_attributes = folder_entity["attrib"]
         clip_in = folder_attributes.get("clipIn")
         clip_out = folder_attributes.get("clipOut")
 
@@ -195,7 +170,6 @@ class CameraLoader(plugin.Loader):
         settings.set_editor_property('reduce_keys', False)
 
         if cam_seq:
-            path = self.filepath_from_context(context)
             self._import_camera(
                 EditorLevelLibrary.get_editor_world(),
                 cam_seq,
@@ -221,28 +195,83 @@ class CameraLoader(plugin.Loader):
                                 clip_in - folder_attributes.get('frameStart')
                             )
                             key.set_time(unreal.FrameNumber(value=new_time))
+        return master_level
+
+    def load(self, context, name, namespace, data):
+        """
+        Load and containerise representation into Content Browser.
+
+        This is two step process. First, import FBX to temporary path and
+        then call `containerise()` on it - this moves all content to new
+        directory and then it will create AssetContainer there and imprint it
+        with metadata. This will mark this path as container.
+
+        Args:
+            context (dict): application context
+            name (str): Product name
+            namespace (str): in Unreal this is basically path to container.
+                             This is not passed here, so namespace is set
+                             by `containerise()` because only then we know
+                             real path.
+            data (dict): Those would be data to be imprinted. This is not used
+                         now, data are imprinted by `containerise()`.
+
+        Returns:
+            list(str): list of container content
+        """
+        # Create directory for asset and Ayon container
+        folder_entity = context["folder"]
+        folder_path = folder_entity["path"]
+        hierarchy_parts = folder_path.split("/")
+        # Remove empty string
+        hierarchy_parts.pop(0)
+        # Pop folder name
+        folder_name = hierarchy_parts.pop(-1)
+
+        hierarchy_dir = self.root
+        hierarchy_dir_list = []
+        for h in hierarchy_parts:
+            hierarchy_dir = f"{hierarchy_dir}/{h}"
+            hierarchy_dir_list.append(hierarchy_dir)
+        suffix = "_CON"
+        asset_name = f"{folder_name}_{name}" if folder_name else name
+        tools = unreal.AssetToolsHelpers().get_asset_tools()
+        version = context["version"]["version"]
+        # Check if version is hero version and use different name
+        if version < 0:
+            name_version = f"{name}_hero"
+        else:
+            name_version = f"{name}_v{version:03d}"
+        asset_dir, container_name = tools.create_unique_asset_name(
+            f"{hierarchy_dir}/{folder_name}/{name_version}", suffix="")
+
+        container_name += suffix
+        master_level = None
+        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+            EditorAssetLibrary.make_directory(asset_dir)
+            path = self.filepath_from_context(context)
+            master_level = self._create_map_camera(
+                context, path, tools, hierarchy_dir_list,
+                hierarchy_dir, hierarchy_parts,
+                asset_dir, asset_name
+            )
 
         # Create Asset Container
-        create_container(
-            container=container_name, path=asset_dir)
+        if not unreal.EditorAssetLibrary.does_asset_exist(
+            f"{asset_dir}/{container_name}"
+        ):
+            create_container(
+                container=container_name, path=asset_dir)
 
-        product_type = context["product"]["productType"]
-        data = {
-            "schema": "ayon:container-2.0",
-            "id": AYON_CONTAINER_ID,
-            "folder_path": folder_path,
-            "namespace": asset_dir,
-            "container_name": container_name,
-            "asset_name": asset_name,
-            "loader": str(self.__class__.__name__),
-            "representation": context["representation"]["id"],
-            "parent": context["representation"]["versionId"],
-            "product_type": product_type,
-            # TODO these should be probably removed
-            "asset": folder_name,
-            "family": product_type,
-        }
-        imprint(f"{asset_dir}/{container_name}", data)
+        self.imprint(
+            folder_path,
+            asset_dir,
+            container_name,
+            asset_name,
+            context["representation"],
+            folder_name,
+            context["product"]["productType"]
+        )
 
         EditorLevelLibrary.save_all_dirty_levels()
         EditorLevelLibrary.load_level(master_level)
@@ -258,144 +287,75 @@ class CameraLoader(plugin.Loader):
         return asset_content
 
     def update(self, container, context):
-        ar = unreal.AssetRegistryHelpers.get_asset_registry()
-
-        curr_level_sequence = LevelSequenceLib.get_current_level_sequence()
-        curr_time = LevelSequenceLib.get_current_time()
-        is_cam_lock = LevelSequenceLib.is_camera_cut_locked_to_viewport()
-
-        editor_subsystem = unreal.UnrealEditorSubsystem()
-        vp_loc, vp_rot = editor_subsystem.get_level_viewport_camera_info()
-
-        asset_dir = container.get('namespace')
-
-        EditorLevelLibrary.save_current_level()
-
-        _filter = unreal.ARFilter(
-            class_names=["LevelSequence"],
-            package_paths=[asset_dir],
-            recursive_paths=False)
-        sequences = ar.get_assets(_filter)
-        _filter = unreal.ARFilter(
-            class_names=["World"],
-            package_paths=[asset_dir],
-            recursive_paths=True)
-        maps = ar.get_assets(_filter)
-
-        # There should be only one map in the list
-        EditorLevelLibrary.load_level(maps[0].get_asset().get_path_name())
-
-        level_sequence = sequences[0].get_asset()
-
-        display_rate = level_sequence.get_display_rate()
-        playback_start = level_sequence.get_playback_start()
-        playback_end = level_sequence.get_playback_end()
-
-        sequence_name = f"{container.get('asset_name')}_camera"
-
-        # Get the actors in the level sequence.
-        objs = unreal.SequencerTools.get_bound_objects(
-            unreal.EditorLevelLibrary.get_editor_world(),
-            level_sequence,
-            level_sequence.get_bindings(),
-            unreal.SequencerScriptingRange(
-                has_start_value=True,
-                has_end_value=True,
-                inclusive_start=level_sequence.get_playback_start(),
-                exclusive_end=level_sequence.get_playback_end()
-            )
-        )
-
-        # Delete actors from the map
-        for o in objs:
-            if o.bound_objects[0].get_class().get_name() == "CineCameraActor":
-                actor_path = o.bound_objects[0].get_path_name().split(":")[-1]
-                actor = EditorLevelLibrary.get_actor_reference(actor_path)
-                EditorLevelLibrary.destroy_actor(actor)
-
-        # Remove the Level Sequence from the parent.
-        # We need to traverse the hierarchy from the master sequence to find
-        # the level sequence.
-        namespace = container.get('namespace').replace(f"{self.root}/", "")
-        ms_asset = namespace.split('/')[0]
-
-        EditorAssetLibrary.delete_asset(level_sequence.get_path_name())
-
-        settings = unreal.MovieSceneUserImportFBXSettings()
-        settings.set_editor_property('reduce_keys', False)
-
-        tools = unreal.AssetToolsHelpers().get_asset_tools()
-        new_sequence = tools.create_asset(
-            asset_name=sequence_name,
-            package_path=asset_dir,
-            asset_class=unreal.LevelSequence,
-            factory=unreal.LevelSequenceFactoryNew()
-        )
-
-        new_sequence.set_display_rate(display_rate)
-        new_sequence.set_playback_start(playback_start)
-        new_sequence.set_playback_end(playback_end)
-
+        # Create directory for asset and Ayon container
         repre_entity = context["representation"]
-        repre_path = get_representation_path(repre_entity)
-        self._import_camera(
-            EditorLevelLibrary.get_editor_world(),
-            new_sequence,
-            new_sequence.get_bindings(),
-            settings,
-            repre_path
+        folder_entity = context["folder"]
+        folder_path = folder_entity["path"]
+        product_name = context["product"]["name"]
+        hierarchy_parts = folder_path.split("/")
+        # Remove empty string
+        hierarchy_parts.pop(0)
+        # Pop folder name
+        folder_name = hierarchy_parts.pop(-1)
+
+        hierarchy_dir = self.root
+        hierarchy_dir_list = []
+        for h in hierarchy_parts:
+            hierarchy_dir = f"{hierarchy_dir}/{h}"
+            hierarchy_dir_list.append(hierarchy_dir)
+        suffix = "_CON"
+        asset_name = f"{folder_name}_{product_name}" if folder_name else product_name
+        tools = unreal.AssetToolsHelpers().get_asset_tools()
+        version = context["version"]["version"]
+        # Check if version is hero version and use different name
+        if version < 0:
+            name_version = f"{product_name}_hero"
+        else:
+            name_version = f"{product_name}_v{version:03d}"
+        asset_dir, container_name = tools.create_unique_asset_name(
+            f"{hierarchy_dir}/{folder_name}/{name_version}", suffix="")
+
+        container_name += suffix
+        master_level = None
+        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+            EditorAssetLibrary.make_directory(asset_dir)
+            path = get_representation_path(repre_entity)
+            master_level = self._create_map_camera(
+                context, path, tools, hierarchy_dir_list,
+                hierarchy_dir, hierarchy_parts,
+                asset_dir, asset_name
+            )
+
+        # Create Asset Container
+        if not unreal.EditorAssetLibrary.does_asset_exist(
+            f"{asset_dir}/{container_name}"
+        ):
+            create_container(
+                container=container_name, path=asset_dir)
+
+        self.imprint(
+            folder_path,
+            asset_dir,
+            container_name,
+            asset_name,
+            context["representation"],
+            folder_name,
+            context["product"]["productType"]
         )
 
-        # Set range of all sections
-        # Changing the range of the section is not enough. We need to change
-        # the frame of all the keys in the section.
-        project_name = get_current_project_name()
-        folder_path = container.get("folder_path")
-        if folder_path is None:
-            folder_path = container.get("asset")
-        folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
-        folder_attributes = folder_entity["attrib"]
+        EditorLevelLibrary.save_all_dirty_levels()
+        EditorLevelLibrary.load_level(master_level)
 
-        clip_in = folder_attributes["clipIn"]
-        clip_out = folder_attributes["clipOut"]
-        frame_start = folder_attributes["frameStart"]
-        for possessable in new_sequence.get_possessables():
-            for tracks in possessable.get_tracks():
-                for section in tracks.get_sections():
-                    section.set_range(clip_in, clip_out + 1)
-                    for channel in section.get_all_channels():
-                        for key in channel.get_keys():
-                            old_time = key.get_time().get_editor_property(
-                                'frame_number')
-                            old_time_value = old_time.get_editor_property(
-                                'value')
-                            new_time = old_time_value + (
-                                clip_in - frame_start
-                            )
-                            key.set_time(unreal.FrameNumber(value=new_time))
-
-        data = {
-            "representation": repre_entity["id"],
-            "parent": repre_entity["versionId"],
-        }
-        imprint(f"{asset_dir}/{container.get('container_name')}", data)
-
-        EditorLevelLibrary.save_current_level()
-
+        # Save all assets in the hierarchy
         asset_content = EditorAssetLibrary.list_assets(
-            f"{self.root}/{ms_asset}", recursive=True, include_folder=False)
+            hierarchy_dir_list[0], recursive=True, include_folder=False
+        )
 
         for a in asset_content:
             EditorAssetLibrary.save_asset(a)
 
-        # EditorLevelLibrary.load_level(master_level)
-
-        if curr_level_sequence:
-            LevelSequenceLib.open_level_sequence(curr_level_sequence)
-            LevelSequenceLib.set_current_time(curr_time)
-            LevelSequenceLib.set_lock_camera_cut_to_viewport(is_cam_lock)
-
-        editor_subsystem.set_level_viewport_camera_info(vp_loc, vp_rot)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         asset_dir = container.get('namespace')
