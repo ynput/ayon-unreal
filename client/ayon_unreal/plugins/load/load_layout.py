@@ -579,8 +579,8 @@ class LayoutLoader(plugin.Loader):
         )
 
         container_name += suffix
-
-        EditorAssetLibrary.make_directory(asset_dir)
+        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+            EditorAssetLibrary.make_directory(asset_dir)
 
         master_level = None
         shot = None
@@ -635,12 +635,17 @@ class LayoutLoader(plugin.Loader):
                             e.get_asset().get_playback_start(),
                             e.get_asset().get_playback_end()))
 
-            shot = tools.create_asset(
-                asset_name=folder_name,
-                package_path=asset_dir,
-                asset_class=unreal.LevelSequence,
-                factory=unreal.LevelSequenceFactoryNew()
-            )
+            shot_name = f"{asset_dir}/{folder_name}.{folder_name}"
+            shot = None
+            if not EditorAssetLibrary.does_asset_exist(shot_name):
+                shot = tools.create_asset(
+                    asset_name=folder_name,
+                    package_path=asset_dir,
+                    asset_class=unreal.LevelSequence,
+                    factory=unreal.LevelSequenceFactoryNew()
+                )
+            else:
+                shot = unreal.load_asset(shot_name)
 
             # sequences and frame_ranges have the same length
             for i in range(0, len(sequences) - 1):
@@ -685,27 +690,29 @@ class LayoutLoader(plugin.Loader):
             EditorAssetLibrary.save_asset(s.get_path_name())
 
         EditorLevelLibrary.save_current_level()
+        if not unreal.EditorAssetLibrary.does_asset_exist(
+            f"{asset_dir}/{container_name}"
+        ):
+            # Create Asset Container
+            create_container(
+                container=container_name, path=asset_dir)
 
-        # Create Asset Container
-        create_container(
-            container=container_name, path=asset_dir)
-
-        data = {
-            "schema": "ayon:container-2.0",
-            "id": AYON_CONTAINER_ID,
-            "asset": folder_name,
-            "folder_path": folder_path,
-            "namespace": asset_dir,
-            "container_name": container_name,
-            "asset_name": asset_name,
-            "loader": str(self.__class__.__name__),
-            "representation": context["representation"]["id"],
-            "parent": context["representation"]["versionId"],
-            "family": context["product"]["productType"],
-            "loaded_assets": loaded_assets
-        }
-        imprint(
-            "{}/{}".format(asset_dir, container_name), data)
+            data = {
+                "schema": "ayon:container-2.0",
+                "id": AYON_CONTAINER_ID,
+                "asset": folder_name,
+                "folder_path": folder_path,
+                "namespace": asset_dir,
+                "container_name": container_name,
+                "asset_name": asset_name,
+                "loader": str(self.__class__.__name__),
+                "representation": context["representation"]["id"],
+                "parent": context["representation"]["versionId"],
+                "family": context["product"]["productType"],
+                "loaded_assets": loaded_assets
+            }
+            imprint(
+                "{}/{}".format(asset_dir, container_name), data)
 
         save_dir = hierarchy_dir_list[0] if create_sequences else asset_dir
 
