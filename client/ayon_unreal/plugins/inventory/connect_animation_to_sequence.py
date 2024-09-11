@@ -84,7 +84,10 @@ class ConnectFbxAnimation(InventoryAction):
 class ConnectAlembicAnimation(ConnectFbxAnimation):
     """Add Animation Sequence to Level Sequence when the skeletal Mesh
     already binds into the Sequence. Applied only for animation and
-    layout product type
+    layout product type.
+    This is done in hacky way which replace the loaded fbx skeletal mesh with the alembic one
+    in the current update. It will be removed after support the alembic export of rig product
+    type.
     """
 
     label = "Connect Alembic Animation to Level Sequence"
