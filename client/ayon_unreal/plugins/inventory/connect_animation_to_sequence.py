@@ -4,6 +4,7 @@ from ayon_unreal.api.lib import (
     update_skeletal_mesh,
     import_animation_sequence
 )
+from ayon_unreal.api.pipeline import get_frame_range_from_folder_attributes
 
 
 class ConnectFbxAnimation(InventoryAction):
@@ -55,12 +56,13 @@ class ConnectFbxAnimation(InventoryAction):
         anim_path = next((
             container.get("namespace") for container in containers
             if container.get("family") == "animation"), None)
+        start_frame, end_frame = get_frame_range_from_folder_attributes()
         # use the clipIn/Out value for the frameStart and frameEnd
         frameStart = next((
-            int(container.get("frameStart")) for container in containers
+            int(container.get("frameStart", start_frame)) for container in containers
             if container.get("family") == "animation"), None)
         frameEnd = next((
-            int(container.get("frameEnd")) for container in containers
+            int(container.get("frameEnd", end_frame)) for container in containers
             if container.get("family") == "animation"), None)
         if anim_path:
             asset_content = unreal.EditorAssetLibrary.list_assets(
