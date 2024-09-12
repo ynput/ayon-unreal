@@ -337,8 +337,9 @@ class LayoutLoader(plugin.Loader):
             for element in data
             if element.get("representation")
         }
-        if not extension.intersection({repre_extension}):
-            extension = {repre_extension}
+        extension.discard(None)
+        if not extension.intersection(repre_extension):
+            extension = repre_extension
 
         output = collections.defaultdict(list)
         if not version_ids:
@@ -347,7 +348,7 @@ class LayoutLoader(plugin.Loader):
         project_name = get_current_project_name()
         repre_entities = ayon_api.get_representations(
             project_name,
-            representation_names=extension,
+            representation_names={extension},
             version_ids=version_ids,
             fields={"id", "versionId", "name"}
         )
