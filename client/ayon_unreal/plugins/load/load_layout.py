@@ -336,8 +336,9 @@ class LayoutLoader(plugin.Loader):
             for element in data
             if element.get("representation")
         }
-        if "ma" in extension:
+        if not extension.intersection({repre_extension}):
             extension = {repre_extension}
+
         output = collections.defaultdict(list)
         if not version_ids:
             return output
