@@ -189,7 +189,6 @@ class StaticMeshAlembicLoader(plugin.Loader):
         """
         # Create directory for asset and Ayon container
         folder_path = context["folder"]["path"]
-        folder_name = context["folder"]["name"]
 
         suffix = "_CON"
         path = self.filepath_from_context(context)
@@ -242,7 +241,6 @@ class StaticMeshAlembicLoader(plugin.Loader):
 
     def update(self, container, context):
         folder_path = context["folder"]["path"]
-        folder_name = context["folder"]["name"]
         product_name = context["product"]["name"]
         product_type = context["product"]["productType"]
         repre_entity = context["representation"]
