@@ -332,7 +332,8 @@ class LayoutLoader(plugin.Loader):
         }
         version_ids.discard(None)
         extension = {
-            element.get("extension")
+            # "ma" as backward compatibility
+            element.get("extension", "ma")
             for element in data
             if element.get("representation")
         }
