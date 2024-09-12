@@ -166,8 +166,8 @@ class AnimationFBXLoader(plugin.Loader):
                         if (s.get_class() ==
                             MovieSceneSkeletalAnimationSection.static_class())]
 
-                    for s in sections:
-                        s.params.set_editor_property('animation', animation)
+                    for section in sections:
+                        section.params.set_editor_property('animation', animation)
 
     @staticmethod
     def is_skeleton(asset):
@@ -302,7 +302,6 @@ class AnimationFBXLoader(plugin.Loader):
             "frameStart": folder_entity["attrib"]["frameStart"],
             "frameEnd": folder_entity["attrib"]["frameEnd"]
         }
-        unreal.log(data)
         unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
 
     def load(self, context, name, namespace, options=None):
