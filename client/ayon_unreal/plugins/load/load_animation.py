@@ -166,8 +166,8 @@ class AnimationFBXLoader(plugin.Loader):
                         if (s.get_class() ==
                             MovieSceneSkeletalAnimationSection.static_class())]
 
-                    for section in sections:
-                        section.params.set_editor_property('animation', animation)
+                    for s in sections:
+                        s.set_editor_property('animation', animation)
 
     @staticmethod
     def is_skeleton(asset):
