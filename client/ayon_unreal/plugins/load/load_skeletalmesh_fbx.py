@@ -25,7 +25,7 @@ class SkeletalMeshFBXLoader(plugin.Loader):
     icon = "cube"
     color = "orange"
 
-    loaded_asset_dir = "{load_type}/{folder[path]}/{product[name]}"
+    loaded_asset_dir = "{folder[path]}/{product[name]}"
 
 
     @classmethod

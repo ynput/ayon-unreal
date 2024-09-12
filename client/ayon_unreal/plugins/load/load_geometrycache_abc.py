@@ -28,7 +28,7 @@ class PointCacheAlembicLoader(plugin.Loader):
     color = "orange"
 
     abc_conversion_preset = "maya"
-    loaded_asset_dir = "{load_type}/{folder[path]}/{product[name]}"
+    loaded_asset_dir = "{folder[path]}/{product[name]}"
 
     @classmethod
     def apply_settings(cls, project_settings):

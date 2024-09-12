@@ -24,7 +24,7 @@ class UAssetLoader(plugin.Loader):
 
     extension = "uasset"
 
-    loaded_asset_dir = "{load_type}/{folder[path]}/{product[name]}"
+    loaded_asset_dir = "{folder[path]}/{product[name]}"
 
     @classmethod
     def apply_settings(cls, project_settings):

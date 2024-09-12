@@ -21,7 +21,7 @@ class AnimationAlembicLoader(plugin.Loader):
     icon = "cube"
     color = "orange"
     abc_conversion_preset = "maya"
-    loaded_asset_dir = "{load_type}/{folder[path]}/{product[name]}"
+    loaded_asset_dir = "{folder[path]}/{product[name]}"
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -163,8 +163,7 @@ class AnimationAlembicLoader(plugin.Loader):
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
         asset_root, asset_name = unreal_pipeline.format_asset_directory(
-            name, context, self.loaded_asset_dir,
-            extension=ext, loader_type="Animations"
+            name, context, self.loaded_asset_dir, extension=ext
         )
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
@@ -231,8 +230,7 @@ class AnimationAlembicLoader(plugin.Loader):
 
         ext = os.path.splitext(source_path)[-1].lstrip(".")
         asset_root, asset_name = unreal_pipeline.format_asset_directory(
-            product_name, context, self.loaded_asset_dir,
-            extension=ext, loader_type="Animations"
+            product_name, context, self.loaded_asset_dir, extension=ext
         )
         # do import fbx and replace existing data
         asset_tools = unreal.AssetToolsHelpers.get_asset_tools()

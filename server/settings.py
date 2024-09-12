@@ -44,7 +44,7 @@ class UnrealSettings(BaseSettingsModel):
         title="Color Management (ImageIO)"
     )
     loaded_asset_dir: str = SettingsField(
-        "{load_type}/{folder[path]}/{product[name]}",
+        "{folder[path]}/{product[name]}",
         title="Asset directories for loaded assets",
         description="Asset directories to store the loaded assets"
     )
@@ -99,7 +99,7 @@ class UnrealSettings(BaseSettingsModel):
 
 
 DEFAULT_VALUES = {
-    "loaded_asset_dir": "{load_type}/{folder[path]}/{product[name]}",
+    "loaded_asset_dir": "{folder[path]}/{product[name]}",
     "level_sequences_for_layouts": True,
     "delete_unmatched_assets": False,
     "abc_conversion_preset": "maya",

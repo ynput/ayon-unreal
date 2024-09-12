@@ -344,8 +344,7 @@ class AnimationFBXLoader(plugin.Loader):
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
         asset_root, asset_name = unreal_pipeline.format_asset_directory(
-            name, context, self.loaded_asset_dir,
-            extension=ext, loader_type="Animations"
+            name, context, self.loaded_asset_dir, extension=ext
         )
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
@@ -409,8 +408,7 @@ class AnimationFBXLoader(plugin.Loader):
         source_path = get_representation_path(repre_entity)
         ext = os.path.splitext(source_path)[-1].lstrip(".")
         asset_root, asset_name = unreal_pipeline.format_asset_directory(
-            product_name, context, self.loaded_asset_dir,
-            extension=ext, loader_type="Animations"
+            product_name, context, self.loaded_asset_dir, extension=ext
         )
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
