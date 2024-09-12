@@ -66,7 +66,7 @@ class LayoutLoader(plugin.Loader):
         return [
             EnumDef(
                 "loaded_assets_extension",
-                label="Loaded Assets Extension",
+                label="Prioritized Loaded Assets Extension",
                 items={
                     "fbx": "fbx",
                     "abc": "abc"
@@ -331,7 +331,13 @@ class LayoutLoader(plugin.Loader):
             if element.get("representation")
         }
         version_ids.discard(None)
-
+        extension = {
+            element.get("extension")
+            for element in data
+            if element.get("representation")
+        }
+        if "ma" in extension:
+            extension = {repre_extension}
         output = collections.defaultdict(list)
         if not version_ids:
             return output
@@ -339,7 +345,7 @@ class LayoutLoader(plugin.Loader):
         project_name = get_current_project_name()
         repre_entities = ayon_api.get_representations(
             project_name,
-            representation_names={repre_extension},
+            representation_names=extension,
             version_ids=version_ids,
             fields={"id", "versionId", "name"}
         )
