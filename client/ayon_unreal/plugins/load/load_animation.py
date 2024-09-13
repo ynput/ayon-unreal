@@ -2,11 +2,12 @@
 """Load FBX with animations."""
 import json
 import os
-
 import ayon_api
 import unreal
 from ayon_core.pipeline import (AYON_CONTAINER_ID, get_current_project_name,
-                                get_representation_path)
+                                get_representation_path, load_container,
+                                discover_loader_plugins,
+                                loaders_from_representation)
 from ayon_core.pipeline.context_tools import get_current_folder_entity
 from ayon_core.pipeline.load import LoadError
 from ayon_unreal.api import pipeline as unreal_pipeline
@@ -25,6 +26,38 @@ class AnimationFBXLoader(plugin.Loader):
     color = "orange"
 
     root = "/Game/Ayon"
+
+    def _import_latest_skeleton(self, version_ids):
+        version_ids = set(version_ids)
+        project_name = get_current_project_name()
+        repre_entities = ayon_api.get_representations(
+            project_name,
+            representation_names={"fbx"},
+            version_ids=version_ids,
+            fields={"id"}
+        )
+        repre_entity = next(
+            (repre_entity for repre_entity
+             in repre_entities), None)
+        if not repre_entity:
+            raise LoadError(
+                f"No valid representation for version {version_ids}")
+        repre_id = repre_entity["id"]
+
+        target_loader = None
+        all_loaders = discover_loader_plugins()
+        loaders = loaders_from_representation(
+            all_loaders, repre_id)
+        for loader in loaders:
+            if loader.__name__ == "SkeletalMeshFBXLoader":
+                target_loader = loader
+        assets = load_container(
+            target_loader,
+            repre_id,
+            namespace=None,
+            options={}
+        )
+        return assets
 
     def _import_animation(
         self, path, asset_dir, asset_name, skeleton, automated, replace=False
@@ -196,20 +229,21 @@ class AnimationFBXLoader(plugin.Loader):
             project_name, version_id=version_id)
         entities = [v_link["entityId"] for v_link in v_links]
         linked_versions = list(server.get_versions(project_name, entities))
-
+        unreal.log("linked_versions")
+        unreal.log(linked_versions)
         rigs = [
             version["id"] for version in linked_versions
             if "rig" in version["attrib"]["families"]]
 
         self.log.debug(f"Found rigs: {rigs}")
 
-        containers = unreal_pipeline.ls()
-
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
+        containers = unreal_pipeline.ls()
         for container in containers:
             self.log.debug(f"Checking container: {container}")
-            if container["parent"] in rigs:
+            if container["parent"] not in rigs:
+                unreal.log("{}".format(container["parent"]))
                 # we found loaded version of the linked rigs
                 namespace = container["namespace"]
 
@@ -222,7 +256,13 @@ class AnimationFBXLoader(plugin.Loader):
                     break
 
         if not skeleton:
-            raise LoadError("No skeleton found..")
+           ar = unreal.AssetRegistryHelpers.get_asset_registry()
+           skeleton_asset = self._import_latest_skeleton(rigs)
+           for asset in skeleton_asset:
+               obj = ar.get_asset_by_object_path(asset).get_asset()
+               if obj.get_class().get_name() == 'Skeleton':
+                    skeleton = obj
+
         if not self.is_skeleton(skeleton):
             raise LoadError("Selected asset is not a skeleton.")
 

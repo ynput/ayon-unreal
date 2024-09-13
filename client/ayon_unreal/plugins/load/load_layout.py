@@ -960,4 +960,7 @@ class LayoutLoader(plugin.Loader):
 
         if create_sequences:
             EditorLevelLibrary.load_level(master_level)
+            # Load the default level
+            default_level_path = "/Engine/Maps/Templates/OpenWorld"
+            EditorLevelLibrary.load_level(default_level_path)
             EditorAssetLibrary.delete_directory(f"{root}/tmp")
