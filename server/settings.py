@@ -55,9 +55,9 @@ class UnrealSettings(BaseSettingsModel):
         False,
         title="Delete assets that are not matched",
         description=(
-            "Destroy assets on scene which are not matched "
-            "with the Layout. Only used when performing"
-            " Load Layout (JSON) on existing"
+            "When enabled removes all unmatched assets "
+            "present in the current layout when performing "
+            "'Load Layout (JSON) on existing'"
         )
     )
     abc_conversion_preset: str = SettingsField(
