@@ -17,6 +17,7 @@ from unreal import (
 )
 import ayon_api
 
+from ayon_core.tools.utils import show_message_dialog
 from ayon_core.pipeline import (
     discover_loader_plugins,
     loaders_from_representation,
@@ -840,6 +841,7 @@ class LayoutLoader(plugin.Loader):
         """
         data = get_current_project_settings()
         create_sequences = data["unreal"]["level_sequences_for_layouts"]
+        remove_loaded_assets = data["unreal"].get("remove_loaded_assets", False)
 
         root = "/Game/Ayon"
         path = Path(container["namespace"])
@@ -850,26 +852,34 @@ class LayoutLoader(plugin.Loader):
             if (c.get('asset_name') != container.get('asset_name') and
                 c.get('family') == "layout")]
 
-        # Check if the assets have been loaded by other layouts, and deletes
-        # them if they haven't.
-        for asset in eval(container.get('loaded_assets')):
-            layouts = [
-                lc for lc in layout_containers
-                if asset in lc.get('loaded_assets')]
+        if remove_loaded_assets:
+            # Check if the assets have been loaded by other layouts, and deletes
+            # them if they haven't.
+            msg = "All the loaded assets from this layout have been removed"
+            show_message_dialog(
+                parent=None,
+                title="The removal of the loaded assets",
+                message=msg,
+                level="warning")
 
-            if not layouts:
-                EditorAssetLibrary.delete_directory(str(Path(asset).parent))
+            for asset in eval(container.get('loaded_assets')):
+                layouts = [
+                    lc for lc in layout_containers
+                    if asset in lc.get('loaded_assets')]
 
-                # Delete the parent folder if there aren't any more
-                # layouts in it.
-                asset_content = EditorAssetLibrary.list_assets(
-                    str(Path(asset).parent.parent), recursive=False,
-                    include_folder=True
-                )
+                if not layouts:
+                    EditorAssetLibrary.delete_directory(str(Path(asset).parent))
 
-                if len(asset_content) == 0:
-                    EditorAssetLibrary.delete_directory(
-                        str(Path(asset).parent.parent))
+                    # Delete the parent folder if there aren't any more
+                    # layouts in it.
+                    asset_content = EditorAssetLibrary.list_assets(
+                        str(Path(asset).parent.parent), recursive=False,
+                        include_folder=True
+                    )
+
+                    if len(asset_content) == 0:
+                        EditorAssetLibrary.delete_directory(
+                            str(Path(asset).parent.parent))
 
         master_sequence = None
         master_level = None
