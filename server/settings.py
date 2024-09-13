@@ -55,7 +55,7 @@ class UnrealSettings(BaseSettingsModel):
         False,
         title="Delete assets that are not matched",
         description=(
-            "Removing assets which are not matched "
+            "Destroy assets on scene which are not matched "
             "with the Layout. Only used when performing"
             " Load Layout (JSON) on existing"
         )
