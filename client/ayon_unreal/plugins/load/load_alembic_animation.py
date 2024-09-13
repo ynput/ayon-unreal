@@ -96,11 +96,14 @@ class AnimationAlembicLoader(plugin.Loader):
                     )
 
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+
+        # avoid duplicate container asset data being created
         if not unreal.EditorAssetLibrary.does_asset_exist(
             f"{asset_dir}/{container_name}"):
-                # Create Asset Container
-                unreal_pipeline.create_container(
-                    container=container_name, path=asset_dir)
+            # Create Asset Container
+            unreal_pipeline.create_container(
+                container=container_name, path=asset_dir)
+
 
     def imprint(
         self,
@@ -192,12 +195,6 @@ class AnimationAlembicLoader(plugin.Loader):
             container_name, loaded_options,
             asset_path=asset_path
         )
-
-        if not unreal.EditorAssetLibrary.does_asset_exist(
-            f"{asset_dir}/{container_name}"):
-                # Create Asset Container
-                unreal_pipeline.create_container(
-                    container=container_name, path=asset_dir)
 
         if asset_path:
             unreal.EditorAssetLibrary.rename_asset(
