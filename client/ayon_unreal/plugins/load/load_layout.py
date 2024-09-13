@@ -393,7 +393,10 @@ class LayoutLoader(plugin.Loader):
                     continue
                 repre_entity = repre_entities[0]
                 repre_id = repre_entity["id"]
-                repr_format = repre_entity["name"]
+                repre_format = element.get("extension", "ma") or repre_entity["name"]
+                if repre_format == "ma":
+                    repre_format = loaded_extension
+
 
             # This is to keep compatibility with old versions of the
             # json format.
