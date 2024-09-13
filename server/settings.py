@@ -53,7 +53,12 @@ class UnrealSettings(BaseSettingsModel):
     )
     delete_unmatched_assets: bool = SettingsField(
         False,
-        title="Delete assets that are not matched"
+        title="Delete assets that are not matched",
+        description=(
+            "Removing assets which are not matched "
+            "with the Layout. Only used when performing"
+            " Load Layout (JSON) on existing"
+        )
     )
     abc_conversion_preset: str = SettingsField(
         "maya",
