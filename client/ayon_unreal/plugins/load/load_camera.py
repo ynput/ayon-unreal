@@ -80,8 +80,6 @@ class CameraLoader(plugin.Loader):
             "family": product_type,
         }
         imprint(f"{asset_dir}/{container_name}", data)
-        unreal.log("data")
-        unreal.log(data)
 
     def _create_map_camera(self, context, path, tools, hierarchy_dir_list,
                            hierarchy_dir, hierarchy_parts,
