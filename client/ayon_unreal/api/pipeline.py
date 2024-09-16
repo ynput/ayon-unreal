@@ -929,7 +929,9 @@ def get_frame_range_from_folder_attributes(folder_entity=None):
     if folder_entity is None:
         folder_entity = get_current_folder_entity(fields={"attrib"})
     folder_attributes = folder_entity["attrib"]
-    return int(folder_attributes["clipIn"]), int(folder_attributes["clipOut"])
+    clipIn_value = int(folder_attributes.get("clipIn")) if folder_attributes.get("clipIn") else 1
+    clipOut_value = int(folder_attributes.get("clipOut")) if folder_attributes.get("clipOut") else 1
+    return clipIn_value, clipOut_value
 
 
 def has_asset_existing_directory(asset_name, asset_dir):
