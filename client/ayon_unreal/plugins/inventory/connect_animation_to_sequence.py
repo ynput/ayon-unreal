@@ -4,8 +4,10 @@ from ayon_unreal.api.lib import (
     update_skeletal_mesh,
     import_animation_sequence
 )
-from ayon_unreal.api.pipeline import get_frame_range_from_folder_attributes
-
+from ayon_unreal.api.pipeline import (
+    get_frame_range_from_folder_attributes,
+    get_camera_tracks
+)
 
 class ConnectFbxAnimation(InventoryAction):
     """Add Animation Sequence to Level Sequence when the skeletal Mesh
@@ -34,6 +36,7 @@ class ConnectFbxAnimation(InventoryAction):
                 "No level sequence found in layout asset directory. "
                 "Please select the layout container."
             )
+        self.import_camera(containers, sequence)
         self.import_animation(containers, sequence)
         self.save_layout_asset(containers)
 
@@ -70,6 +73,25 @@ class ConnectFbxAnimation(InventoryAction):
             )
             self.import_animation_sequence(
                 asset_content, sequence, frameStart, frameEnd)
+
+    def import_camera(self, containers, sequence):
+        start_frame, end_frame = get_frame_range_from_folder_attributes()
+        # use the clipIn/Out value for the frameStart and frameEnd
+        frameStart = next((
+            int(container.get("frameStart", start_frame)) for container in containers
+            if container.get("family") == "camera"), None)
+        frameEnd = next((
+            int(container.get("frameEnd", end_frame)) for container in containers
+            if container.get("family") == "camera"), None)
+        # Add a camera cut track to the sequence
+        camera_cut_track = sequence.add_master_track(unreal.MovieSceneCameraCutTrack)
+
+        # Add a section to the camera cut track
+        camera_cut_section = camera_cut_track.add_section()
+        camera_cut_section.set_range(frameStart, frameEnd)  # Set the range for the camera cut
+
+        # # Bind the camera to the camera cut section
+        # camera_cut_section.set_camera_binding_id(camera_binding.get_binding_id())
 
     def import_animation_sequence(self, asset_content, sequence, frameStart, frameEnd):
         import_animation_sequence(asset_content, sequence, frameStart, frameEnd)

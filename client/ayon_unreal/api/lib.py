@@ -73,8 +73,7 @@ def import_animation_sequence(asset_content, sequence, frameStart, frameEnd):
             if not sections:
                 anim_section = track.add_section()
             else:
-                anim_section = track.add_section()
-                anim_section = sections[-1]
+                anim_section = sections[0]
 
         params = unreal.MovieSceneSkeletalAnimationParams()
         params.set_editor_property('Animation', animation)
