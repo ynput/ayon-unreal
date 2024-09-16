@@ -55,6 +55,7 @@ class CameraLoader(plugin.Loader):
         else:
             raise NotImplementedError(
                 f"Unreal version {ue_major} not supported")
+
     def imprint(
         self,
         folder_path,

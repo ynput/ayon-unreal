@@ -101,7 +101,6 @@ def import_camera_to_level_sequence(sequence, frameStart, frameEnd,
                                     parent_id, version_id, world):
      # Add a camera cut track to the sequence
     camera_cut_track = sequence.add_master_track(unreal.MovieSceneCameraCutTrack)
-
     # Add a section to the camera cut track
     camera_cut_section = camera_cut_track.add_section()
     camera_cut_section.set_range(frameStart, frameEnd)  # Set the range for the camera cut
@@ -117,12 +116,12 @@ def import_camera_to_level_sequence(sequence, frameStart, frameEnd,
             camera_path
         )
     # # Bind the camera to the camera cut section
-    camera_binding = None
+    camera_binding_id = None
     camera_tracks = get_camera_tracks(sequence)
     if camera_tracks:
-        for camera_track in camera_tracks:
-            sections = camera_track.get_sections()
-            for section in sections:
-                camera_binding = section.get_camera_binding_id()
-                break
-    camera_cut_section.set_camera_binding_id(camera_binding)
+        for binding in sequence.get_bindings():
+            bound_objects = unreal.SequencerTools.get_bound_objects(
+                world, sequence, [binding], sequence.get_playback_range())
+            unreal.log("bound_objects")
+            for b_obj in bound_objects:
+                object = b_obj.bound_objects
