@@ -355,6 +355,8 @@ class LayoutLoader(plugin.Loader):
         for repre_entity in repre_entities:
             version_id = repre_entity["versionId"]
             output[version_id].append(repre_entity)
+        unreal.log("version_id output")
+        unreal.log(output)
         return output
 
     def _process(self, lib_path, asset_dir, sequence,
@@ -393,10 +395,7 @@ class LayoutLoader(plugin.Loader):
                     continue
                 repre_entity = repre_entities[0]
                 repre_id = repre_entity["id"]
-                repr_format = element.get("extension", "ma") or repre_entity["name"]
-                if repr_format == "ma":
-                    repr_format = loaded_extension
-
+                repr_format = repre_entity["name"]
 
             # This is to keep compatibility with old versions of the
             # json format.
