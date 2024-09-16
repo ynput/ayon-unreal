@@ -876,7 +876,7 @@ class LayoutLoader(plugin.Loader):
         if remove_loaded_assets:
             remove_asset_confirmation_dialog = unreal.EditorDialog.show_message(
                 "The removal of the loaded assets",
-                "All the loaded assets from this layout have been removed. Would you like to continue?",
+                "The layout will be removed. Do you want to delete all associated assets as well?",
                 unreal.AppMsgType.YES_NO)
             if (remove_asset_confirmation_dialog == unreal.AppReturnType.YES):
                 _remove_loaded_asset(container)
