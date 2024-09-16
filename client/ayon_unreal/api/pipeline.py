@@ -867,7 +867,7 @@ def format_asset_directory(name, context, directory_template,
     data["product"] = {"name": name_version}
     asset_dir = StringTemplate(directory_template).format_strict(data)
 
-    return f"{AYON_ROOT_DIR}{asset_dir}", asset_name
+    return f"{AYON_ROOT_DIR}/{asset_dir}", asset_name
 
 
 def get_sequence(files):
