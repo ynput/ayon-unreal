@@ -2,12 +2,13 @@ import unreal
 from ayon_core.pipeline import InventoryAction
 from ayon_unreal.api.lib import (
     update_skeletal_mesh,
-    import_animation_sequence
+    import_animation_sequence,
+    import_camera_to_level_sequence
 )
 from ayon_unreal.api.pipeline import (
-    get_frame_range_from_folder_attributes,
-    get_camera_tracks
+    get_frame_range_from_folder_attributes
 )
+
 
 class ConnectFbxAnimation(InventoryAction):
     """Add Animation Sequence to Level Sequence when the skeletal Mesh
@@ -30,7 +31,7 @@ class ConnectFbxAnimation(InventoryAction):
                     f"Container {container_dir} is not supported."
                 )
                 continue
-        sequence = self.get_level_sequence(containers)
+        sequence = self.get_layout_asset(containers)
         if not sequence:
             raise RuntimeError(
                 "No level sequence found in layout asset directory. "
@@ -40,7 +41,7 @@ class ConnectFbxAnimation(InventoryAction):
         self.import_animation(containers, sequence)
         self.save_layout_asset(containers)
 
-    def get_level_sequence(self, containers):
+    def get_layout_asset(self, containers, asset_name="LevelSequence"):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
         layout_path = next((
             container.get("namespace") for container in containers
@@ -52,7 +53,7 @@ class ConnectFbxAnimation(InventoryAction):
         )
         for asset in asset_content:
             data = ar.get_asset_by_object_path(asset)
-            if data.asset_class_path.asset_name == "LevelSequence":
+            if data.asset_class_path.asset_name == asset_name:
                 return data.get_asset()
 
     def import_animation(self, containers, sequence):
@@ -75,6 +76,12 @@ class ConnectFbxAnimation(InventoryAction):
                 asset_content, sequence, frameStart, frameEnd)
 
     def import_camera(self, containers, sequence):
+        has_tracks = [
+            track for track in sequence.get_tracks()
+            if track.get_class() == unreal.MovieSceneCameraCutTrack.static_class()
+        ]
+        if has_tracks:
+            return
         start_frame, end_frame = get_frame_range_from_folder_attributes()
         # use the clipIn/Out value for the frameStart and frameEnd
         frameStart = next((
@@ -83,15 +90,17 @@ class ConnectFbxAnimation(InventoryAction):
         frameEnd = next((
             int(container.get("frameEnd", end_frame)) for container in containers
             if container.get("family") == "camera"), None)
-        # Add a camera cut track to the sequence
-        camera_cut_track = sequence.add_master_track(unreal.MovieSceneCameraCutTrack)
-
-        # Add a section to the camera cut track
-        camera_cut_section = camera_cut_track.add_section()
-        camera_cut_section.set_range(frameStart, frameEnd)  # Set the range for the camera cut
-
-        # # Bind the camera to the camera cut section
-        # camera_cut_section.set_camera_binding_id(camera_binding.get_binding_id())
+        parent_id = next((
+            container.get("parent") for container in containers
+            if container.get("family") == "camera"), None)
+        version_id = next((
+            container.get("representation") for container in containers
+            if container.get("family") == "camera"), None)
+        layout_world = self.get_layout_asset(containers, asset_name="World")
+        import_camera_to_level_sequence(
+            sequence, frameStart, frameEnd,
+            parent_id, version_id, layout_world
+        )
 
     def import_animation_sequence(self, asset_content, sequence, frameStart, frameEnd):
         import_animation_sequence(asset_content, sequence, frameStart, frameEnd)

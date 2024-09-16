@@ -1,4 +1,10 @@
 import unreal
+from ayon_core.pipeline import (
+    get_current_project_name,
+    get_representation_path
+)
+import ayon_api
+from ayon_unreal.api.pipeline import get_camera_tracks
 
 
 def update_skeletal_mesh(asset_content, sequence):
@@ -80,3 +86,43 @@ def import_animation_sequence(asset_content, sequence, frameStart, frameEnd):
         anim_section.set_editor_property('Params', params)
         anim_section.set_range(frameStart, frameEnd)
         set_sequence_frame_range(sequence, frameStart, frameEnd)
+
+
+def get_representation(parent_id, version_id):
+    project_name = get_current_project_name()
+    return next(
+        (repre for repre in ayon_api.get_representations(
+            project_name, version_ids={parent_id})
+            if repre["id"] == version_id
+        ), None)
+
+
+def import_camera_to_level_sequence(sequence, frameStart, frameEnd,
+                                    parent_id, version_id, world):
+     # Add a camera cut track to the sequence
+    camera_cut_track = sequence.add_master_track(unreal.MovieSceneCameraCutTrack)
+
+    # Add a section to the camera cut track
+    camera_cut_section = camera_cut_track.add_section()
+    camera_cut_section.set_range(frameStart, frameEnd)  # Set the range for the camera cut
+    repre_entity = get_representation(parent_id, version_id)
+    import_fbx_settings = unreal.MovieSceneUserImportFBXSettings()
+    import_fbx_settings.set_editor_property('reduce_keys', False)
+    camera_path = get_representation_path(repre_entity)
+    unreal.SequencerTools.import_level_sequence_fbx(
+            world,
+            sequence,
+            sequence.get_bindings(),
+            import_fbx_settings,
+            camera_path
+        )
+    # # Bind the camera to the camera cut section
+    camera_binding = None
+    camera_tracks = get_camera_tracks(sequence)
+    if camera_tracks:
+        for camera_track in camera_tracks:
+            sections = camera_track.get_sections()
+            for section in sections:
+                camera_binding = section.get_camera_binding_id()
+                break
+    camera_cut_section.set_camera_binding_id(camera_binding)
