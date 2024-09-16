@@ -36,7 +36,7 @@ import unreal  # noqa
 logger = logging.getLogger("ayon_core.hosts.unreal")
 
 AYON_CONTAINERS = "AyonContainers"
-AYON_ROOT_DIR = "/Game/Ayon/"
+AYON_ROOT_DIR = "/Game/Ayon"
 AYON_ASSET_DIR = "/Game/Ayon/Assets"
 CONTEXT_CONTAINER = "Ayon/context.json"
 UNREAL_VERSION = semver.VersionInfo(
