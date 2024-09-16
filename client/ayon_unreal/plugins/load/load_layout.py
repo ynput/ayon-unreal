@@ -3,7 +3,6 @@
 import json
 import collections
 from pathlib import Path
-from qtpy import QtWidgets, QtCore
 import unreal
 from unreal import (
     EditorAssetLibrary,
@@ -65,39 +64,6 @@ def _remove_loaded_asset(container):
             if len(asset_content) == 0:
                 EditorAssetLibrary.delete_directory(
                     str(Path(asset).parent.parent))
-
-
-class DeleteLoadedAssetConfirmationDialog(QtWidgets.QDialog):
-    """The pop-up dialog allows users to choose material
-    duplicate options for importing Max objects when updating
-    or switching assets.
-    """
-    def __init__(self, container):
-        self.container = container
-        super(DeleteLoadedAssetConfirmationDialog, self).__init__()
-        self.setWindowFlags(self.windowFlags() | QtCore.Qt.FramelessWindowHint)
-        msg = "Do you want to remove all the loaded assets along with the current layout?"
-        self.widgets = {
-            "label": QtWidgets.QLabel(msg),
-            "okButton": QtWidgets.QPushButton("Ok"),
-            "cancelButton": QtWidgets.QPushButton("Cancel")
-        }
-        # Build buttons.
-        layout = QtWidgets.QHBoxLayout(self.widgets["buttons"])
-        layout.addWidget(self.widgets["okButton"])
-        layout.addWidget(self.widgets["cancelButton"])
-        self.widgets["okButton"].pressed.connect(self.on_ok_pressed)
-        self.widgets["cancelButton"].pressed.connect(self.on_cancel_pressed)
-
-
-    def on_ok_pressed(self):
-        container = self.container
-        _remove_loaded_asset(container)
-        self.close()
-
-    def on_cancel_pressed(self):
-        unreal.log("Removing the layout without deleting the loaded asset.")
-        self.close()
 
 
 class LayoutLoader(plugin.Loader):
@@ -908,8 +874,12 @@ class LayoutLoader(plugin.Loader):
         path = Path(container["namespace"])
 
         if remove_loaded_assets:
-            window = DeleteLoadedAssetConfirmationDialog(container)
-            window.exec_()
+            remove_asset_confirmation_dialog = unreal.EditorDialog.show_message(
+                "The removal of the loaded assets",
+                "All the loaded assets from this layout have been removed. Would you like to continue?",
+                unreal.AppMsgType.YES_NO)
+            if (remove_asset_confirmation_dialog == unreal.AppReturnType.YES):
+                _remove_loaded_asset(container)
 
         master_sequence = None
         master_level = None
