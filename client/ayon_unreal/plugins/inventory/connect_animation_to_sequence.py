@@ -82,14 +82,6 @@ class ConnectFbxAnimation(InventoryAction):
         ]
         if has_tracks:
             return
-        start_frame, end_frame = get_frame_range_from_folder_attributes()
-        # use the clipIn/Out value for the frameStart and frameEnd
-        frameStart = next((
-            int(container.get("frameStart", start_frame)) for container in containers
-            if container.get("family") == "camera"), None)
-        frameEnd = next((
-            int(container.get("frameEnd", end_frame)) for container in containers
-            if container.get("family") == "camera"), None)
         parent_id = next((
             container.get("parent") for container in containers
             if container.get("family") == "camera"), None)
@@ -97,10 +89,7 @@ class ConnectFbxAnimation(InventoryAction):
             container.get("representation") for container in containers
             if container.get("family") == "camera"), None)
         layout_world = self.get_layout_asset(containers, asset_name="World")
-        import_camera_to_level_sequence(
-            sequence, frameStart, frameEnd,
-            parent_id, version_id, layout_world
-        )
+        import_camera_to_level_sequence(sequence, parent_id, version_id, layout_world)
 
     def import_animation_sequence(self, asset_content, sequence, frameStart, frameEnd):
         import_animation_sequence(asset_content, sequence, frameStart, frameEnd)

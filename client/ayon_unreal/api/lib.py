@@ -4,7 +4,10 @@ from ayon_core.pipeline import (
     get_representation_path
 )
 import ayon_api
-from ayon_unreal.api.pipeline import get_camera_tracks
+from ayon_unreal.api.pipeline import (
+    get_camera_tracks,
+    get_frame_range_from_folder_attributes
+)
 
 
 def update_skeletal_mesh(asset_content, sequence):
@@ -97,13 +100,9 @@ def get_representation(parent_id, version_id):
         ), None)
 
 
-def import_camera_to_level_sequence(sequence, frameStart, frameEnd,
-                                    parent_id, version_id, world):
+def import_camera_to_level_sequence(sequence, parent_id, version_id, world):
      # Add a camera cut track to the sequence
-    camera_cut_track = sequence.add_master_track(unreal.MovieSceneCameraCutTrack)
-    # Add a section to the camera cut track
-    camera_cut_section = camera_cut_track.add_section()
-    camera_cut_section.set_range(frameStart, frameEnd)  # Set the range for the camera cut
+    sequence.add_master_track(unreal.MovieSceneCameraCutTrack)
     repre_entity = get_representation(parent_id, version_id)
     import_fbx_settings = unreal.MovieSceneUserImportFBXSettings()
     import_fbx_settings.set_editor_property('reduce_keys', False)
@@ -115,13 +114,3 @@ def import_camera_to_level_sequence(sequence, frameStart, frameEnd,
             import_fbx_settings,
             camera_path
         )
-    # # Bind the camera to the camera cut section
-    camera_binding_id = None
-    camera_tracks = get_camera_tracks(sequence)
-    if camera_tracks:
-        for binding in sequence.get_bindings():
-            bound_objects = unreal.SequencerTools.get_bound_objects(
-                world, sequence, [binding], sequence.get_playback_range())
-            unreal.log("bound_objects")
-            for b_obj in bound_objects:
-                object = b_obj.bound_objects
