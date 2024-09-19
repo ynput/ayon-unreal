@@ -3,7 +3,6 @@
 import json
 import collections
 from pathlib import Path
-
 import unreal
 from unreal import (
     EditorAssetLibrary,
@@ -36,6 +35,35 @@ from ayon_unreal.api.pipeline import (
     ls,
 )
 from ayon_core.lib import EnumDef
+
+
+def _remove_loaded_asset(container):
+    # Check if the assets have been loaded by other layouts, and deletes
+    # them if they haven't.
+    containers = ls()
+    layout_containers = [
+        c for c in containers
+        if (c.get('asset_name') != container.get('asset_name') and
+            c.get('family') == "layout")]
+
+    for asset in eval(container.get('loaded_assets')):
+        layouts = [
+            lc for lc in layout_containers
+            if asset in lc.get('loaded_assets')]
+
+        if not layouts:
+            EditorAssetLibrary.delete_directory(str(Path(asset).parent))
+
+            # Delete the parent folder if there aren't any more
+            # layouts in it.
+            asset_content = EditorAssetLibrary.list_assets(
+                str(Path(asset).parent.parent), recursive=False,
+                include_folder=True
+            )
+
+            if len(asset_content) == 0:
+                EditorAssetLibrary.delete_directory(
+                    str(Path(asset).parent.parent))
 
 
 class LayoutLoader(plugin.Loader):
@@ -840,36 +868,18 @@ class LayoutLoader(plugin.Loader):
         """
         data = get_current_project_settings()
         create_sequences = data["unreal"]["level_sequences_for_layouts"]
+        remove_loaded_assets = data["unreal"].get("remove_loaded_assets", False)
 
         root = "/Game/Ayon"
         path = Path(container["namespace"])
 
-        containers = ls()
-        layout_containers = [
-            c for c in containers
-            if (c.get('asset_name') != container.get('asset_name') and
-                c.get('family') == "layout")]
-
-        # Check if the assets have been loaded by other layouts, and deletes
-        # them if they haven't.
-        for asset in eval(container.get('loaded_assets')):
-            layouts = [
-                lc for lc in layout_containers
-                if asset in lc.get('loaded_assets')]
-
-            if not layouts:
-                EditorAssetLibrary.delete_directory(str(Path(asset).parent))
-
-                # Delete the parent folder if there aren't any more
-                # layouts in it.
-                asset_content = EditorAssetLibrary.list_assets(
-                    str(Path(asset).parent.parent), recursive=False,
-                    include_folder=True
-                )
-
-                if len(asset_content) == 0:
-                    EditorAssetLibrary.delete_directory(
-                        str(Path(asset).parent.parent))
+        if remove_loaded_assets:
+            remove_asset_confirmation_dialog = unreal.EditorDialog.show_message(
+                "The removal of the loaded assets",
+                "The layout will be removed. Do you want to delete all associated assets as well?",
+                unreal.AppMsgType.YES_NO)
+            if (remove_asset_confirmation_dialog == unreal.AppReturnType.YES):
+                _remove_loaded_asset(container)
 
         master_sequence = None
         master_level = None
