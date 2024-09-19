@@ -355,7 +355,7 @@ class LayoutLoader(plugin.Loader):
         updated_extensions = {
             (repre_extension if ext == "ma" else ext)
             for ext in extensions
-        } if force_loaded else {repre_extension}
+        } if not force_loaded else {repre_extension}
         output = collections.defaultdict(list)
         if not version_ids:
             return output
