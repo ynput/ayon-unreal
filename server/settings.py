@@ -68,6 +68,13 @@ class UnrealSettings(BaseSettingsModel):
         enum_resolver=_loaded_asset_enum,
         description="Extension for the loaded assets"
     )
+    force_loaded: bool = SettingsField(
+        False,
+        title="Force load assets with Loaded Assets Extension",
+        description="Force loading assets with 'Prioritized Loaded "
+                    "Assets Extension' no matter the representation "
+                    "is missing in the selected format."
+    )
     render_queue_path: str = SettingsField(
         "",
         title="Render Queue Path",
@@ -98,6 +105,7 @@ DEFAULT_VALUES = {
     "delete_unmatched_assets": False,
     "abc_conversion_preset": "maya",
     "loaded_assets_extension": "fbx",
+    "force_loaded": False,
     "render_queue_path": "/Game/Ayon/renderQueue",
     "render_config_path": "/Game/Ayon/DefaultMovieRenderQueueConfig.DefaultMovieRenderQueueConfig",
     "preroll_frames": 0,

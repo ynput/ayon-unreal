@@ -35,7 +35,7 @@ from ayon_unreal.api.pipeline import (
     imprint,
     ls,
 )
-from ayon_core.lib import EnumDef
+from ayon_core.lib import EnumDef, BoolDef
 
 
 class LayoutLoader(plugin.Loader):
@@ -49,6 +49,7 @@ class LayoutLoader(plugin.Loader):
     color = "orange"
     ASSET_ROOT = "/Game/Ayon"
     loaded_assets_extension = "fbx"
+    force_loaded = False
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -58,8 +59,14 @@ class LayoutLoader(plugin.Loader):
         loaded_assets_extension = (
             project_settings.get("unreal", {}).get("loaded_assets_extension", {})
         )
+        use_force_loaded = (
+            project_settings.get("unreal", {}).get("force_loaded", {})
+        )
         if loaded_assets_extension:
             cls.loaded_assets_extension = loaded_assets_extension
+        if use_force_loaded:
+            cls.force_loaded = use_force_loaded
+
 
     @classmethod
     def get_options(cls, contexts):
@@ -72,6 +79,14 @@ class LayoutLoader(plugin.Loader):
                     "abc": "abc"
                 },
                 default=cls.loaded_assets_extension
+            ),
+            BoolDef(
+                "force_loaded",
+                label="Force load assets with Loaded Assets Extension",
+                tooltip="Force loading assets with 'Prioritized Loaded "
+                        "Assets Extension' no matter the representation "
+                        "is missing in the selected format.",
+                default=cls.force_loaded
             )
         ]
 
@@ -324,7 +339,7 @@ class LayoutLoader(plugin.Loader):
                     sec_params = section.get_editor_property('params')
                     sec_params.set_editor_property('animation', animation)
 
-    def _get_repre_entities_by_version_id(self, data, repre_extension):
+    def _get_repre_entities_by_version_id(self, data, repre_extension, force_loaded=False):
         version_ids = {
             element.get("version")
             for element in data
@@ -340,7 +355,7 @@ class LayoutLoader(plugin.Loader):
         updated_extensions = {
             (repre_extension if ext == "ma" else ext)
             for ext in extensions
-        }
+        } if force_loaded else {repre_extension}
         output = collections.defaultdict(list)
         if not version_ids:
             return output
@@ -355,12 +370,11 @@ class LayoutLoader(plugin.Loader):
         for repre_entity in repre_entities:
             version_id = repre_entity["versionId"]
             output[version_id].append(repre_entity)
-        unreal.log("version_id output")
-        unreal.log(output)
         return output
 
     def _process(self, lib_path, asset_dir, sequence,
-                 repr_loaded=None, loaded_extension=None):
+                 repr_loaded=None, loaded_extension=None,
+                 force_loaded=False):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
         with open(lib_path, "r") as fp:
@@ -380,7 +394,7 @@ class LayoutLoader(plugin.Loader):
         loaded_assets = []
 
         repre_entities_by_version_id = self._get_repre_entities_by_version_id(
-            data, loaded_extension
+            data, loaded_extension, force_loaded=force_loaded
         )
         for element in data:
             repre_id = None
@@ -693,9 +707,12 @@ class LayoutLoader(plugin.Loader):
             EditorLevelLibrary.load_level(level)
         extension = options.get(
             "loaded_assets_extension", self.loaded_assets_extension)
+        force_loaded = options.get(
+            "force_loaded", self.force_loaded)
         path = self.filepath_from_context(context)
         loaded_assets = self._process(
-            path, asset_dir, shot, loaded_extension=extension)
+            path, asset_dir, shot, loaded_extension=extension,
+            force_loaded=force_loaded)
 
         for s in sequences:
             EditorAssetLibrary.save_asset(s.get_path_name())
@@ -812,7 +829,8 @@ class LayoutLoader(plugin.Loader):
 
         loaded_assets = self._process(
             source_path, asset_dir, sequence,
-            loaded_extension=self.loaded_assets_extension)
+            loaded_extension=self.loaded_assets_extension,
+            force_loaded=self.force_loaded)
 
         data = {
             "representation": repre_entity["id"],
