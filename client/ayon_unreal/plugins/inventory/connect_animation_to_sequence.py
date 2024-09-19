@@ -22,7 +22,7 @@ class ConnectFbxAnimation(InventoryAction):
     order = 1
 
     def process(self, containers):
-        allowed_families = ["animation", "layout"]
+        allowed_families = ["animation", "layout", "camera"]
         sequence = None
         for container in containers:
             container_dir = container.get("namespace")
@@ -37,8 +37,8 @@ class ConnectFbxAnimation(InventoryAction):
                 "No level sequence found in layout asset directory. "
                 "Please select the layout container."
             )
-        self.import_camera(containers, sequence)
         self.import_animation(containers, sequence)
+        self.import_camera(containers, sequence)
         self.save_layout_asset(containers)
 
     def get_layout_asset(self, containers, asset_name="LevelSequence"):
@@ -57,6 +57,11 @@ class ConnectFbxAnimation(InventoryAction):
                 return data.get_asset()
 
     def import_animation(self, containers, sequence):
+        has_animation_product = [
+            container for container in containers
+            if container.get("family") == "animation"]
+        if not has_animation_product:
+            return
         anim_path = next((
             container.get("namespace") for container in containers
             if container.get("family") == "animation"), None)
@@ -76,6 +81,11 @@ class ConnectFbxAnimation(InventoryAction):
                 asset_content, sequence, frameStart, frameEnd)
 
     def import_camera(self, containers, sequence):
+        has_camera_product = [
+            container for container in containers
+            if container.get("family") == "camera"]
+        if not has_camera_product:
+            return
         has_tracks = [
             track for track in sequence.get_tracks()
             if track.get_class() == unreal.MovieSceneCameraCutTrack.static_class()
