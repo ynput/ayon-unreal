@@ -66,8 +66,7 @@ def import_animation_sequence(asset_content, sequence, frameStart, frameEnd):
         for p in sequence.get_possessables():
             if p.get_possessed_object_class().get_name() == "SkeletalMeshActor":
                 binding = p
-                break
-        bindings.append(binding)
+                bindings.append(binding)
         anim_section = None
         for binding in bindings:
             tracks = binding.get_tracks()
@@ -81,11 +80,11 @@ def import_animation_sequence(asset_content, sequence, frameStart, frameEnd):
             else:
                 anim_section = sections[0]
 
-        params = unreal.MovieSceneSkeletalAnimationParams()
-        params.set_editor_property('Animation', animation)
-        anim_section.set_editor_property('Params', params)
-        anim_section.set_range(frameStart, frameEnd)
-        set_sequence_frame_range(sequence, frameStart, frameEnd)
+            params = unreal.MovieSceneSkeletalAnimationParams()
+            params.set_editor_property('Animation', animation)
+            anim_section.set_editor_property('Params', params)
+            anim_section.set_range(frameStart, frameEnd)
+            set_sequence_frame_range(sequence, frameStart, frameEnd)
 
 
 def get_representation(parent_id, version_id):
@@ -110,6 +109,12 @@ def import_camera_to_level_sequence(sequence, parent_id, version_id, world):
     if sel_actors:
         for actor in sel_actors:
             unreal.EditorLevelLibrary.destroy_actor(actor)
+        tracks = get_camera_tracks(sequence)
+        if tracks:
+            for track in tracks:
+                sections = track.get_sections()
+                for section in sections:
+                    track.remove_section(section)
     unreal.SequencerTools.import_level_sequence_fbx(
             world,
             sequence,
