@@ -101,14 +101,19 @@ def import_camera_to_level_sequence(sequence, parent_id, version_id, world):
      # Add a camera cut track to the sequence
     if not get_camera_tracks(sequence):
         sequence.add_master_track(unreal.MovieSceneCameraCutTrack)
-        repre_entity = get_representation(parent_id, version_id)
-        import_fbx_settings = unreal.MovieSceneUserImportFBXSettings()
-        import_fbx_settings.set_editor_property('reduce_keys', False)
-        camera_path = get_representation_path(repre_entity)
-        unreal.SequencerTools.import_level_sequence_fbx(
-                world,
-                sequence,
-                sequence.get_bindings(),
-                import_fbx_settings,
-                camera_path
-            )
+    repre_entity = get_representation(parent_id, version_id)
+    import_fbx_settings = unreal.MovieSceneUserImportFBXSettings()
+    import_fbx_settings.set_editor_property('reduce_keys', False)
+    camera_path = get_representation_path(repre_entity)
+    sel_actors = unreal.GameplayStatics().get_all_actors_of_class(
+        world, unreal.CameraActor)
+    if sel_actors:
+        for actor in sel_actors:
+            unreal.EditorLevelLibrary.destroy_actor(actor)
+    unreal.SequencerTools.import_level_sequence_fbx(
+            world,
+            sequence,
+            sequence.get_bindings(),
+            import_fbx_settings,
+            camera_path
+        )
