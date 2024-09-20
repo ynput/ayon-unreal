@@ -49,7 +49,7 @@ class LayoutLoader(plugin.Loader):
     color = "orange"
     ASSET_ROOT = "/Game/Ayon"
     loaded_assets_extension = "fbx"
-    force_loaded = False
+    force_loaded = True
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -82,10 +82,9 @@ class LayoutLoader(plugin.Loader):
             ),
             BoolDef(
                 "force_loaded",
-                label="Force load assets with Loaded Assets Extension",
-                tooltip="Force loading assets with 'Prioritized Loaded "
-                        "Assets Extension' no matter the representation "
-                        "is missing in the selected format.",
+                label="Force load available extension when missing asset",
+                tooltip="Force loading available extension when "
+                        "the published asset is missing",
                 default=cls.force_loaded
             )
         ]
@@ -339,7 +338,7 @@ class LayoutLoader(plugin.Loader):
                     sec_params = section.get_editor_property('params')
                     sec_params.set_editor_property('animation', animation)
 
-    def _get_repre_entities_by_version_id(self, data, repre_extension, force_loaded=False):
+    def _get_repre_entities_by_version_id(self, data, repre_extension, force_loaded=True):
         version_ids = {
             element.get("version")
             for element in data
@@ -355,7 +354,7 @@ class LayoutLoader(plugin.Loader):
         updated_extensions = {
             (repre_extension if ext == "ma" else ext)
             for ext in extensions
-        } if not force_loaded else {repre_extension}
+        } if force_loaded else {repre_extension}
         output = collections.defaultdict(list)
         if not version_ids:
             return output
@@ -374,7 +373,7 @@ class LayoutLoader(plugin.Loader):
 
     def _process(self, lib_path, asset_dir, sequence,
                  repr_loaded=None, loaded_extension=None,
-                 force_loaded=False):
+                 force_loaded=True):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
         with open(lib_path, "r") as fp:
@@ -409,7 +408,7 @@ class LayoutLoader(plugin.Loader):
                     continue
                 extension = element.get("extension")
                 repre_entity = None
-                if not force_loaded:
+                if force_loaded:
                     repre_entity = next((repre_entity for repre_entity in repre_entities
                                         if repre_entity["name"] == extension), None)
                 else:
