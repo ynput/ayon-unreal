@@ -407,7 +407,15 @@ class LayoutLoader(plugin.Loader):
                         f"No valid representation found for version"
                         f" {version_id}")
                     continue
-                repre_entity = repre_entities[0]
+                extension = element.get("extension")
+                repre_entity = None
+                if not force_loaded:
+                    repre_entity = next((repre_entity for repre_entity in repre_entities
+                                        if repre_entity["name"] == extension), None)
+                else:
+                    # use the prioritized representation
+                    # to load the assets
+                    repre_entity = repre_entities[0]
                 repre_id = repre_entity["id"]
                 repr_format = repre_entity["name"]
 
