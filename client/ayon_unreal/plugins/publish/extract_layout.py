@@ -100,7 +100,7 @@ class ExtractLayout(publish.Extractor):
                         "z": transform.scale3d.z
                     }
                 }
-                json_element["transform_matrix"] = self.get_transform_matrix(transform)
+                # json_element["transform_matrix"] = self.get_transform_matrix(transform)
                 json_element["basis"] = self.get_basis_matrix()
                 json_element["rotation"] = {
                     "x": transform.rotation.euler().x,
@@ -177,4 +177,4 @@ class ExtractLayout(publish.Extractor):
             scale=scale
         )
         transform_matrix = transform.to_matrix()
-        return transform_matrix
+        return [list(row) for row in transform_matrix]
