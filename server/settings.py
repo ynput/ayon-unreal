@@ -51,9 +51,18 @@ class UnrealSettings(BaseSettingsModel):
         False,
         title="Generate level sequences when loading layouts"
     )
+    remove_loaded_assets: bool = SettingsField(
+        False,
+        title="Remove loaded assets when deleting layouts"
+    )
     delete_unmatched_assets: bool = SettingsField(
         False,
-        title="Delete assets that are not matched"
+        title="Delete assets that are not matched",
+        description=(
+            "When enabled removes all unmatched assets "
+            "present in the current layout when performing "
+            "'Load Layout (JSON) on existing'"
+        )
     )
     abc_conversion_preset: str = SettingsField(
         "maya",
@@ -95,6 +104,7 @@ class UnrealSettings(BaseSettingsModel):
 
 DEFAULT_VALUES = {
     "level_sequences_for_layouts": True,
+    "remove_loaded_assets": False,
     "delete_unmatched_assets": False,
     "abc_conversion_preset": "maya",
     "loaded_assets_extension": "fbx",

@@ -96,11 +96,14 @@ class AnimationAlembicLoader(plugin.Loader):
                     )
 
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+
+        # avoid duplicate container asset data being created
         if not unreal.EditorAssetLibrary.does_asset_exist(
             f"{asset_dir}/{container_name}"):
-                # Create Asset Container
-                unreal_pipeline.create_container(
-                    container=container_name, path=asset_dir)
+            # Create Asset Container
+            unreal_pipeline.create_container(
+                container=container_name, path=asset_dir)
+
 
     def imprint(
         self,
@@ -108,6 +111,8 @@ class AnimationAlembicLoader(plugin.Loader):
         asset_dir,
         container_name,
         asset_name,
+        frameStart,
+        frameEnd,
         representation,
         product_type
     ):
@@ -122,6 +127,8 @@ class AnimationAlembicLoader(plugin.Loader):
             "representation": representation["id"],
             "parent": representation["versionId"],
             "product_type": product_type,
+            "frameStart": frameStart,
+            "frameEnd": frameEnd,
             # TODO these should be probably removed
             "asset": folder_path,
             "family": product_type
@@ -193,26 +200,24 @@ class AnimationAlembicLoader(plugin.Loader):
             asset_path=asset_path
         )
 
-        if not unreal.EditorAssetLibrary.does_asset_exist(
-            f"{asset_dir}/{container_name}"):
-                # Create Asset Container
-                unreal_pipeline.create_container(
-                    container=container_name, path=asset_dir)
-
         if asset_path:
             unreal.EditorAssetLibrary.rename_asset(
                 f"{asset_path}",
                 f"{asset_dir}/{asset_name}.{asset_name}"
             )
 
+        # update metadata
         self.imprint(
             folder_path,
             asset_dir,
             container_name,
             asset_name,
+            folder_entity["attrib"]["frameStart"],
+            folder_entity["attrib"]["frameEnd"],
             context["representation"],
             product_type
         )
+
         asset_content = unreal.EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=True
         )
@@ -269,6 +274,8 @@ class AnimationAlembicLoader(plugin.Loader):
             asset_dir,
             container_name,
             asset_name,
+            container.get("frameStart", "1"),
+            container.get("frameEnd", "1"),
             repre_entity,
             product_type
         )
