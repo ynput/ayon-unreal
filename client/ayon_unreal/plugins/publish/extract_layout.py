@@ -85,14 +85,14 @@ class ExtractLayout(publish.Extractor):
                 # the layout loader in blender
                 json_element["transform"] = {
                     "translation": {
-                        "x": transform.translation.x,
+                        "x": -transform.translation.x,
                         "y": transform.translation.y,
                         "z": transform.translation.z
                     },
                     "rotation": {
                         "x": math.radians(transform.rotation.euler().x),
                         "y": math.radians(transform.rotation.euler().y),
-                        "z": math.radians(transform.rotation.euler().z)
+                        "z": math.radians(180.0 - transform.rotation.euler().z)
                     },
                     "scale": {
                         "x": transform.scale3d.x,
@@ -100,7 +100,7 @@ class ExtractLayout(publish.Extractor):
                         "z": transform.scale3d.z
                     }
                 }
-                # json_element["transform_matrix"] = self.get_transform_matrix(transform)
+                json_element["transform_matrix"] = self.get_transform_matrix(transform)
                 json_element["basis"] = self.get_basis_matrix()
                 json_element["rotation"] = {
                     "x": transform.rotation.euler().x,
@@ -176,5 +176,15 @@ class ExtractLayout(publish.Extractor):
             rotation=rotation,
             scale=scale
         )
-        transform_matrix = transform.to_matrix()
-        return [list(row) for row in transform_matrix]
+        transform_m_matrix = transform.to_matrix()
+        transform_matrix = [
+            [transform_m_matrix.x_plane.x, transform_m_matrix.x_plane.y,
+             transform_m_matrix.x_plane.z, transform_m_matrix.x_plane.w],
+            [transform_m_matrix.y_plane.x, transform_m_matrix.y_plane.y,
+             transform_m_matrix.y_plane.z, transform_m_matrix.y_plane.w],
+            [transform_m_matrix.z_plane.x, transform_m_matrix.z_plane.y,
+             transform_m_matrix.z_plane.z, transform_m_matrix.z_plane.w],
+            [transform_m_matrix.w_plane.x, transform_m_matrix.w_plane.y,
+             transform_m_matrix.w_plane.z, transform_m_matrix.w_plane.w]
+        ]
+        return transform_matrix
