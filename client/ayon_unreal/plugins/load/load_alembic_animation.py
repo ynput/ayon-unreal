@@ -111,6 +111,8 @@ class AnimationAlembicLoader(plugin.Loader):
         asset_dir,
         container_name,
         asset_name,
+        frameStart,
+        frameEnd,
         representation,
         product_type
     ):
@@ -125,6 +127,8 @@ class AnimationAlembicLoader(plugin.Loader):
             "representation": representation["id"],
             "parent": representation["versionId"],
             "product_type": product_type,
+            "frameStart": frameStart,
+            "frameEnd": frameEnd,
             # TODO these should be probably removed
             "asset": folder_path,
             "family": product_type
@@ -202,14 +206,18 @@ class AnimationAlembicLoader(plugin.Loader):
                 f"{asset_dir}/{asset_name}.{asset_name}"
             )
 
+        # update metadata
         self.imprint(
             folder_path,
             asset_dir,
             container_name,
             asset_name,
+            folder_entity["attrib"]["frameStart"],
+            folder_entity["attrib"]["frameEnd"],
             context["representation"],
             product_type
         )
+
         asset_content = unreal.EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=True
         )
@@ -266,6 +274,8 @@ class AnimationAlembicLoader(plugin.Loader):
             asset_dir,
             container_name,
             asset_name,
+            container.get("frameStart", "1"),
+            container.get("frameEnd", "1"),
             repre_entity,
             product_type
         )
