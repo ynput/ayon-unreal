@@ -104,8 +104,8 @@ class ExtractLayout(publish.Extractor):
                 json_element["basis"] = self.get_basis_matrix()
                 json_element["rotation"] = {
                     "x": transform.rotation.euler().x,
-                    "y": transform.rotation.euler().z,
-                    "z": transform.rotation.euler().y
+                    "y": transform.rotation.euler().y,
+                    "z": transform.rotation.euler().z
                 }
                 json_data.append(json_element)
 
