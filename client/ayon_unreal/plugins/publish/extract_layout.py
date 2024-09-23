@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import re
 import json
 import math
 
@@ -62,6 +63,7 @@ class ExtractLayout(publish.Extractor):
                 family = eal.get_metadata_tag(asset_container, "family")
                 json_element = {}
                 json_element["reference"] = str(repre_id)
+                json_element["representation"] = str(repre_id)
                 # TODO: remove the option after tweaking
                 # the layout loader in blender
                 if instance.data.get("export_blender", False):
@@ -70,32 +72,40 @@ class ExtractLayout(publish.Extractor):
                     )
                     blend_id = blend["id"]
                     json_element["reference"] = str(blend_id)
-
+                instance_name = mesh.get_name()
+                extension = instance_name.split("_")[-1]
+                asset_name = re.match(f'(.+)_{extension}$', instance_name)
                 json_element["version"] = str(parent_id)
-                json_element["family"] = family
                 json_element["product_type"] = family
-                json_element["instance_name"] = actor.get_name()
-                json_element["asset_name"] = mesh.get_name()
-                import_data = mesh.get_editor_property("asset_import_data")
-                json_element["file_path"] = import_data.get_first_filename()
+                json_element["instance_name"] = asset_name.group(1)
+                json_element["asset_name"] = instance_name
+                json_element["extension"] = extension
                 transform = actor.get_actor_transform()
-
+                # TODO: remove this after refactoring
+                # the layout loader in blender
                 json_element["transform"] = {
                     "translation": {
-                        "x": -transform.translation.x,
+                        "x": transform.translation.x,
                         "y": transform.translation.y,
                         "z": transform.translation.z
                     },
                     "rotation": {
                         "x": math.radians(transform.rotation.euler().x),
                         "y": math.radians(transform.rotation.euler().y),
-                        "z": math.radians(180.0 - transform.rotation.euler().z)
+                        "z": math.radians(transform.rotation.euler().z)
                     },
                     "scale": {
                         "x": transform.scale3d.x,
                         "y": transform.scale3d.y,
                         "z": transform.scale3d.z
                     }
+                }
+                json_element["transform_matrix"] = self.get_transform_matrix(transform)
+                json_element["basis"] = self.get_basis_matrix()
+                json_element["rotation"] = {
+                    "x": transform.rotation.euler().x,
+                    "y": transform.rotation.euler().z,
+                    "z": transform.rotation.euler().y
                 }
                 json_data.append(json_element)
 
@@ -115,3 +125,56 @@ class ExtractLayout(publish.Extractor):
             "stagingDir": staging_dir,
         }
         instance.data["representations"].append(json_representation)
+
+    def get_basis_matrix(self):
+        """Get Identity matrix
+
+        Returns:
+            list: list of identity matrix
+        """
+        # Create an identity matrix
+        identity_matrix = unreal.Matrix.IDENTITY
+
+        basis_list = [
+            [identity_matrix.x_plane.x, identity_matrix.x_plane.y,
+            identity_matrix.x_plane.z, identity_matrix.x_plane.w],
+            [identity_matrix.y_plane.x, identity_matrix.y_plane.y,
+            identity_matrix.y_plane.z, identity_matrix.y_plane.w],
+            [identity_matrix.z_plane.x, identity_matrix.z_plane.y,
+            identity_matrix.z_plane.z, identity_matrix.z_plane.w],
+            [identity_matrix.w_plane.x, identity_matrix.w_plane.y,
+            identity_matrix.w_plane.z, identity_matrix.w_plane.w]
+        ]
+        return basis_list
+
+    def get_transform_matrix(self, transform):
+        """Get transform matrix for each actor
+
+        Args:
+            transform (Matrix): Actor's transformation
+
+        Returns:
+            list: Actor's transformation data
+        """
+        translation = [
+            transform.translation.x,
+            transform.translation.z,
+            transform.translation.y
+        ]
+        rotation = [
+            transform.rotation.euler().x,
+            transform.rotation.euler().z,
+            transform.rotation.euler().y
+        ]
+        scale = [
+            transform.scale3d.x,
+            transform.scale3d.z,
+            transform.scale3d.y,
+        ]
+        transform = unreal.Transform(
+            location=translation,
+            rotation=rotation,
+            scale=scale
+        )
+        transform_matrix = transform.to_matrix()
+        return transform_matrix
