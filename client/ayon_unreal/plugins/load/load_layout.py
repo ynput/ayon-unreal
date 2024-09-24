@@ -49,7 +49,7 @@ class LayoutLoader(plugin.Loader):
     color = "orange"
     ASSET_ROOT = "/Game/Ayon"
     loaded_assets_extension = "fbx"
-    force_loaded = True
+    force_loaded = False
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -71,6 +71,13 @@ class LayoutLoader(plugin.Loader):
     @classmethod
     def get_options(cls, contexts):
         return [
+            BoolDef(
+                "force_loaded",
+                label="Force load available extension when missing asset",
+                tooltip="Force loading available extension when "
+                        "the published asset is missing",
+                default=cls.force_loaded
+            ),
             EnumDef(
                 "loaded_assets_extension",
                 label="Prioritized Loaded Assets Extension",
@@ -79,13 +86,6 @@ class LayoutLoader(plugin.Loader):
                     "abc": "abc"
                 },
                 default=cls.loaded_assets_extension
-            ),
-            BoolDef(
-                "force_loaded",
-                label="Force load available extension when missing asset",
-                tooltip="Force loading available extension when "
-                        "the published asset is missing",
-                default=cls.force_loaded
             )
         ]
 
@@ -338,7 +338,7 @@ class LayoutLoader(plugin.Loader):
                     sec_params = section.get_editor_property('params')
                     sec_params.set_editor_property('animation', animation)
 
-    def _get_repre_entities_by_version_id(self, data, repre_extension, force_loaded=True):
+    def _get_repre_entities_by_version_id(self, data, repre_extension, force_loaded=False):
         version_ids = {
             element.get("version")
             for element in data
@@ -354,7 +354,7 @@ class LayoutLoader(plugin.Loader):
         updated_extensions = {
             (repre_extension if ext == "ma" else ext)
             for ext in extensions
-        } if force_loaded else {repre_extension}
+        } if not force_loaded else {repre_extension}
         output = collections.defaultdict(list)
         if not version_ids:
             return output
@@ -408,9 +408,11 @@ class LayoutLoader(plugin.Loader):
                     continue
                 extension = element.get("extension")
                 repre_entity = None
-                if force_loaded:
+                if not force_loaded:
                     repre_entity = next((repre_entity for repre_entity in repre_entities
-                                        if repre_entity["name"] == extension), None)
+                                         if repre_entity["name"] == extension), None)
+                    if not repre_entity:
+                        continue
                 else:
                     # use the prioritized representation
                     # to load the assets
