@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Load textures from PNG."""
 import os
-
 from ayon_core.pipeline import (
     get_representation_path,
     AYON_CONTAINER_ID
@@ -11,6 +10,7 @@ from ayon_unreal.api.pipeline import (
     AYON_ASSET_DIR,
     create_container,
     imprint,
+    has_asset_directory_pattern_matched
 )
 
 import unreal  # noqa
@@ -67,10 +67,8 @@ class TexturePNGLoader(plugin.Loader):
 
     @classmethod
     def import_and_containerize(  
-        self, filepath, asset_dir, asset_name, container_name  
+        self, filepath, asset_dir, asset_name, container_name, asset_path=None
     ):  
-        unreal.EditorAssetLibrary.make_directory(asset_dir)  
-
         if self.use_interchange:  
             print("Import using interchange method")  
 
@@ -110,12 +108,21 @@ class TexturePNGLoader(plugin.Loader):
 
         else:
             self.log.info("Import using deferred method")
-            task = self.get_task(filepath, asset_dir, asset_name, False)
-            unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks(
-                [task])
+            task = None
+            if asset_path:
+                loaded_asset_dir = unreal.Paths.split(asset_path)[0]
+                task = self.get_task(filepath, loaded_asset_dir, asset_name, True)
+            else:
+                if not unreal.EditorAssetLibrary.does_asset_exist(
+                    f"{asset_dir}/{asset_name}"):
+                        task = self.get_task(filepath, asset_dir, asset_name, False)
 
-        # Create Asset Container
-        create_container(container=container_name, path=asset_dir)
+            unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+
+        if not unreal.EditorAssetLibrary.does_asset_exist(
+            f"{asset_dir}/{container_name}"):
+                # Create Asset Container
+                create_container(container=container_name, path=asset_dir)
 
     def imprint(
             self,
@@ -139,7 +146,7 @@ class TexturePNGLoader(plugin.Loader):
             "product_type": product_type,
             # TODO these shold be probably removed
             "asset": folder_path,
-            "family": product_type,
+            "family": product_type
         }
         imprint(f"{asset_dir}/{container_name}", data)
 
@@ -162,7 +169,9 @@ class TexturePNGLoader(plugin.Loader):
         folder_path = context["folder"]["path"]
         folder_name = context["folder"]["name"]
         suffix = "_CON"
-        asset_name = f"{folder_name}_{name}" if folder_name else f"{name}"
+        path = self.filepath_from_context(context)
+        ext = os.path.splitext(path)[-1].lstrip(".")
+        asset_name = f"{folder_name}_{name}_{ext}" if folder_name else f"{name}_{ext}"
         version = context["version"]["version"]
         # Check if version is hero version and use different name
         if version < 0:
@@ -172,17 +181,27 @@ class TexturePNGLoader(plugin.Loader):
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{self.root}/{folder_name}/{name_version}", suffix=""
+            f"{self.root}/{folder_name}/{name_version}", suffix=f"_{ext}"
         )
 
         container_name += suffix
-
+        asset_path = (
+            has_asset_directory_pattern_matched(asset_name, asset_dir, name, extension=ext)
+            if not self.use_interchange else None
+        )
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            path = self.filepath_from_context(context)
+            unreal.EditorAssetLibrary.make_directory(asset_dir)
 
-            self.import_and_containerize(
-                path, asset_dir, asset_name, container_name)
+        self.import_and_containerize(
+            path, asset_dir, asset_name,
+            container_name, asset_path=asset_path
+        )
 
+        if asset_path:
+            unreal.EditorAssetLibrary.rename_asset(
+                f"{asset_path}",
+                f"{asset_dir}/{asset_name}.{asset_name}"
+            )
         self.imprint(
             folder_path,
             asset_dir,
@@ -223,12 +242,11 @@ class TexturePNGLoader(plugin.Loader):
             f"{self.root}/{folder_name}/{name_version}", suffix="")
 
         container_name += suffix
-
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            path = get_representation_path(repre_entity)
+            unreal.EditorAssetLibrary.make_directory(asset_dir)
+        path = get_representation_path(repre_entity)
 
-            self.import_and_containerize(
-                path, asset_dir, asset_name, container_name)
+        self.import_and_containerize(path, asset_dir, asset_name, container_name)
 
         self.imprint(
             folder_path,
@@ -236,7 +254,7 @@ class TexturePNGLoader(plugin.Loader):
             container_name,
             asset_name,
             repre_entity,
-            product_type,
+            product_type
         )
 
         asset_contents = unreal.EditorAssetLibrary.list_assets(
@@ -247,14 +265,5 @@ class TexturePNGLoader(plugin.Loader):
 
     def remove(self, container):
         path = container["namespace"]
-        parent_path = os.path.dirname(path)
-
-        unreal.EditorAssetLibrary.delete_directory(path)
-
-        asset_contents = unreal.EditorAssetLibrary.list_assets(
-            parent_path, recursive=False
-        )
-
-        if len(asset_contents) == 0:
-            unreal.EditorAssetLibrary.delete_directory(parent_path)
-
+        if unreal.EditorAssetLibrary.does_directory_exist(path):
+            unreal.EditorAssetLibrary.delete_directory(path)

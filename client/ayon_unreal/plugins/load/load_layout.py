@@ -3,7 +3,6 @@
 import json
 import collections
 from pathlib import Path
-
 import unreal
 from unreal import (
     EditorAssetLibrary,
@@ -36,6 +35,35 @@ from ayon_unreal.api.pipeline import (
     ls,
 )
 from ayon_core.lib import EnumDef
+
+
+def _remove_loaded_asset(container):
+    # Check if the assets have been loaded by other layouts, and deletes
+    # them if they haven't.
+    containers = ls()
+    layout_containers = [
+        c for c in containers
+        if (c.get('asset_name') != container.get('asset_name') and
+            c.get('family') == "layout")]
+
+    for asset in eval(container.get('loaded_assets')):
+        layouts = [
+            lc for lc in layout_containers
+            if asset in lc.get('loaded_assets')]
+
+        if not layouts:
+            EditorAssetLibrary.delete_directory(str(Path(asset).parent))
+
+            # Delete the parent folder if there aren't any more
+            # layouts in it.
+            asset_content = EditorAssetLibrary.list_assets(
+                str(Path(asset).parent.parent), recursive=False,
+                include_folder=True
+            )
+
+            if len(asset_content) == 0:
+                EditorAssetLibrary.delete_directory(
+                    str(Path(asset).parent.parent))
 
 
 class LayoutLoader(plugin.Loader):
@@ -579,8 +607,8 @@ class LayoutLoader(plugin.Loader):
         )
 
         container_name += suffix
-
-        EditorAssetLibrary.make_directory(asset_dir)
+        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+            EditorAssetLibrary.make_directory(asset_dir)
 
         master_level = None
         shot = None
@@ -635,12 +663,17 @@ class LayoutLoader(plugin.Loader):
                             e.get_asset().get_playback_start(),
                             e.get_asset().get_playback_end()))
 
-            shot = tools.create_asset(
-                asset_name=folder_name,
-                package_path=asset_dir,
-                asset_class=unreal.LevelSequence,
-                factory=unreal.LevelSequenceFactoryNew()
-            )
+            shot_name = f"{asset_dir}/{folder_name}.{folder_name}"
+            shot = None
+            if not EditorAssetLibrary.does_asset_exist(shot_name):
+                shot = tools.create_asset(
+                    asset_name=folder_name,
+                    package_path=asset_dir,
+                    asset_class=unreal.LevelSequence,
+                    factory=unreal.LevelSequenceFactoryNew()
+                )
+            else:
+                shot = unreal.load_asset(shot_name)
 
             # sequences and frame_ranges have the same length
             for i in range(0, len(sequences) - 1):
@@ -685,27 +718,29 @@ class LayoutLoader(plugin.Loader):
             EditorAssetLibrary.save_asset(s.get_path_name())
 
         EditorLevelLibrary.save_current_level()
+        if not unreal.EditorAssetLibrary.does_asset_exist(
+            f"{asset_dir}/{container_name}"
+        ):
+            # Create Asset Container
+            create_container(
+                container=container_name, path=asset_dir)
 
-        # Create Asset Container
-        create_container(
-            container=container_name, path=asset_dir)
-
-        data = {
-            "schema": "ayon:container-2.0",
-            "id": AYON_CONTAINER_ID,
-            "asset": folder_name,
-            "folder_path": folder_path,
-            "namespace": asset_dir,
-            "container_name": container_name,
-            "asset_name": asset_name,
-            "loader": str(self.__class__.__name__),
-            "representation": context["representation"]["id"],
-            "parent": context["representation"]["versionId"],
-            "family": context["product"]["productType"],
-            "loaded_assets": loaded_assets
-        }
-        imprint(
-            "{}/{}".format(asset_dir, container_name), data)
+            data = {
+                "schema": "ayon:container-2.0",
+                "id": AYON_CONTAINER_ID,
+                "asset": folder_name,
+                "folder_path": folder_path,
+                "namespace": asset_dir,
+                "container_name": container_name,
+                "asset_name": asset_name,
+                "loader": str(self.__class__.__name__),
+                "representation": context["representation"]["id"],
+                "parent": context["representation"]["versionId"],
+                "family": context["product"]["productType"],
+                "loaded_assets": loaded_assets
+            }
+            imprint(
+                "{}/{}".format(asset_dir, container_name), data)
 
         save_dir = hierarchy_dir_list[0] if create_sequences else asset_dir
 
@@ -833,36 +868,18 @@ class LayoutLoader(plugin.Loader):
         """
         data = get_current_project_settings()
         create_sequences = data["unreal"]["level_sequences_for_layouts"]
+        remove_loaded_assets = data["unreal"].get("remove_loaded_assets", False)
 
         root = "/Game/Ayon"
         path = Path(container["namespace"])
 
-        containers = ls()
-        layout_containers = [
-            c for c in containers
-            if (c.get('asset_name') != container.get('asset_name') and
-                c.get('family') == "layout")]
-
-        # Check if the assets have been loaded by other layouts, and deletes
-        # them if they haven't.
-        for asset in eval(container.get('loaded_assets')):
-            layouts = [
-                lc for lc in layout_containers
-                if asset in lc.get('loaded_assets')]
-
-            if not layouts:
-                EditorAssetLibrary.delete_directory(str(Path(asset).parent))
-
-                # Delete the parent folder if there aren't any more
-                # layouts in it.
-                asset_content = EditorAssetLibrary.list_assets(
-                    str(Path(asset).parent.parent), recursive=False,
-                    include_folder=True
-                )
-
-                if len(asset_content) == 0:
-                    EditorAssetLibrary.delete_directory(
-                        str(Path(asset).parent.parent))
+        if remove_loaded_assets:
+            remove_asset_confirmation_dialog = unreal.EditorDialog.show_message(
+                "The removal of the loaded assets",
+                "The layout will be removed. Do you want to delete all associated assets as well?",
+                unreal.AppMsgType.YES_NO)
+            if (remove_asset_confirmation_dialog == unreal.AppReturnType.YES):
+                _remove_loaded_asset(container)
 
         master_sequence = None
         master_level = None
@@ -953,4 +970,7 @@ class LayoutLoader(plugin.Loader):
 
         if create_sequences:
             EditorLevelLibrary.load_level(master_level)
+            # Load the default level
+            default_level_path = "/Engine/Maps/Templates/OpenWorld"
+            EditorLevelLibrary.load_level(default_level_path)
             EditorAssetLibrary.delete_directory(f"{root}/tmp")

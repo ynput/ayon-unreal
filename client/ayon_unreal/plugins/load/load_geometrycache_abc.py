@@ -12,6 +12,7 @@ from ayon_unreal.api.pipeline import (
     AYON_ASSET_DIR,
     create_container,
     imprint,
+    has_asset_directory_pattern_matched
 )
 
 import unreal  # noqa
@@ -87,6 +88,8 @@ class PointCacheAlembicLoader(plugin.Loader):
 
         options.set_editor_property(
             'import_type', unreal.AlembicImportType.GEOMETRY_CACHE)
+        options.sampling_settings.frame_start = frame_start
+        options.sampling_settings.frame_end = frame_end
 
         gc_settings.set_editor_property('flatten_tracks', False)
 
@@ -104,17 +107,27 @@ class PointCacheAlembicLoader(plugin.Loader):
 
     def import_and_containerize(
         self, filepath, asset_dir, asset_name, container_name,
-        frame_start, frame_end, loaded_options=None
+        frame_start, frame_end, loaded_options=None, asset_path=None
     ):
-        unreal.EditorAssetLibrary.make_directory(asset_dir)
-
-        task = self.get_task(
-            filepath, asset_dir, asset_name, False, frame_start, frame_end, loaded_options)
+        task = None
+        if asset_path:
+            loaded_asset_dir = unreal.Paths.split(asset_path)[0]
+            task = self.get_task(
+                filepath, loaded_asset_dir, asset_name, True, frame_start, frame_end, loaded_options)
+        else:
+            if not unreal.EditorAssetLibrary.does_asset_exist(
+                f"{asset_dir}/{asset_name}"):
+                    task = self.get_task(
+                        filepath, asset_dir, asset_name, False,
+                        frame_start, frame_end, loaded_options
+                    )
 
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
 
-        # Create Asset Container
-        create_container(container=container_name, path=asset_dir)
+        if not unreal.EditorAssetLibrary.does_asset_exist(
+            f"{asset_dir}/{container_name}"):
+                # Create Asset Container
+                create_container(container=container_name, path=asset_dir)
 
     def imprint(
         self,
@@ -125,7 +138,7 @@ class PointCacheAlembicLoader(plugin.Loader):
         representation,
         frame_start,
         frame_end,
-        product_type,
+        product_type
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -142,7 +155,7 @@ class PointCacheAlembicLoader(plugin.Loader):
             "folder_path": folder_path,
             # TODO these should be probably removed
             "family": product_type,
-            "asset": folder_path,
+            "asset": folder_path
         }
         imprint(f"{asset_dir}/{container_name}", data)
 
@@ -190,18 +203,28 @@ class PointCacheAlembicLoader(plugin.Loader):
         # one, otherwise Unreal will not import it
         if frame_start == frame_end:
             frame_end += 1
-
+        asset_path = has_asset_directory_pattern_matched(
+            asset_name, asset_dir, name, extension=ext)
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            path = self.filepath_from_context(context)
-            loaded_options = {
-                "abc_conversion_preset": options.get(
-                    "abc_conversion_preset", self.abc_conversion_preset),
-                "show_dialog": options.get("show_dialog", self.show_dialog),
-            }
-            self.import_and_containerize(
-                path, asset_dir, asset_name, container_name,
-                frame_start, frame_end, loaded_options)
+            unreal.EditorAssetLibrary.make_directory(asset_dir)
+        path = self.filepath_from_context(context)
+        loaded_options = {
+            "abc_conversion_preset": options.get(
+                "abc_conversion_preset", self.abc_conversion_preset),
+            "show_dialog": options.get("show_dialog", self.show_dialog),
+        }
+        self.import_and_containerize(
+            path, asset_dir, asset_name, container_name,
+            frame_start, frame_end,
+            loaded_options, asset_path=asset_path
+        )
 
+
+        if asset_path:
+            unreal.EditorAssetLibrary.rename_asset(
+                f"{asset_path}",
+                f"{asset_dir}/{asset_name}.{asset_name}"
+            )
         self.imprint(
             folder_path,
             asset_dir,
@@ -212,7 +235,6 @@ class PointCacheAlembicLoader(plugin.Loader):
             frame_end,
             context["product"]["productType"]
         )
-
         asset_content = unreal.EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=True
         )
@@ -253,16 +275,17 @@ class PointCacheAlembicLoader(plugin.Loader):
 
         frame_start = int(container.get("frame_start"))
         frame_end = int(container.get("frame_end"))
-
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            path = get_representation_path(repre_entity)
-            loaded_options = {
-                "abc_conversion_preset": self.abc_conversion_preset,
-                "show_dialog": self.show_dialog,
-            }
-            self.import_and_containerize(
-                path, asset_dir, asset_name, container_name,
-                frame_start, frame_end, loaded_options)
+            unreal.EditorAssetLibrary.make_directory(asset_dir)
+        path = get_representation_path(repre_entity)
+        loaded_options = {
+            "abc_conversion_preset": self.abc_conversion_preset,
+            "show_dialog": self.show_dialog,
+        }
+        self.import_and_containerize(
+            path, asset_dir, asset_name, container_name,
+            frame_start, frame_end, loaded_options)
+
 
         self.imprint(
             folder_path,

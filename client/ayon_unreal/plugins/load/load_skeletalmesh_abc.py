@@ -12,6 +12,7 @@ from ayon_unreal.api.pipeline import (
     AYON_ASSET_DIR,
     create_container,
     imprint,
+    has_asset_directory_pattern_matched
 )
 import unreal  # noqa
 
@@ -80,6 +81,8 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
 
         options.set_editor_property(
             'import_type', unreal.AlembicImportType.SKELETAL)
+        options.sampling_settings.frame_start = loaded_options.get("frameStart")
+        options.sampling_settings.frame_end = loaded_options.get("frameEnd")
 
         if loaded_options.get("abc_material_settings") == "create_materials":
             mat_settings.set_editor_property("create_materials", True)
@@ -103,6 +106,7 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
                     flip_u=False, flip_v=False,
                     rotation=[0.0, 0.0, 0.0],
                     scale=[1.0, 1.0, 1.0])
+
             options.conversion_settings = conversion_settings
 
             options.material_settings = mat_settings
@@ -113,17 +117,25 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
 
     def import_and_containerize(
         self, filepath, asset_dir, asset_name, container_name,
-        loaded_options
+        loaded_options, asset_path=None
     ):
-        unreal.EditorAssetLibrary.make_directory(asset_dir)
-
-        task = self.get_task(
-            filepath, asset_dir, asset_name, False, loaded_options)
+        task = None
+        if asset_path:
+            loaded_asset_dir = unreal.Paths.split(asset_path)[0]
+            task = self.get_task(
+                filepath, loaded_asset_dir, asset_name, True, loaded_options)
+        else:
+            if not unreal.EditorAssetLibrary.does_asset_exist(
+                f"{asset_dir}/{asset_name}"):
+                    task = self.get_task(
+                        filepath, asset_dir, asset_name, False, loaded_options)
 
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
 
-        # Create Asset Container
-        create_container(container=container_name, path=asset_dir)
+        if not unreal.EditorAssetLibrary.does_asset_exist(
+            f"{asset_dir}/{container_name}"):
+                # Create Asset Container
+                create_container(container=container_name, path=asset_dir)
 
     def imprint(
         self,
@@ -132,7 +144,9 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
         container_name,
         asset_name,
         representation,
-        product_type
+        product_type,
+        frameStart,
+        frameEnd
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -145,10 +159,13 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             "representation": representation["id"],
             "parent": representation["versionId"],
             "product_type": product_type,
+            "frameStart":frameStart,
+            "frameEnd": frameEnd,
             # TODO these should be probably removed
             "asset": folder_path,
-            "family": product_type,
+            "family": product_type
         }
+
         imprint(f"{asset_dir}/{container_name}", data)
 
     def load(self, context, name, namespace, options):
@@ -167,8 +184,9 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             list(str): list of container content
         """
         # Create directory for asset and ayon container
-        folder_path = context["folder"]["path"]
-        folder_name = context["folder"]["name"]
+        folder_entity = context["folder"]
+        folder_path = folder_entity["path"]
+        folder_name = folder_entity["name"]
         suffix = "_CON"
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
@@ -184,7 +202,9 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             "default_conversion": options.get("default_conversion", False),
             "abc_conversion_preset": options.get(
                 "abc_conversion_preset", self.abc_conversion_preset),
-            "abc_material_settings": options.get("abc_material_settings", "no_material")
+            "abc_material_settings": options.get("abc_material_settings", "no_material"),
+            "frameStart": folder_entity["attrib"]["frameStart"],
+            "frameEnd": folder_entity["attrib"]["frameEnd"]
         }
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
@@ -193,9 +213,19 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
 
         container_name += suffix
 
+        asset_path = has_asset_directory_pattern_matched(
+            asset_name, asset_dir, name, extension=ext)
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            self.import_and_containerize(path, asset_dir, asset_name,
-                                         container_name, loaded_options)
+            unreal.EditorAssetLibrary.make_directory(asset_dir)
+        self.import_and_containerize(path, asset_dir, asset_name,
+                                     container_name, loaded_options,
+                                     asset_path=asset_path)
+
+        if asset_path:
+            unreal.EditorAssetLibrary.rename_asset(
+                f"{asset_path}",
+                f"{asset_dir}/{asset_name}.{asset_name}"
+            )
 
         product_type = context["product"]["productType"]
         self.imprint(
@@ -204,7 +234,9 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             container_name,
             asset_name,
             context["representation"],
-            product_type
+            product_type,
+            folder_entity["attrib"]["frameStart"],
+            folder_entity["attrib"]["frameEnd"],
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
@@ -241,15 +273,17 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             f"{self.root}/{folder_name}/{name_version}", suffix=f"_{ext}")
 
         container_name += suffix
-
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+            unreal.EditorAssetLibrary.make_directory(asset_dir)
             path = get_representation_path(repre_entity)
-            loaded_options = {
-                "default_conversion": False,
-                "abc_conversion_preset": self.abc_conversion_preset
-            }
-            self.import_and_containerize(path, asset_dir, asset_name,
-                                         container_name, loaded_options)
+        loaded_options = {
+            "default_conversion": False,
+            "abc_conversion_preset": self.abc_conversion_preset,
+            "frameStart": container.get("frameStart", 1),
+            "frameEnd": container.get("frameEnd", 1)
+        }
+        self.import_and_containerize(path, asset_dir, asset_name,
+                                     container_name, loaded_options)
 
         self.imprint(
             folder_path,
@@ -258,6 +292,8 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             asset_name,
             repre_entity,
             product_type,
+            container.get("frameStart", 1),
+            container.get("frameEnd", 1)
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(

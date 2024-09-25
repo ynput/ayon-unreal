@@ -22,6 +22,7 @@ class AnimationAlembicLoader(plugin.Loader):
     color = "orange"
     abc_conversion_preset = "maya"
     show_dialog = False
+    root = "/Game/Ayon"
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -83,6 +84,61 @@ class AnimationAlembicLoader(plugin.Loader):
 
         return task
 
+    def import_and_containerize(
+        self, filepath, asset_dir, asset_name, container_name, loaded_options,
+        asset_path=None
+    ):
+        task = None
+        if asset_path:
+            loaded_asset_dir = os.path.dirname(asset_path)
+            task = self.get_task(filepath, loaded_asset_dir, asset_name, True, loaded_options)
+        else:
+            if not unreal.EditorAssetLibrary.does_asset_exist(
+                f"{asset_dir}/{asset_name}"):
+                    task = self.get_task(
+                        filepath, asset_dir, asset_name, False, loaded_options
+                    )
+
+        unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+
+        # avoid duplicate container asset data being created
+        if not unreal.EditorAssetLibrary.does_asset_exist(
+            f"{asset_dir}/{container_name}"):
+            # Create Asset Container
+            unreal_pipeline.create_container(
+                container=container_name, path=asset_dir)
+
+
+    def imprint(
+        self,
+        folder_path,
+        asset_dir,
+        container_name,
+        asset_name,
+        frameStart,
+        frameEnd,
+        representation,
+        product_type
+    ):
+        data = {
+            "schema": "ayon:container-2.0",
+            "id": AYON_CONTAINER_ID,
+            "folder_path": folder_path,
+            "namespace": asset_dir,
+            "container_name": container_name,
+            "asset_name": asset_name,
+            "loader": str(self.__class__.__name__),
+            "representation": representation["id"],
+            "parent": representation["versionId"],
+            "product_type": product_type,
+            "frameStart": frameStart,
+            "frameEnd": frameEnd,
+            # TODO these should be probably removed
+            "asset": folder_path,
+            "family": product_type
+        }
+        unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
+
     def load(self, context, name, namespace, options):
         """Load and containerise representation into Content Browser.
 
@@ -106,9 +162,10 @@ class AnimationAlembicLoader(plugin.Loader):
         """
 
         # Create directory for asset and ayon container
-        root = unreal_pipeline.AYON_ASSET_DIR
-        folder_name = context["folder"]["name"]
+        folder_entity = context["folder"]
         folder_path = context["folder"]["path"]
+        hierarchy = folder_path.lstrip("/").split("/")
+        folder_name = hierarchy.pop(-1)
         product_type = context["product"]["productType"]
         suffix = "_CON"
         path = self.filepath_from_context(context)
@@ -126,43 +183,44 @@ class AnimationAlembicLoader(plugin.Loader):
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{root}/{folder_name}/{name_version}", suffix=f"_{ext}")
+            f"{self.root}/Animations/{folder_name}/{name_version}", suffix=f"_{ext}")
 
         container_name += suffix
-
+        asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
+            asset_name, asset_dir, folder_name, extension=ext)
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
             loaded_options = {
                 "abc_conversion_preset": options.get(
-                    "abc_conversion_preset", self.abc_conversion_preset)
+                    "abc_conversion_preset", self.abc_conversion_preset),
+                "frameStart": folder_entity["attrib"]["frameStart"],
+                "frameEnd": folder_entity["attrib"]["frameEnd"]
             }
-            path = self.filepath_from_context(context)
-            task = self.get_task(path, asset_dir, asset_name, False, loaded_options)
 
-            asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
-            asset_tools.import_asset_tasks([task])
+        path = self.filepath_from_context(context)
+        self.import_and_containerize(
+            path, asset_dir, asset_name,
+            container_name, loaded_options,
+            asset_path=asset_path
+        )
 
-            # Create Asset Container
-            unreal_pipeline.create_container(
-                container=container_name, path=asset_dir)
+        if asset_path:
+            unreal.EditorAssetLibrary.rename_asset(
+                f"{asset_path}",
+                f"{asset_dir}/{asset_name}.{asset_name}"
+            )
 
-        data = {
-            "schema": "ayon:container-2.0",
-            "id": AYON_CONTAINER_ID,
-            "folder_path": folder_path,
-            "namespace": asset_dir,
-            "container_name": container_name,
-            "asset_name": asset_name,
-            "loader": str(self.__class__.__name__),
-            "representation": context["representation"]["id"],
-            "parent": context["representation"]["versionId"],
-            "product_type": product_type,
-            # TODO these should be probably removed
-            "asset": folder_path,
-            "family": product_type,
-        }
-        unreal_pipeline.imprint(
-            f"{asset_dir}/{container_name}", data)
+        # update metadata
+        self.imprint(
+            folder_path,
+            asset_dir,
+            container_name,
+            asset_name,
+            folder_entity["attrib"]["frameStart"],
+            folder_entity["attrib"]["frameEnd"],
+            context["representation"],
+            product_type
+        )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=True
@@ -174,33 +232,59 @@ class AnimationAlembicLoader(plugin.Loader):
         return asset_content
 
     def update(self, container, context):
-        folder_name = container["asset_name"]
+        folder_path = context["folder"]["path"]
+        hierarchy = folder_path.lstrip("/").split("/")
+        folder_name = hierarchy.pop(-1)
+        product_name = context["product"]["name"]
+        product_type = context["product"]["productType"]
+        version = context["version"]["version"]
         repre_entity = context["representation"]
-        source_path = get_representation_path(repre_entity)
-        destination_path = container["namespace"]
-        loaded_options = {
-                "abc_conversion_preset": self.abc_conversion_preset
-        }
-        task = self.get_task(
-            source_path, destination_path, folder_name, True, loaded_options
-        )
 
+        # Create directory for folder and Ayon container
+        suffix = "_CON"
+        source_path = get_representation_path(repre_entity)
+
+        ext = os.path.splitext(source_path)[-1].lstrip(".")
+        asset_name = product_name
+        if folder_name:
+            asset_name = f"{folder_name}_{product_name}_{ext}"
+        # Check if version is hero version and use different name
+        if version < 0:
+            name_version = f"{product_name}_hero"
+        else:
+            name_version = f"{product_name}_v{version:03d}"
         # do import fbx and replace existing data
         asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
-        asset_tools.import_asset_tasks([task])
+        asset_dir, container_name = asset_tools.create_unique_asset_name(
+            f"{self.root}/Animations/{folder_name}/{name_version}", suffix=f"_{ext}")
 
-        container_path = f"{container['namespace']}/{container['objectName']}"
+        container_name += suffix
+        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+            unreal.EditorAssetLibrary.make_directory(asset_dir)
+        loaded_options = {
+            "abc_conversion_preset": self.abc_conversion_preset,
+            "frameStart": int(container.get("frameStart", "1")),
+            "frameEnd": int(container.get("frameEnd", "1"))
+        }
+
+        self.import_and_containerize(
+            source_path, asset_dir, asset_name,
+            container_name, loaded_options
+        )
 
         # update metadata
-        unreal_pipeline.imprint(
-            container_path,
-            {
-                "representation": repre_entity["id"],
-                "parent": repre_entity["versionId"],
-            })
-
+        self.imprint(
+            folder_path,
+            asset_dir,
+            container_name,
+            asset_name,
+            container.get("frameStart", "1"),
+            container.get("frameEnd", "1"),
+            repre_entity,
+            product_type
+        )
         asset_content = unreal.EditorAssetLibrary.list_assets(
-            destination_path, recursive=True, include_folder=True
+            asset_dir, recursive=True, include_folder=True
         )
 
         for a in asset_content:

@@ -81,6 +81,12 @@ class UnrealCreateLogic():
                 instance.get('creator_attributes', '{}'))
             instance['publish_attributes'] = ast.literal_eval(
                 instance.get('publish_attributes', '{}'))
+            instance['members'] = ast.literal_eval(
+                instance.get('members', '[]'))
+            instance['families'] = ast.literal_eval(
+                instance.get('families', '[]'))
+            instance['active'] = ast.literal_eval(
+                instance.get('active', ''))
             created_instance = CreatedInstance.from_existing(instance, self)
             self._add_instance_to_context(created_instance)
 
@@ -253,7 +259,6 @@ class UnrealActorCreator(UnrealBaseCreator):
                 selection = [a.get_path_name() for a in sel_actors]
 
                 instance_data["members"] = selection
-
             instance_data["level"] = world.get_path_name()
 
             super(UnrealActorCreator, self).create(
@@ -269,7 +274,7 @@ class UnrealActorCreator(UnrealBaseCreator):
 
     def get_pre_create_attr_defs(self):
         return [
-            UILabelDef("Select actors to create instance from them.")
+            UILabelDef("Select actors to create instance from them."),
         ]
 
 

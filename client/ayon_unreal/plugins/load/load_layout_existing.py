@@ -40,8 +40,8 @@ class ExistingLayoutLoader(plugin.Loader):
             project_settings["unreal"]["delete_unmatched_assets"]
         )
 
-    @staticmethod
     def _create_container(
+        self,
         asset_name,
         asset_dir,
         folder_path,
@@ -68,7 +68,7 @@ class ExistingLayoutLoader(plugin.Loader):
             "namespace": asset_dir,
             "container_name": container_name,
             "asset_name": asset_name,
-            # "loader": str(self.__class__.__name__),
+            "loader": str(self.__class__.__name__),
             "representation": representation,
             "parent": version_id,
             "product_type": product_type,
@@ -402,12 +402,28 @@ class ExistingLayoutLoader(plugin.Loader):
     def load(self, context, name, namespace, options):
         print("Loading Layout and Match Assets")
 
-        folder_name = context["folder"]["name"]
-        folder_path = context["folder"]["path"]
+        # Create directory for asset and Ayon container
+        folder_entity = context["folder"]
+        folder_path = folder_entity["path"]
+        hierarchy = folder_path.lstrip("/").split("/")
+        # Remove folder name
+        folder_name = hierarchy.pop(-1)
         product_type = context["product"]["productType"]
-        asset_name = f"{folder_name}_{name}" if folder_name else name
-        container_name = f"{folder_name}_{name}_CON"
+        root = self.ASSET_ROOT
+        hierarchy_dir = root
+        hierarchy_dir_list = []
+        for h in hierarchy:
+            hierarchy_dir = f"{hierarchy_dir}/{h}"
+            hierarchy_dir_list.append(hierarchy_dir)
 
+        suffix = "_CON"
+        asset_name = f"{folder_name}_{name}" if folder_name else name
+
+        tools = unreal.AssetToolsHelpers().get_asset_tools()
+        asset_dir, container_name = tools.create_unique_asset_name(
+            "{}/{}/{}".format(hierarchy_dir, folder_name, name),
+            suffix=""
+        )
         curr_level = self._get_current_level()
 
         if not curr_level:
@@ -419,10 +435,10 @@ class ExistingLayoutLoader(plugin.Loader):
         curr_level_path = Path(
             curr_level.get_outer().get_path_name()).parent.as_posix()
         if curr_level_path == "/Temp":
-            root = self.ASSET_ROOT
-            curr_level_path = f"{root}/{folder_name}/{name}"
+            curr_level_path = asset_dir
         #TODO: make sure curr_level_path is not a temp path,
         # create new level for layout level
+        container_name += suffix
         if not unreal.EditorAssetLibrary.does_asset_exist(
             f"{curr_level_path}/{container_name}"
         ):

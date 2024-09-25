@@ -5,7 +5,10 @@ import os
 import unreal
 
 from ayon_core.pipeline import publish
-from ayon_unreal.api.pipeline import UNREAL_VERSION
+from ayon_unreal.api.pipeline import (
+    UNREAL_VERSION,
+    select_camera
+)
 
 
 class ExtractCamera(publish.Extractor):
@@ -25,7 +28,6 @@ class ExtractCamera(publish.Extractor):
 
         # Perform extraction
         self.log.info("Performing extraction..")
-
         # Check if the loaded level is the same of the instance
         if UNREAL_VERSION.major == 5:
             world = unreal.UnrealEditorSubsystem().get_editor_world()
@@ -45,36 +47,47 @@ class ExtractCamera(publish.Extractor):
 
             if is_level_sequence:
                 sequence = data.get_asset()
-                if UNREAL_VERSION.major == 5 and UNREAL_VERSION.minor >= 1:
-                    params = unreal.SequencerExportFBXParams(
-                        world=world,
-                        root_sequence=sequence,
-                        sequence=sequence,
-                        bindings=sequence.get_bindings(),
-                        master_tracks=sequence.get_master_tracks(),
-                        fbx_file_name=os.path.join(staging_dir, fbx_filename)
-                    )
-                    unreal.SequencerTools.export_level_sequence_fbx(params)
-                elif UNREAL_VERSION.major == 4 and UNREAL_VERSION.minor == 26:
-                    unreal.SequencerTools.export_fbx(
-                        world,
-                        sequence,
-                        sequence.get_bindings(),
-                        unreal.FbxExportOption(),
-                        os.path.join(staging_dir, fbx_filename)
-                    )
-                else:
-                    # Unreal 5.0 or 4.27
-                    unreal.SequencerTools.export_level_sequence_fbx(
-                        world,
-                        sequence,
-                        sequence.get_bindings(),
-                        unreal.FbxExportOption(),
-                        os.path.join(staging_dir, fbx_filename)
-                    )
+                with select_camera(sequence):
+                    if UNREAL_VERSION.major == 5:
+                        params = None
+                        if UNREAL_VERSION.minor >= 4:
+                            params = unreal.SequencerExportFBXParams(
+                                world=world,
+                                root_sequence=sequence,
+                                sequence=sequence,
+                                bindings=sequence.get_bindings(),
+                                fbx_file_name=os.path.join(staging_dir, fbx_filename)
+                            )
+                        else:
+                            params = unreal.SequencerExportFBXParams(
+                                world=world,
+                                root_sequence=sequence,
+                                sequence=sequence,
+                                bindings=sequence.get_bindings(),
+                                master_tracks=sequence.get_master_tracks(),
+                                fbx_file_name=os.path.join(staging_dir, fbx_filename)
+                            )
+                        unreal.SequencerTools.export_level_sequence_fbx(params)
+                    elif UNREAL_VERSION.major == 4 and UNREAL_VERSION.minor == 26:
+                        unreal.SequencerTools.export_fbx(
+                            world,
+                            sequence,
+                            sequence.get_bindings(),
+                            unreal.FbxExportOption(),
+                            os.path.join(staging_dir, fbx_filename)
+                        )
+                    else:
+                        # Unreal 5.0 or 4.27
+                        unreal.SequencerTools.export_level_sequence_fbx(
+                            world,
+                            sequence,
+                            sequence.get_bindings(),
+                            unreal.FbxExportOption(),
+                            os.path.join(staging_dir, fbx_filename)
+                        )
 
-                if not os.path.isfile(os.path.join(staging_dir, fbx_filename)):
-                    raise RuntimeError("Failed to extract camera")
+                    if not os.path.isfile(os.path.join(staging_dir, fbx_filename)):
+                        raise RuntimeError("Failed to extract camera")
 
         if "representations" not in instance.data:
             instance.data["representations"] = []
@@ -83,6 +96,8 @@ class ExtractCamera(publish.Extractor):
             'name': 'fbx',
             'ext': 'fbx',
             'files': fbx_filename,
+            'clipIn': instance.data["clipIn"],
+            'clipOut': instance.data["clipOut"],
             "stagingDir": staging_dir,
         }
         instance.data["representations"].append(fbx_representation)
