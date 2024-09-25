@@ -431,7 +431,8 @@ class LayoutLoader(plugin.Loader):
 
             # If reference is None, this element is skipped, as it cannot be
             # imported in Unreal
-            if not repre_id:
+            if not repr_format:
+                self.log.warning(f"Representation name not defined for element: {element}")
                 continue
 
             instance_name = element.get('instance_name')
