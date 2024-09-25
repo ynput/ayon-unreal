@@ -37,8 +37,11 @@ def update_skeletal_mesh(asset_content, sequence):
                     skeletal_mesh = skeletal_mesh_component.skeletal_mesh
                     if skeletal_mesh:
                         skel_mesh_comp = actor.get_editor_property('skeletal_mesh_component')
-                        if skel_mesh_comp.get_editor_property("skeletal_mesh") != imported_skeletal_mesh:
-                            skel_mesh_comp.set_editor_property('skeletal_mesh', skeletal_mesh_asset)
+                        unreal.log("Replacing skeleton mesh component to alembic")
+                        unreal.log(skel_mesh_comp)
+                        if skel_mesh_comp:
+                            if skel_mesh_comp.get_editor_property("skeletal_mesh") != imported_skeletal_mesh:
+                                skel_mesh_comp.set_editor_property('skeletal_mesh', skeletal_mesh_asset)
 
 
 def set_sequence_frame_range(sequence, frameStart, frameEnd):
