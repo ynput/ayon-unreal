@@ -62,18 +62,16 @@ class UnrealSettings(BaseSettingsModel):
         description="Presets for converting the loaded alembic "
                     "with correct UV and transform"
     )
-    loaded_assets_extension: str = SettingsField(
+    folder_representation_type: str = SettingsField(
         "fbx",
-        title="Loaded Assets Extension",
+        title="Folder Representation Type",
         enum_resolver=_loaded_asset_enum,
-        description="Extension for the loaded assets"
+        description="The overriding folder representation type during loading"
     )
     force_loaded: bool = SettingsField(
         False,
-        title="Force load assets with Loaded Assets Extension",
-        description="Force loading assets with 'Prioritized Loaded "
-                    "Assets Extension' no matter the representation "
-                    "is missing in the selected format."
+        title="Override Layout Representation",
+        description="Loading assets by override layout representation type"
     )
     render_queue_path: str = SettingsField(
         "",
@@ -104,7 +102,7 @@ DEFAULT_VALUES = {
     "level_sequences_for_layouts": True,
     "delete_unmatched_assets": False,
     "abc_conversion_preset": "maya",
-    "loaded_assets_extension": "fbx",
+    "folder_representation_type": "fbx",
     "force_loaded": False,
     "render_queue_path": "/Game/Ayon/renderQueue",
     "render_config_path": "/Game/Ayon/DefaultMovieRenderQueueConfig.DefaultMovieRenderQueueConfig",

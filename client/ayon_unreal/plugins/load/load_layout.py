@@ -35,7 +35,7 @@ from ayon_unreal.api.pipeline import (
     imprint,
     ls,
 )
-from ayon_core.lib import EnumDef, BoolDef
+from ayon_core.lib import EnumDef
 
 
 class LayoutLoader(plugin.Loader):
@@ -48,7 +48,7 @@ class LayoutLoader(plugin.Loader):
     icon = "code-fork"
     color = "orange"
     ASSET_ROOT = "/Game/Ayon"
-    loaded_assets_extension = "fbx"
+    folder_representation_type = "fbx"
     force_loaded = False
 
     @classmethod
@@ -56,38 +56,33 @@ class LayoutLoader(plugin.Loader):
         super(LayoutLoader, cls).apply_settings(project_settings)
 
         # Apply import settings
-        loaded_assets_extension = (
-            project_settings.get("unreal", {}).get("loaded_assets_extension", {})
+        folder_representation_type = (
+            project_settings.get("unreal", {}).get("folder_representation_type", {})
         )
         use_force_loaded = (
             project_settings.get("unreal", {}).get("force_loaded", {})
         )
-        if loaded_assets_extension:
-            cls.loaded_assets_extension = loaded_assets_extension
+        if folder_representation_type:
+            cls.folder_representation_type = folder_representation_type
         if use_force_loaded:
             cls.force_loaded = use_force_loaded
 
-
     @classmethod
     def get_options(cls, contexts):
-        return [
-            BoolDef(
-                "force_loaded",
-                label="Force load available extension when missing asset",
-                tooltip="Force loading available extension when "
-                        "the published asset is missing",
-                default=cls.force_loaded
-            ),
-            EnumDef(
-                "loaded_assets_extension",
-                label="Prioritized Loaded Assets Extension",
-                items={
-                    "fbx": "fbx",
-                    "abc": "abc"
-                },
-                default=cls.loaded_assets_extension
+        defs = []
+        if cls.force_loaded:
+            defs.append(
+                EnumDef(
+                    "folder_representation_type",
+                    label="Folder Representation Type",
+                    items={
+                        "fbx": "fbx",
+                        "abc": "abc"
+                    },
+                    default=cls.folder_representation_type
+                )
             )
-        ]
+        return defs
 
     def _get_asset_containers(self, path):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
@@ -716,13 +711,11 @@ class LayoutLoader(plugin.Loader):
 
             EditorLevelLibrary.load_level(level)
         extension = options.get(
-            "loaded_assets_extension", self.loaded_assets_extension)
-        force_loaded = options.get(
-            "force_loaded", self.force_loaded)
+            "folder_representation_type", self.folder_representation_type)
         path = self.filepath_from_context(context)
         loaded_assets = self._process(
             path, asset_dir, shot, loaded_extension=extension,
-            force_loaded=force_loaded)
+            force_loaded=self.force_loaded)
 
         for s in sequences:
             EditorAssetLibrary.save_asset(s.get_path_name())
@@ -839,7 +832,7 @@ class LayoutLoader(plugin.Loader):
 
         loaded_assets = self._process(
             source_path, asset_dir, sequence,
-            loaded_extension=self.loaded_assets_extension,
+            loaded_extension=self.folder_representation_type,
             force_loaded=self.force_loaded)
 
         data = {
