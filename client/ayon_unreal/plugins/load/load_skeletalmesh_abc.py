@@ -28,6 +28,7 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
 
     root = AYON_ASSET_DIR
     abc_conversion_preset = "maya"
+    show_dialog = False
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -74,7 +75,8 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
         task.set_editor_property('destination_path', asset_dir)
         task.set_editor_property('destination_name', asset_name)
         task.set_editor_property('replace_existing', replace)
-        task.set_editor_property('automated', True)
+        task.set_editor_property(
+            'automated', not loaded_options.get("show_dialog"))
         task.set_editor_property('save', True)
 
         options.set_editor_property(

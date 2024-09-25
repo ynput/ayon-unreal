@@ -28,6 +28,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
 
     root = AYON_ASSET_DIR
     abc_conversion_preset = "maya"
+    show_dialog = False
 
 
     @classmethod
@@ -38,6 +39,9 @@ class StaticMeshAlembicLoader(plugin.Loader):
         if unreal_settings.get("abc_conversion_preset", cls.abc_conversion_preset):
             cls.abc_conversion_preset = unreal_settings.get(
                 "abc_conversion_preset", cls.abc_conversion_preset)
+        if unreal_settings.get("show_dialog", cls.show_dialog):
+            cls.show_dialog = unreal_settings.get(
+                "show_dialog", cls.show_dialog)
 
     @classmethod
     def get_options(cls, contexts):
@@ -80,7 +84,8 @@ class StaticMeshAlembicLoader(plugin.Loader):
         task.set_editor_property('destination_path', asset_dir)
         task.set_editor_property('destination_name', asset_name)
         task.set_editor_property('replace_existing', replace)
-        task.set_editor_property('automated', True)
+        task.set_editor_property(
+            'automated', not loaded_options.get("show_dialog"))
         task.set_editor_property('save', True)
 
         # set import options here
@@ -204,6 +209,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
                 "abc_conversion_preset", self.abc_conversion_preset),
             "abc_material_settings": options.get("abc_material_settings", "no_material"),
             "merge_meshes": options.get("merge_meshes", True),
+            "show_dialog": options.get("show_dialog", self.show_dialog),
         }
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()

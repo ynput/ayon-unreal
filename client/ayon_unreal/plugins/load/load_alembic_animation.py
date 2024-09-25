@@ -21,6 +21,7 @@ class AnimationAlembicLoader(plugin.Loader):
     icon = "cube"
     color = "orange"
     abc_conversion_preset = "maya"
+    show_dialog = False
     root = "/Game/Ayon"
 
     @classmethod
@@ -31,6 +32,9 @@ class AnimationAlembicLoader(plugin.Loader):
         if unreal_settings.get("abc_conversion_preset", cls.abc_conversion_preset):
             cls.abc_conversion_preset = unreal_settings.get(
                 "abc_conversion_preset", cls.abc_conversion_preset)
+        if unreal_settings.get("show_dialog", cls.show_dialog):
+            cls.show_dialog = unreal_settings.get(
+                "show_dialog", cls.show_dialog)
 
     @classmethod
     def get_options(cls, contexts):
@@ -68,7 +72,7 @@ class AnimationAlembicLoader(plugin.Loader):
         task.set_editor_property('destination_path', asset_dir)
         task.set_editor_property('destination_name', asset_name)
         task.set_editor_property('replace_existing', replace)
-        task.set_editor_property('automated', True)
+        task.set_editor_property('automated', not self.show_dialog)
         task.set_editor_property('save', True)
 
         options.set_editor_property(
@@ -138,7 +142,7 @@ class AnimationAlembicLoader(plugin.Loader):
     def load(self, context, name, namespace, options):
         """Load and containerise representation into Content Browser.
 
-        This is two step process. First, import FBX to temporary path and
+        This is two-step process. First, import FBX to temporary path and
         then call `containerise()` on it - this moves all content to new
         directory and then it will create AssetContainer there and imprint it
         with metadata. This will mark this path as container.
