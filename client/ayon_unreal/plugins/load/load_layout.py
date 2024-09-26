@@ -353,6 +353,16 @@ class LayoutLoader(plugin.Loader):
             (repre_extension if ext == "ma" else ext)
             for ext in extensions
         } if not force_loaded or repre_extension == "json" else {repre_extension}
+        if not force_loaded:
+            updated_extensions = {
+                (repre_extension if ext == "ma" else ext)
+                for ext in extensions
+            }
+        else:
+            if repre_extension == "json":
+                updated_extensions = {ext for ext in extensions}
+            else:
+                updated_extensions = {repre_extension}
 
         output = collections.defaultdict(list)
         if not version_ids:
@@ -407,7 +417,7 @@ class LayoutLoader(plugin.Loader):
                     continue
                 extension = element.get("extension")
                 repre_entity = None
-                if not force_loaded:
+                if not force_loaded or loaded_extension == "json":
                     repre_entity = next((repre_entity for repre_entity in repre_entities
                                          if repre_entity["name"] == extension), None)
                     if not repre_entity:
