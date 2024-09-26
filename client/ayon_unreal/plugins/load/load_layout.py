@@ -48,7 +48,7 @@ class LayoutLoader(plugin.Loader):
     icon = "code-fork"
     color = "orange"
     ASSET_ROOT = "/Game/Ayon"
-    folder_representation_type = "fbx"
+    folder_representation_type = "json"
     force_loaded = False
 
     @classmethod
@@ -76,6 +76,7 @@ class LayoutLoader(plugin.Loader):
                     "folder_representation_type",
                     label="Override layout representation by",
                     items={
+                        "json": "json",
                         "fbx": "fbx",
                         "abc": "abc"
                     },
@@ -340,16 +341,19 @@ class LayoutLoader(plugin.Loader):
             if element.get("representation")
         }
         version_ids.discard(None)
+        # Extract extensions from data with backward compatibility for "ma"
         extensions = {
-            # "ma" as backward compatibility
             element.get("extension", "ma")
             for element in data
             if element.get("representation")
         }
+
+        # Update extensions based on the force_loaded flag
         updated_extensions = {
             (repre_extension if ext == "ma" else ext)
             for ext in extensions
-        } if not force_loaded else {repre_extension}
+        } if not force_loaded or repre_extension != "json" else {repre_extension}
+
         output = collections.defaultdict(list)
         if not version_ids:
             return output

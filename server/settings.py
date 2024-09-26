@@ -33,6 +33,7 @@ def _render_format_enum():
 
 def _loaded_asset_enum():
     return [
+        {"value": "json", "label": "json"},
         {"value": "fbx", "label": "fbx"},
         {"value": "abc", "label": "abc"}
     ]
@@ -63,7 +64,7 @@ class UnrealSettings(BaseSettingsModel):
                     "with correct UV and transform"
     )
     folder_representation_type: str = SettingsField(
-        "fbx",
+        "json",
         title="Override layout representation by",
         enum_resolver=_loaded_asset_enum,
         description="The overriding folder representation type during loading"
@@ -102,7 +103,7 @@ DEFAULT_VALUES = {
     "level_sequences_for_layouts": True,
     "delete_unmatched_assets": False,
     "abc_conversion_preset": "maya",
-    "folder_representation_type": "fbx",
+    "folder_representation_type": "json",
     "force_loaded": False,
     "render_queue_path": "/Game/Ayon/renderQueue",
     "render_config_path": "/Game/Ayon/DefaultMovieRenderQueueConfig.DefaultMovieRenderQueueConfig",
