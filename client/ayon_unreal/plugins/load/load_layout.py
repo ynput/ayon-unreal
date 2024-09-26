@@ -368,7 +368,7 @@ class LayoutLoader(plugin.Loader):
 
     def _process(self, lib_path, asset_dir, sequence,
                  repr_loaded=None, loaded_extension=None,
-                 force_loaded=True):
+                 force_loaded=False):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
         with open(lib_path, "r") as fp:
