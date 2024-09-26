@@ -63,16 +63,16 @@ class UnrealSettings(BaseSettingsModel):
         description="Presets for converting the loaded alembic "
                     "with correct UV and transform"
     )
+    force_loaded: bool = SettingsField(
+        False,
+        title="Enable user override layout representation",
+        description="Loading assets by override layout representation type"
+    )
     folder_representation_type: str = SettingsField(
         "json",
         title="Override layout representation by",
         enum_resolver=_loaded_asset_enum,
         description="The overriding folder representation type during loading"
-    )
-    force_loaded: bool = SettingsField(
-        False,
-        title="Enable user override layout representation",
-        description="Loading assets by override layout representation type"
     )
     render_queue_path: str = SettingsField(
         "",
@@ -103,8 +103,8 @@ DEFAULT_VALUES = {
     "level_sequences_for_layouts": True,
     "delete_unmatched_assets": False,
     "abc_conversion_preset": "maya",
-    "folder_representation_type": "json",
     "force_loaded": False,
+    "folder_representation_type": "json",
     "render_queue_path": "/Game/Ayon/renderQueue",
     "render_config_path": "/Game/Ayon/DefaultMovieRenderQueueConfig.DefaultMovieRenderQueueConfig",
     "preroll_frames": 0,
