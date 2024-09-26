@@ -74,7 +74,7 @@ class LayoutLoader(plugin.Loader):
             defs.append(
                 EnumDef(
                     "folder_representation_type",
-                    label="Folder Representation Type",
+                    label="Override layout representation by",
                     items={
                         "fbx": "fbx",
                         "abc": "abc"

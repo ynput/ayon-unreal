@@ -64,13 +64,13 @@ class UnrealSettings(BaseSettingsModel):
     )
     folder_representation_type: str = SettingsField(
         "fbx",
-        title="Folder Representation Type",
+        title="Override layout representation by",
         enum_resolver=_loaded_asset_enum,
         description="The overriding folder representation type during loading"
     )
     force_loaded: bool = SettingsField(
         False,
-        title="Override Layout Representation",
+        title="Enable user override layout representation",
         description="Loading assets by override layout representation type"
     )
     render_queue_path: str = SettingsField(
