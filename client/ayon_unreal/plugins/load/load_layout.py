@@ -34,7 +34,6 @@ from ayon_unreal.api.pipeline import (
     imprint,
     ls,
 )
-from ayon_core.lib import EnumDef
 
 
 def _remove_loaded_asset(container):
