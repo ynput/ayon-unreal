@@ -21,7 +21,7 @@ class AnimationAlembicLoader(plugin.Loader):
     icon = "cube"
     color = "orange"
     abc_conversion_preset = "maya"
-    root = "/Game/Ayon"
+    loaded_asset_dir = "{folder[path]}/{product[name]}"
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -31,6 +31,9 @@ class AnimationAlembicLoader(plugin.Loader):
         if unreal_settings.get("abc_conversion_preset", cls.abc_conversion_preset):
             cls.abc_conversion_preset = unreal_settings.get(
                 "abc_conversion_preset", cls.abc_conversion_preset)
+        if unreal_settings.get("loaded_asset_dir", cls.loaded_asset_dir):
+            cls.loaded_asset_dir = unreal_settings.get(
+                    "loaded_asset_dir", cls.loaded_asset_dir)
 
     @classmethod
     def get_options(cls, contexts):
@@ -166,20 +169,13 @@ class AnimationAlembicLoader(plugin.Loader):
         suffix = "_CON"
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        if folder_name:
-            asset_name = "{}_{}_{}".format(folder_name, name, ext)
-        else:
-            asset_name = "{}_{}".format(name, ext)
-        version = context["version"]["version"]
-        # Check if version is hero version and use different name
-        if version < 0:
-            name_version = f"{name}_hero"
-        else:
-            name_version = f"{name}_v{version:03d}"
+        asset_root, asset_name = unreal_pipeline.format_asset_directory(
+            name, context, self.loaded_asset_dir, extension=ext
+        )
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{self.root}/Animations/{folder_name}/{name_version}", suffix=f"_{ext}")
+            asset_root, suffix=f"_{ext}")
 
         container_name += suffix
         asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
@@ -229,11 +225,8 @@ class AnimationAlembicLoader(plugin.Loader):
 
     def update(self, container, context):
         folder_path = context["folder"]["path"]
-        hierarchy = folder_path.lstrip("/").split("/")
-        folder_name = hierarchy.pop(-1)
         product_name = context["product"]["name"]
         product_type = context["product"]["productType"]
-        version = context["version"]["version"]
         repre_entity = context["representation"]
 
         # Create directory for folder and Ayon container
@@ -241,18 +234,13 @@ class AnimationAlembicLoader(plugin.Loader):
         source_path = get_representation_path(repre_entity)
 
         ext = os.path.splitext(source_path)[-1].lstrip(".")
-        asset_name = product_name
-        if folder_name:
-            asset_name = f"{folder_name}_{product_name}_{ext}"
-        # Check if version is hero version and use different name
-        if version < 0:
-            name_version = f"{product_name}_hero"
-        else:
-            name_version = f"{product_name}_v{version:03d}"
+        asset_root, asset_name = unreal_pipeline.format_asset_directory(
+            product_name, context, self.loaded_asset_dir, extension=ext
+        )
         # do import fbx and replace existing data
         asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
         asset_dir, container_name = asset_tools.create_unique_asset_name(
-            f"{self.root}/Animations/{folder_name}/{name_version}", suffix=f"_{ext}")
+             asset_root, suffix=f"_{ext}")
 
         container_name += suffix
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
