@@ -3,6 +3,7 @@
 import json
 import collections
 from pathlib import Path
+
 import unreal
 from unreal import (
     EditorAssetLibrary,
@@ -37,35 +38,6 @@ from ayon_unreal.api.pipeline import (
 from ayon_core.lib import EnumDef
 
 
-def _remove_loaded_asset(container):
-    # Check if the assets have been loaded by other layouts, and deletes
-    # them if they haven't.
-    containers = ls()
-    layout_containers = [
-        c for c in containers
-        if (c.get('asset_name') != container.get('asset_name') and
-            c.get('family') == "layout")]
-
-    for asset in eval(container.get('loaded_assets')):
-        layouts = [
-            lc for lc in layout_containers
-            if asset in lc.get('loaded_assets')]
-
-        if not layouts:
-            EditorAssetLibrary.delete_directory(str(Path(asset).parent))
-
-            # Delete the parent folder if there aren't any more
-            # layouts in it.
-            asset_content = EditorAssetLibrary.list_assets(
-                str(Path(asset).parent.parent), recursive=False,
-                include_folder=True
-            )
-
-            if len(asset_content) == 0:
-                EditorAssetLibrary.delete_directory(
-                    str(Path(asset).parent.parent))
-
-
 class LayoutLoader(plugin.Loader):
     """Load Layout from a JSON file"""
 
@@ -76,32 +48,42 @@ class LayoutLoader(plugin.Loader):
     icon = "code-fork"
     color = "orange"
     ASSET_ROOT = "/Game/Ayon"
-    loaded_assets_extension = "fbx"
+    folder_representation_type = "json"
+    force_loaded = False
 
     @classmethod
     def apply_settings(cls, project_settings):
         super(LayoutLoader, cls).apply_settings(project_settings)
 
         # Apply import settings
-        loaded_assets_extension = (
-            project_settings.get("unreal", {}).get("loaded_assets_extension", {})
+        folder_representation_type = (
+            project_settings.get("unreal", {}).get("folder_representation_type", {})
         )
-        if loaded_assets_extension:
-            cls.loaded_assets_extension = loaded_assets_extension
+        use_force_loaded = (
+            project_settings.get("unreal", {}).get("force_loaded", {})
+        )
+        if folder_representation_type:
+            cls.folder_representation_type = folder_representation_type
+        if use_force_loaded:
+            cls.force_loaded = use_force_loaded
 
     @classmethod
     def get_options(cls, contexts):
-        return [
-            EnumDef(
-                "loaded_assets_extension",
-                label="Loaded Assets Extension",
-                items={
-                    "fbx": "fbx",
-                    "abc": "abc"
-                },
-                default=cls.loaded_assets_extension
+        defs = []
+        if cls.force_loaded:
+            defs.append(
+                EnumDef(
+                    "folder_representation_type",
+                    label="Override layout representation by",
+                    items={
+                        "json": "json",
+                        "fbx": "fbx",
+                        "abc": "abc"
+                    },
+                    default=cls.folder_representation_type
+                )
             )
-        ]
+        return defs
 
     def _get_asset_containers(self, path):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
@@ -352,13 +334,25 @@ class LayoutLoader(plugin.Loader):
                     sec_params = section.get_editor_property('params')
                     sec_params.set_editor_property('animation', animation)
 
-    def _get_repre_entities_by_version_id(self, data, repre_extension):
+    def _get_repre_entities_by_version_id(self, data, repre_extension, force_loaded=False):
         version_ids = {
             element.get("version")
             for element in data
             if element.get("representation")
         }
         version_ids.discard(None)
+        # Extract extensions from data with backward compatibility for "ma"
+        extensions = {
+            element.get("extension", "ma")
+            for element in data
+            if element.get("representation")
+        }
+
+        # Update extensions based on the force_loaded flag
+        updated_extensions = {
+            (repre_extension if ext == "ma" else ext)
+            for ext in extensions
+        } if not force_loaded or repre_extension == "json" else {repre_extension}
 
         output = collections.defaultdict(list)
         if not version_ids:
@@ -367,7 +361,7 @@ class LayoutLoader(plugin.Loader):
         project_name = get_current_project_name()
         repre_entities = ayon_api.get_representations(
             project_name,
-            representation_names={repre_extension},
+            representation_names=updated_extensions,
             version_ids=version_ids,
             fields={"id", "versionId", "name"}
         )
@@ -377,7 +371,8 @@ class LayoutLoader(plugin.Loader):
         return output
 
     def _process(self, lib_path, asset_dir, sequence,
-                 repr_loaded=None, loaded_extension=None):
+                 repr_loaded=None, loaded_extension=None,
+                 force_loaded=False):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
         with open(lib_path, "r") as fp:
@@ -397,7 +392,7 @@ class LayoutLoader(plugin.Loader):
         loaded_assets = []
 
         repre_entities_by_version_id = self._get_repre_entities_by_version_id(
-            data, loaded_extension
+            data, loaded_extension, force_loaded=force_loaded
         )
         for element in data:
             repre_id = None
@@ -410,7 +405,18 @@ class LayoutLoader(plugin.Loader):
                         f"No valid representation found for version"
                         f" {version_id}")
                     continue
-                repre_entity = repre_entities[0]
+                extension = element.get("extension")
+                repre_entity = None
+                if not force_loaded or loaded_extension == "json":
+                    repre_entity = next((repre_entity for repre_entity in repre_entities
+                                         if repre_entity["name"] == extension), None)
+                    if not repre_entity:
+                        self.log.error(f"No valid representation type {extension} found.")
+                        return
+                else:
+                    # use the prioritized representation
+                    # to load the assets
+                    repre_entity = repre_entities[0]
                 repre_id = repre_entity["id"]
                 repr_format = repre_entity["name"]
 
@@ -425,7 +431,8 @@ class LayoutLoader(plugin.Loader):
 
             # If reference is None, this element is skipped, as it cannot be
             # imported in Unreal
-            if not repre_id:
+            if not repr_format:
+                self.log.warning(f"Representation name not defined for element: {element}")
                 continue
 
             instance_name = element.get('instance_name')
@@ -709,10 +716,11 @@ class LayoutLoader(plugin.Loader):
 
             EditorLevelLibrary.load_level(level)
         extension = options.get(
-            "loaded_assets_extension", self.loaded_assets_extension)
+            "folder_representation_type", self.folder_representation_type)
         path = self.filepath_from_context(context)
         loaded_assets = self._process(
-            path, asset_dir, shot, loaded_extension=extension)
+            path, asset_dir, shot, loaded_extension=extension,
+            force_loaded=self.force_loaded)
 
         for s in sequences:
             EditorAssetLibrary.save_asset(s.get_path_name())
@@ -829,7 +837,8 @@ class LayoutLoader(plugin.Loader):
 
         loaded_assets = self._process(
             source_path, asset_dir, sequence,
-            loaded_extension=self.loaded_assets_extension)
+            loaded_extension=self.folder_representation_type,
+            force_loaded=self.force_loaded)
 
         data = {
             "representation": repre_entity["id"],
@@ -868,18 +877,36 @@ class LayoutLoader(plugin.Loader):
         """
         data = get_current_project_settings()
         create_sequences = data["unreal"]["level_sequences_for_layouts"]
-        remove_loaded_assets = data["unreal"].get("remove_loaded_assets", False)
 
         root = "/Game/Ayon"
         path = Path(container["namespace"])
 
-        if remove_loaded_assets:
-            remove_asset_confirmation_dialog = unreal.EditorDialog.show_message(
-                "The removal of the loaded assets",
-                "The layout will be removed. Do you want to delete all associated assets as well?",
-                unreal.AppMsgType.YES_NO)
-            if (remove_asset_confirmation_dialog == unreal.AppReturnType.YES):
-                _remove_loaded_asset(container)
+        containers = ls()
+        layout_containers = [
+            c for c in containers
+            if (c.get('asset_name') != container.get('asset_name') and
+                c.get('family') == "layout")]
+
+        # Check if the assets have been loaded by other layouts, and deletes
+        # them if they haven't.
+        for asset in eval(container.get('loaded_assets')):
+            layouts = [
+                lc for lc in layout_containers
+                if asset in lc.get('loaded_assets')]
+
+            if not layouts:
+                EditorAssetLibrary.delete_directory(str(Path(asset).parent))
+
+                # Delete the parent folder if there aren't any more
+                # layouts in it.
+                asset_content = EditorAssetLibrary.list_assets(
+                    str(Path(asset).parent.parent), recursive=False,
+                    include_folder=True
+                )
+
+                if len(asset_content) == 0:
+                    EditorAssetLibrary.delete_directory(
+                        str(Path(asset).parent.parent))
 
         master_sequence = None
         master_level = None
