@@ -29,7 +29,6 @@ class StaticMeshAlembicLoader(plugin.Loader):
     abc_conversion_preset = "maya"
     loaded_asset_dir = "{folder[path]}/{product[name]}"
 
-
     @classmethod
     def apply_settings(cls, project_settings):
         super(StaticMeshAlembicLoader, cls).apply_settings(project_settings)

@@ -27,7 +27,6 @@ class SkeletalMeshFBXLoader(plugin.Loader):
 
     loaded_asset_dir = "{folder[path]}/{product[name]}"
 
-
     @classmethod
     def apply_settings(cls, project_settings):
         unreal_settings = project_settings.get("unreal", {})
@@ -205,7 +204,7 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         self.import_and_containerize(path, asset_dir, asset_name, container_name)
 
         self.imprint(
-            folder_path, 
+            folder_path,
             asset_dir,
             container_name,
             asset_name,
