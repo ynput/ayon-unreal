@@ -344,7 +344,7 @@ class LayoutLoader(plugin.Loader):
         project_name = get_current_project_name()
         repre_entities = ayon_api.get_representations(
             project_name,
-            representation_names={repre_extension},
+            representation_names=repre_extension,
             version_ids=version_ids,
             fields={"id", "versionId", "name"}
         )
