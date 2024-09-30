@@ -205,12 +205,13 @@ class ExistingLayoutLoader(plugin.Loader):
 
         return assets
 
-    def _get_valid_repre_entities(self, project_name, version_ids):
-        valid_formats = ['fbx', 'abc']
+    def _get_valid_repre_entities(self, project_name, version_ids, extensions):
+        if not extensions:
+            extensions = ['fbx', 'abc']
 
         repre_entities = list(ayon_api.get_representations(
             project_name,
-            representation_names=valid_formats,
+            representation_names=extensions,
             version_ids=version_ids,
             fields={"id", "versionId", "name"}
         ))
@@ -230,12 +231,16 @@ class ExistingLayoutLoader(plugin.Loader):
 
         elements = []
         repre_ids = set()
+        extensions = []
         # Get all the representations in the JSON from the database.
         for element in data:
             repre_id = element.get('representation')
+            extension = element.get("extension")
             if repre_id:
                 repre_ids.add(repre_id)
                 elements.append(element)
+            if extension:
+                extensions.append(extension)
 
         repre_entities = ayon_api.get_representations(
             project_name, representation_ids=repre_ids
@@ -268,7 +273,7 @@ class ExistingLayoutLoader(plugin.Loader):
 
         # Prequery valid repre documents for all elements at once
         valid_repre_entities_by_version_id = self._get_valid_repre_entities(
-            project_name, version_ids)
+            project_name, version_ids, extensions)
         containers = []
         actors_matched = []
 
@@ -361,6 +366,8 @@ class ExistingLayoutLoader(plugin.Loader):
 
                 for asset in assets:
                     obj = asset.get_asset()
+                    unreal.log("obj")
+                    unreal.log(obj)
                     self._spawn_actor(obj, lasset)
 
                 loaded = True
@@ -382,6 +389,8 @@ class ExistingLayoutLoader(plugin.Loader):
                 obj = ar.get_asset_by_object_path(asset).get_asset()
                 if not obj.get_class().get_name() == 'StaticMesh':
                     continue
+                unreal.log("object_staticMesh")
+                unreal.log(obj)
                 self._spawn_actor(obj, lasset)
 
                 break
