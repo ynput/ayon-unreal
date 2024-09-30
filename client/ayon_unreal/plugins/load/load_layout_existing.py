@@ -121,8 +121,6 @@ class ExistingLayoutLoader(plugin.Loader):
             obj, unreal.Vector(0.0, 0.0, 0.0)
         )
 
-        actor.set_actor_label(lasset.get('instance_name'))
-
         transform = lasset.get('transform_matrix')
         basis = lasset.get('basis')
         rotation = lasset.get("rotation", {})
@@ -213,7 +211,8 @@ class ExistingLayoutLoader(plugin.Loader):
         repre_entities = list(ayon_api.get_representations(
             project_name,
             representation_names=valid_formats,
-            version_ids=version_ids
+            version_ids=version_ids,
+            fields={"id", "versionId", "name"}
         ))
         repre_entities_by_version_id = {}
         for repre_entity in repre_entities:
@@ -304,7 +303,7 @@ class ExistingLayoutLoader(plugin.Loader):
                     unreal.log("Path is not found in representation entity")
                     continue
 
-                actor.set_actor_label(lasset.get('instance_name'))
+                # actor.set_actor_label(lasset.get('instance_name'))
 
                 mesh_path = Path(mesh.get_path_name()).parent.as_posix()
 
@@ -479,3 +478,11 @@ class ExistingLayoutLoader(plugin.Loader):
         }
         upipeline.imprint(
             "{}/{}".format(asset_dir, container.get('container_name')), data)
+
+    def remove(self, container):
+        parent_path = Path(container["namespace"])
+        container_name = container["container_name"]
+        if unreal.EditorAssetLibrary.does_asset_exist(
+            f"{parent_path}/{container_name}"):
+                unreal.EditorAssetLibrary.delete_asset(
+                    f"{parent_path}/{container_name}")
