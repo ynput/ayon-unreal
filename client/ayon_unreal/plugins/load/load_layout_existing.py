@@ -366,8 +366,6 @@ class ExistingLayoutLoader(plugin.Loader):
 
                 for asset in assets:
                     obj = asset.get_asset()
-                    unreal.log("obj")
-                    unreal.log(obj)
                     self._spawn_actor(obj, lasset)
 
                 loaded = True
@@ -389,8 +387,6 @@ class ExistingLayoutLoader(plugin.Loader):
                 obj = ar.get_asset_by_object_path(asset).get_asset()
                 if not obj.get_class().get_name() == 'StaticMesh':
                     continue
-                unreal.log("object_staticMesh")
-                unreal.log(obj)
                 self._spawn_actor(obj, lasset)
 
                 break
