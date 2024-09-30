@@ -25,7 +25,17 @@ class AnimationFBXLoader(plugin.Loader):
     icon = "cube"
     color = "orange"
 
-    root = "/Game/Ayon"
+    root = unreal_pipeline.AYON_ROOT_DIR
+    loaded_asset_dir = "{folder[path]}/{product[name]}"
+
+    @classmethod
+    def apply_settings(cls, project_settings):
+        super(AnimationFBXLoader, cls).apply_settings(project_settings)
+        # Apply import settings
+        unreal_settings = project_settings.get("unreal", {})
+        if unreal_settings.get("loaded_asset_dir", cls.loaded_asset_dir):
+            cls.loaded_asset_dir = unreal_settings.get(
+                    "loaded_asset_dir", cls.loaded_asset_dir)
 
     def _import_latest_skeleton(self, version_ids):
         version_ids = set(version_ids)
@@ -199,8 +209,8 @@ class AnimationFBXLoader(plugin.Loader):
                         if (s.get_class() ==
                             MovieSceneSkeletalAnimationSection.static_class())]
 
-                    for s in sections:
-                        s.params.set_editor_property('animation', animation)
+                    for section in sections:
+                        section.params.set_editor_property('animation', animation)
 
     @staticmethod
     def is_skeleton(asset):
@@ -322,7 +332,8 @@ class AnimationFBXLoader(plugin.Loader):
         container_name,
         asset_name,
         representation,
-        product_type
+        product_type,
+        folder_entity
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -337,7 +348,9 @@ class AnimationFBXLoader(plugin.Loader):
             "product_type": product_type,
             # TODO these shold be probably removed
             "asset": folder_path,
-            "family": product_type
+            "family": product_type,
+            "frameStart": folder_entity["attrib"]["frameStart"],
+            "frameEnd": folder_entity["attrib"]["frameEnd"]
         }
         unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
 
@@ -364,7 +377,8 @@ class AnimationFBXLoader(plugin.Loader):
             list(str): list of container content
         """
         # Create directory for asset and Ayon container
-        folder_path = context["folder"]["path"]
+        folder_entity = context["folder"]
+        folder_path = folder_entity["path"]
         hierarchy = folder_path.lstrip("/").split("/")
         folder_name = hierarchy.pop(-1)
         product_type = context["product"]["productType"]
@@ -373,17 +387,12 @@ class AnimationFBXLoader(plugin.Loader):
 
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        asset_name = f"{folder_name}_{name}_{ext}" if folder_name else f"{name}_{ext}"
-        version = context["version"]["version"]
-        # Check if version is hero version and use different name
-        if version < 0:
-            name_version = f"{name}_hero"
-        else:
-            name_version = f"{name}_v{version:03d}"
-
+        asset_root, asset_name = unreal_pipeline.format_asset_directory(
+            name, context, self.loaded_asset_dir, extension=ext
+        )
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{self.root}/Animations/{folder_name}/{name_version}", suffix=f"_{ext}")
+            asset_root, suffix=f"_{ext}")
 
         container_name += suffix
         asset_path = unreal_pipeline.has_asset_directory_pattern_matched(asset_name, asset_dir, name)
@@ -409,7 +418,8 @@ class AnimationFBXLoader(plugin.Loader):
             container_name,
             asset_name,
             context["representation"],
-            product_type
+            product_type,
+            folder_entity
         )
 
         imported_content = EditorAssetLibrary.list_assets(
@@ -437,24 +447,18 @@ class AnimationFBXLoader(plugin.Loader):
         folder_name = context["folder"]["name"]
         product_name = context["product"]["name"]
         product_type = context["product"]["productType"]
-        version = context["version"]["version"]
         repre_entity = context["representation"]
+        folder_entity = context["folder"]
 
         suffix = "_CON"
         source_path = get_representation_path(repre_entity)
         ext = os.path.splitext(source_path)[-1].lstrip(".")
-        asset_name = product_name
-        if folder_name:
-            asset_name = f"{folder_name}_{product_name}_{ext}"
-
-        # Check if version is hero version and use different name
-        if version < 0:
-            name_version = f"{product_name}_hero"
-        else:
-            name_version = f"{product_name}_v{version:03d}"
+        asset_root, asset_name = unreal_pipeline.format_asset_directory(
+            product_name, context, self.loaded_asset_dir, extension=ext
+        )
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{self.root}/Animations/{folder_name}/{name_version}", suffix=f"_{ext}")
+            asset_root, suffix=f"_{ext}")
 
         container_name += suffix
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
@@ -477,7 +481,8 @@ class AnimationFBXLoader(plugin.Loader):
             container_name,
             asset_name,
             repre_entity,
-            product_type
+            product_type,
+            folder_entity
         )
 
         asset_content = EditorAssetLibrary.list_assets(

@@ -44,6 +44,11 @@ class UnrealSettings(BaseSettingsModel):
         default_factory=UnrealImageIOModel,
         title="Color Management (ImageIO)"
     )
+    loaded_asset_dir: str = SettingsField(
+        "{folder[path]}/{product[name]}",
+        title="Asset directories for loaded assets",
+        description="Asset directories to store the loaded assets"
+    )
     import_settings: UnrealImportModel = SettingsField(
         default_factory=UnrealImportModel,
         title="Import settings"
@@ -52,9 +57,18 @@ class UnrealSettings(BaseSettingsModel):
         False,
         title="Generate level sequences when loading layouts"
     )
+    remove_loaded_assets: bool = SettingsField(
+        False,
+        title="Remove loaded assets when deleting layouts"
+    )
     delete_unmatched_assets: bool = SettingsField(
         False,
-        title="Delete assets that are not matched"
+        title="Delete assets that are not matched",
+        description=(
+            "When enabled removes all unmatched assets "
+            "present in the current layout when performing "
+            "'Load Layout (JSON) on existing'"
+        )
     )
     abc_conversion_preset: str = SettingsField(
         "maya",
@@ -100,7 +114,9 @@ class UnrealSettings(BaseSettingsModel):
 
 
 DEFAULT_VALUES = {
+    "loaded_asset_dir": "{folder[path]}/{product[name]}",
     "level_sequences_for_layouts": True,
+    "remove_loaded_assets": False,
     "delete_unmatched_assets": False,
     "abc_conversion_preset": "maya",
     "force_loaded": False,

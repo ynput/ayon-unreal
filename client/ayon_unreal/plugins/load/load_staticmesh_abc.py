@@ -8,10 +8,10 @@ from ayon_core.pipeline import (
 )
 from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
-    AYON_ASSET_DIR,
     create_container,
     imprint,
-    has_asset_directory_pattern_matched
+    has_asset_directory_pattern_matched,
+    format_asset_directory
 )
 from ayon_core.lib import EnumDef, BoolDef
 import unreal  # noqa
@@ -26,8 +26,8 @@ class StaticMeshAlembicLoader(plugin.Loader):
     icon = "cube"
     color = "orange"
 
-    root = AYON_ASSET_DIR
     abc_conversion_preset = "maya"
+    loaded_asset_dir = "{folder[path]}/{product[name]}"
 
 
     @classmethod
@@ -38,6 +38,9 @@ class StaticMeshAlembicLoader(plugin.Loader):
         if unreal_settings.get("abc_conversion_preset", cls.abc_conversion_preset):
             cls.abc_conversion_preset = unreal_settings.get(
                 "abc_conversion_preset", cls.abc_conversion_preset)
+        if unreal_settings.get("loaded_asset_dir", cls.loaded_asset_dir):
+            cls.loaded_asset_dir = unreal_settings.get(
+                    "loaded_asset_dir", cls.loaded_asset_dir)
 
     @classmethod
     def get_options(cls, contexts):
@@ -186,18 +189,13 @@ class StaticMeshAlembicLoader(plugin.Loader):
         """
         # Create directory for asset and Ayon container
         folder_path = context["folder"]["path"]
-        folder_name = context["folder"]["name"]
 
         suffix = "_CON"
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        asset_name = f"{folder_name}_{name}_{ext}" if folder_name else f"{name}_{ext}"
-        version = context["version"]["version"]
-        # Check if version is hero version and use different name
-        if version < 0:
-            name_version = f"{name}_hero"
-        else:
-            name_version = f"{name}_v{version:03d}"
+        asset_root, asset_name = format_asset_directory(
+            name, context, self.loaded_asset_dir, extension=ext
+        )
         loaded_options = {
             "default_conversion": options.get("default_conversion", False),
             "abc_conversion_preset": options.get(
@@ -208,7 +206,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{self.root}/{folder_name}/{name_version}", suffix=f"_{ext}")
+            asset_root, suffix=f"_{ext}")
 
         container_name += suffix
         asset_path = has_asset_directory_pattern_matched(
@@ -243,7 +241,6 @@ class StaticMeshAlembicLoader(plugin.Loader):
 
     def update(self, container, context):
         folder_path = context["folder"]["path"]
-        folder_name = context["folder"]["name"]
         product_name = context["product"]["name"]
         product_type = context["product"]["productType"]
         repre_entity = context["representation"]
@@ -252,24 +249,15 @@ class StaticMeshAlembicLoader(plugin.Loader):
         suffix = "_CON"
         path = get_representation_path(repre_entity)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        asset_name = f"{product_name}_{ext}"
-        if folder_name:
-            asset_name = f"{folder_name}_{product_name}"
-        version = context["version"]["version"]
-        # Check if version is hero version and use different name
-        if version < 0:
-            name_version = f"{product_name}_hero"
-        else:
-            name_version = f"{product_name}_v{version:03d}"
-
+        asset_root, asset_name = format_asset_directory(
+            product_name, context, self.loaded_asset_dir, extension=ext)
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{self.root}/{folder_name}/{name_version}", suffix=f"_{ext}")
+            asset_root, suffix=f"_{ext}")
 
         container_name += suffix
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
-        path = get_representation_path(repre_entity)
         loaded_options = {
             "default_conversion": False,
             "abc_conversion_preset": self.abc_conversion_preset
