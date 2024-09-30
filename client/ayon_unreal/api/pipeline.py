@@ -1015,9 +1015,9 @@ def has_asset_directory_pattern_matched(asset_name, asset_dir, name, extension=N
     existing_asset_dir = unreal.Paths.split(asset_path)[0]
     existing_version_folder = existing_asset_dir.split("/")[-1]
     # TODO: make it not hardcoded
-    pattern = f"{name}_\d{{3}}"
+    pattern = f"{name}_\\d{{3}}"
     if extension:
-        pattern = f"{name}_v\d{{3}}_{extension}"
+        pattern = f"{name}_v\\d{{3}}_{extension}"
     is_version_folder_matched = re.match(pattern, version_folder)
     is_existing_version_folder_matched = re.match(pattern, existing_version_folder)
     if not is_version_folder_matched or not is_existing_version_folder_matched:
