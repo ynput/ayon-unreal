@@ -81,8 +81,7 @@ class ExtractLayout(publish.Extractor):
                 json_element["asset_name"] = instance_name
                 json_element["extension"] = extension
                 transform = actor.get_actor_transform()
-                # TODO: remove this after refactoring
-                # the layout loader in blender
+                json_element["host"] = self.hosts
                 json_element["transform"] = {
                     "translation": {
                         "x": -transform.translation.x,
@@ -95,7 +94,7 @@ class ExtractLayout(publish.Extractor):
                         "z": math.radians(180.0 - transform.rotation.euler().z)
                     },
                     "scale": {
-                        "x": transform.scale3d.x,
+                        "x": -transform.scale3d.x,
                         "y": transform.scale3d.y,
                         "z": transform.scale3d.z
                     }
