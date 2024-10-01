@@ -118,7 +118,7 @@ def import_camera_to_level_sequence(sequence, parent_id, version_id, container_n
         for track in tracks:
             sections = track.get_sections()
             for section in sections:
-                track.remove_section(section)on)
+                track.remove_section(section)
     unreal.SequencerTools.import_level_sequence_fbx(
             world,
             sequence,
