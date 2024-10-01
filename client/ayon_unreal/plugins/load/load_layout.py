@@ -381,7 +381,7 @@ class LayoutLoader(plugin.Loader):
 
         # Update extensions based on the force_loaded flag
         updated_extensions = {
-            ("abc" if ext == "ma" else ext)
+            ("fbx" if ext == "ma" else ext)
             for ext in extensions
         } if not force_loaded or repre_extension == "json" else {repre_extension}
 
@@ -433,15 +433,12 @@ class LayoutLoader(plugin.Loader):
                         f" {version_id}")
                     continue
                 extension = element.get("extension")
-                if extension == "ma":
-                    extension = "abc"
                 repre_entity = None
                 if not force_loaded or loaded_extension == "json":
                     repre_entity = next((repre_entity for repre_entity in repre_entities
                                          if repre_entity["name"] == extension), None)
                     if not repre_entity:
-                        self.log.error(f"No valid representation type {extension} found.")
-                        continue
+                        repre_entity = repre_entities[0]
                 else:
                     # use the prioritized representation
                     # to load the assets
