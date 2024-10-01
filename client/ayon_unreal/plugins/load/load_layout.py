@@ -381,9 +381,9 @@ class LayoutLoader(plugin.Loader):
 
         # Update extensions based on the force_loaded flag
         updated_extensions = {
-            ext for ext in extensions
+            ("abc" if ext == "ma" else ext)
+            for ext in extensions
         } if not force_loaded or repre_extension == "json" else {repre_extension}
-
 
         project_name = get_current_project_name()
         repre_entities = ayon_api.get_representations(
