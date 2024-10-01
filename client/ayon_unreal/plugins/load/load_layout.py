@@ -374,7 +374,7 @@ class LayoutLoader(plugin.Loader):
             return output
         # Extract extensions from data with backward compatibility for "ma"
         extensions = {
-            element.get("extension", "ma")
+            element["extension"]
             for element in data
             if element.get("representation")
         }
@@ -433,6 +433,8 @@ class LayoutLoader(plugin.Loader):
                         f" {version_id}")
                     continue
                 extension = element.get("extension")
+                if extension == "ma":
+                    extension = "abc"
                 repre_entity = None
                 if not force_loaded or loaded_extension == "json":
                     repre_entity = next((repre_entity for repre_entity in repre_entities
