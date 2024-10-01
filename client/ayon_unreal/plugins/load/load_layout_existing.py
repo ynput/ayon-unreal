@@ -299,6 +299,8 @@ class ExistingLayoutLoader(plugin.Loader):
                 # been imported.
                 smc = actor.get_editor_property('static_mesh_component')
                 mesh = smc.get_editor_property('static_mesh')
+                if not mesh:
+                    continue
                 import_data = mesh.get_editor_property('asset_import_data')
                 filename = import_data.get_first_filename()
                 path = Path(filename)
@@ -307,8 +309,6 @@ class ExistingLayoutLoader(plugin.Loader):
                         path.name not in repre_entity["attrib"]["path"]):
                     unreal.log("Path is not found in representation entity")
                     continue
-
-                # actor.set_actor_label(lasset.get('instance_name'))
 
                 mesh_path = Path(mesh.get_path_name()).parent.as_posix()
 
