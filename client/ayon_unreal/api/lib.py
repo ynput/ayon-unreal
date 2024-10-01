@@ -99,8 +99,9 @@ def get_representation(parent_id, version_id):
         ), None)
 
 
-def import_camera_to_level_sequence(sequence, parent_id, version_id, world):
-     # Add a camera cut track to the sequence
+def import_camera_to_level_sequence(sequence, parent_id, version_id, container_name, world):
+    # Add a camera cut track to the sequence
+    camera_actor_name = container_name.replace("_CON", "")
     if not get_camera_tracks(sequence):
         sequence.add_master_track(unreal.MovieSceneCameraCutTrack)
     repre_entity = get_representation(parent_id, version_id)
@@ -125,3 +126,7 @@ def import_camera_to_level_sequence(sequence, parent_id, version_id, world):
             import_fbx_settings,
             camera_path
         )
+    camera_actors = unreal.GameplayStatics().get_all_actors_of_class(
+        world, unreal.CameraActor)
+    for actor in camera_actors:
+        actor.set_actor_label(camera_actor_name)
