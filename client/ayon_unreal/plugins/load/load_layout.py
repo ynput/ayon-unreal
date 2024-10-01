@@ -440,7 +440,7 @@ class LayoutLoader(plugin.Loader):
                                          if repre_entity["name"] == extension), None)
                     if not repre_entity:
                         self.log.error(f"No valid representation type {extension} found.")
-                        return
+                        continue
                 else:
                     # use the prioritized representation
                     # to load the assets
