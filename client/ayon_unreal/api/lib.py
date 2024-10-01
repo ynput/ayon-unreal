@@ -113,12 +113,12 @@ def import_camera_to_level_sequence(sequence, parent_id, version_id, container_n
     if sel_actors:
         for actor in sel_actors:
             unreal.EditorLevelLibrary.destroy_actor(actor)
-        tracks = get_camera_tracks(sequence)
-        if tracks:
-            for track in tracks:
-                sections = track.get_sections()
-                for section in sections:
-                    track.remove_section(section)
+    tracks = get_camera_tracks(sequence)
+    if tracks:
+        for track in tracks:
+            sections = track.get_sections()
+            for section in sections:
+                track.remove_section(section)on)
     unreal.SequencerTools.import_level_sequence_fbx(
             world,
             sequence,
