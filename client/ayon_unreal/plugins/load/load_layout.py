@@ -341,10 +341,15 @@ class LayoutLoader(plugin.Loader):
             for element in data
             if element.get("representation")
         }
+        # Update extensions based on the force_loaded flag
+        updated_extensions = {
+            ("fbx" if ext == "ma" else ext)
+            for ext in repre_extension
+        }
         project_name = get_current_project_name()
         repre_entities = ayon_api.get_representations(
             project_name,
-            representation_names=repre_extension,
+            representation_names=updated_extensions,
             version_ids=version_ids,
             fields={"id", "versionId", "name"}
         )
@@ -389,8 +394,7 @@ class LayoutLoader(plugin.Loader):
                 repre_entity = next((repre_entity for repre_entity in repre_entities
                                         if repre_entity["name"] == extension), None)
                 if not repre_entity:
-                    self.log.error(f"No valid representation type {extension} found.")
-                    return
+                    repre_entity = repre_entity[0]
                 repre_id = repre_entity["id"]
                 repr_format = repre_entity["name"]
 
