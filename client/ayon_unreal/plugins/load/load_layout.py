@@ -381,8 +381,7 @@ class LayoutLoader(plugin.Loader):
 
         # Update extensions based on the force_loaded flag
         updated_extensions = {
-            (repre_extension if ext == "ma" else ext)
-            for ext in extensions
+            ext for ext in extensions
         } if not force_loaded or repre_extension == "json" else {repre_extension}
 
 
