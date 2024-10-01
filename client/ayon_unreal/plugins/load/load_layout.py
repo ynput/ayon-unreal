@@ -369,6 +369,9 @@ class LayoutLoader(plugin.Loader):
             if element.get("representation")
         }
         version_ids.discard(None)
+        output = collections.defaultdict(list)
+        if not version_ids:
+            return output
         # Extract extensions from data with backward compatibility for "ma"
         extensions = {
             element.get("extension", "ma")
@@ -382,9 +385,6 @@ class LayoutLoader(plugin.Loader):
             for ext in extensions
         } if not force_loaded or repre_extension == "json" else {repre_extension}
 
-        output = collections.defaultdict(list)
-        if not version_ids:
-            return output
 
         project_name = get_current_project_name()
         repre_entities = ayon_api.get_representations(
