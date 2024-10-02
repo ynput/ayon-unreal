@@ -8,10 +8,10 @@ from ayon_core.pipeline import (
 )
 from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
-    AYON_ASSET_DIR,
     create_container,
     imprint,
-    has_asset_directory_pattern_matched
+    has_asset_directory_pattern_matched,
+    format_asset_directory
 )
 import unreal  # noqa
 
@@ -25,7 +25,16 @@ class SkeletalMeshFBXLoader(plugin.Loader):
     icon = "cube"
     color = "orange"
 
-    root = AYON_ASSET_DIR
+    loaded_asset_dir = "{folder[path]}/{product[name]}"
+
+
+    @classmethod
+    def apply_settings(cls, project_settings):
+        unreal_settings = project_settings.get("unreal", {})
+        super(SkeletalMeshFBXLoader, cls).apply_settings(project_settings)
+        if unreal_settings.get("loaded_asset_dir", cls.loaded_asset_dir):
+            cls.loaded_asset_dir = unreal_settings.get(
+                    "loaded_asset_dir", cls.loaded_asset_dir)
 
     @staticmethod
     def get_task(filename, asset_dir, asset_name, replace):
@@ -132,19 +141,13 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         suffix = "_CON"
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        asset_name = f"{folder_name}_{name}_{ext}" if folder_name else f"{name}_{ext}"
-        version_entity = context["version"]
-        # Check if version is hero version and use different name
-        version = version_entity["version"]
-        if version < 0:
-            name_version = f"{name}_hero"
-        else:
-            name_version = f"{name}_v{version:03d}"
+        asset_root, asset_name = format_asset_directory(
+            name, context, self.loaded_asset_dir, extension=ext
+        )
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{self.root}/{folder_name}/{name_version}", suffix=f"_{ext}"
-        )
+            asset_root, suffix=f"_{ext}")
 
         container_name += suffix
         asset_path = has_asset_directory_pattern_matched(
@@ -182,27 +185,19 @@ class SkeletalMeshFBXLoader(plugin.Loader):
 
     def update(self, container, context):
         folder_path = context["folder"]["path"]
-        folder_name = context["folder"]["name"]
         product_name = context["product"]["name"]
         product_type = context["product"]["productType"]
-        version = context["version"]["version"]
         repre_entity = context["representation"]
 
         # Create directory for asset and Ayon container
         suffix = "_CON"
         path = get_representation_path(repre_entity)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        asset_name = f"{product_name}_{ext}"
-        if folder_name:
-            asset_name = f"{folder_name}_{product_name}"
-        # Check if version is hero version and use different name
-        if version < 0:
-            name_version = f"{product_name}_hero"
-        else:
-            name_version = f"{product_name}_v{version:03d}"
+        asset_root, asset_name = format_asset_directory(
+            product_name, context, self.loaded_asset_dir, extension=ext)
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{self.root}/{folder_name}/{name_version}", suffix=f"_{ext}")
+            asset_root, suffix=f"_{ext}")
 
         container_name += suffix
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):

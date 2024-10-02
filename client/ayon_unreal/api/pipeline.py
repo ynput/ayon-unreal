@@ -22,6 +22,7 @@ from ayon_core.pipeline import (
     AYON_CONTAINER_ID,
     get_current_project_name,
 )
+from ayon_core.lib import StringTemplate
 from ayon_core.pipeline.context_tools import (
     get_current_folder_entity
 )
@@ -35,6 +36,7 @@ import unreal  # noqa
 logger = logging.getLogger("ayon_core.hosts.unreal")
 
 AYON_CONTAINERS = "AyonContainers"
+AYON_ROOT_DIR = "/Game/Ayon"
 AYON_ASSET_DIR = "/Game/Ayon/Assets"
 CONTEXT_CONTAINER = "Ayon/context.json"
 UNREAL_VERSION = semver.VersionInfo(
@@ -822,6 +824,50 @@ def select_camera(sequence):
                 actor_subsys.set_actor_selection_state(actor, True)
             else:
                 actor_subsys.set_actor_selection_state(actor, False)
+
+
+def format_asset_directory(name, context, directory_template,
+                           extension="",
+                           use_version=True):
+    """Setting up the asset directory path and name.
+    Args:
+        name (str): Instance name
+        context (dict): context
+        directory_template (str): directory template path
+        extension (str, optional): file extension. Defaults to "abc".
+        use_version (bool, optional): use context version for asset
+            directory. Defaults to True.
+    Returns:
+        tuple[str, str]: asset directory, asset name
+    """
+
+    data = {}
+    asset_name = None
+    name_version = None
+    data["folder"] = context["folder"]
+    folder_name = context["folder"]["name"]
+
+    if not extension:
+        asset_name = name
+    elif folder_name:
+        asset_name = "{}_{}_{}".format(folder_name, name, extension)
+    else:
+        asset_name = "{}_{}".format(name, extension)
+
+    if use_version:
+        version = context["version"]["version"]
+        # Check if version is hero version and use different name
+        if version < 0:
+            name_version = f"{name}_hero"
+        else:
+            name_version = f"{name}_v{version:03d}"
+    else:
+        name_version = asset_name
+
+    data["product"] = {"name": name_version}
+    asset_dir = StringTemplate(directory_template).format_strict(data)
+
+    return f"{AYON_ROOT_DIR}/{asset_dir}", asset_name
 
 
 def get_sequence(files):
