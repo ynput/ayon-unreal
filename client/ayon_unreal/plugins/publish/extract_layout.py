@@ -84,17 +84,17 @@ class ExtractLayout(publish.Extractor):
                 json_element["host"] = self.hosts
                 json_element["transform"] = {
                     "translation": {
-                        "x": -transform.translation.x,
+                        "x": transform.translation.x,
                         "y": transform.translation.y,
                         "z": transform.translation.z
                     },
                     "rotation": {
                         "x": math.radians(transform.rotation.euler().x),
                         "y": math.radians(transform.rotation.euler().y),
-                        "z": math.radians(180.0 - transform.rotation.euler().z)
+                        "z": math.radians(transform.rotation.euler().z)
                     },
                     "scale": {
-                        "x": -transform.scale3d.x,
+                        "x": transform.scale3d.x,
                         "y": transform.scale3d.y,
                         "z": transform.scale3d.z
                     }
