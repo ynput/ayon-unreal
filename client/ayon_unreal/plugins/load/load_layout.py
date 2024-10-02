@@ -394,7 +394,7 @@ class LayoutLoader(plugin.Loader):
                 repre_entity = next((repre_entity for repre_entity in repre_entities
                                         if repre_entity["name"] == extension), None)
                 if not repre_entity:
-                    repre_entity = repre_entity[0]
+                    repre_entity = repre_entities[0]
                 repre_id = repre_entity["id"]
                 repr_format = repre_entity["name"]
 
