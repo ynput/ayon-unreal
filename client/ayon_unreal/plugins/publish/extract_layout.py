@@ -89,13 +89,13 @@ class ExtractLayout(publish.Extractor):
                         "z": transform.translation.z
                     },
                     "rotation": {
-                        "x": math.radians(transform.rotation.euler().x),
+                        "x": math.radians(transform.rotation.euler().x) - 90,
                         "y": math.radians(transform.rotation.euler().y),
                         "z": math.radians(transform.rotation.euler().z)
                     },
                     "scale": {
                         "x": transform.scale3d.x,
-                        "y": transform.scale3d.y,
+                        "y": -transform.scale3d.y,
                         "z": transform.scale3d.z
                     }
                 }
