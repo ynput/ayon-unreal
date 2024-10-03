@@ -38,6 +38,35 @@ from ayon_unreal.api.pipeline import (
 from ayon_core.lib import EnumDef
 
 
+def _remove_loaded_asset(container):
+    # Check if the assets have been loaded by other layouts, and deletes
+    # them if they haven't.
+    containers = ls()
+    layout_containers = [
+        c for c in containers
+        if (c.get('asset_name') != container.get('asset_name') and
+            c.get('family') == "layout")]
+
+    for asset in eval(container.get('loaded_assets')):
+        layouts = [
+            lc for lc in layout_containers
+            if asset in lc.get('loaded_assets')]
+
+        if not layouts:
+            EditorAssetLibrary.delete_directory(str(Path(asset).parent))
+
+            # Delete the parent folder if there aren't any more
+            # layouts in it.
+            asset_content = EditorAssetLibrary.list_assets(
+                str(Path(asset).parent.parent), recursive=False,
+                include_folder=True
+            )
+
+            if len(asset_content) == 0:
+                EditorAssetLibrary.delete_directory(
+                    str(Path(asset).parent.parent))
+
+
 class LayoutLoader(plugin.Loader):
     """Load Layout from a JSON file"""
 
@@ -880,128 +909,11 @@ class LayoutLoader(plugin.Loader):
         are used by other layouts. If not, delete the assets.
         """
         data = get_current_project_settings()
-        create_sequences = data["unreal"]["level_sequences_for_layouts"]
-
-        root = "/Game/Ayon"
-        path = Path(container["namespace"])
-
-        containers = ls()
-        layout_containers = [
-            c for c in containers
-            if (c.get('asset_name') != container.get('asset_name') and
-                c.get('family') == "layout")]
-
-        # Check if the assets have been loaded by other layouts, and deletes
-        # them if they haven't.
-        for asset in eval(container.get('loaded_assets')):
-            layouts = [
-                lc for lc in layout_containers
-                if asset in lc.get('loaded_assets')]
-
-            if not layouts:
-                EditorAssetLibrary.delete_directory(str(Path(asset).parent))
-
-                # Delete the parent folder if there aren't any more
-                # layouts in it.
-                asset_content = EditorAssetLibrary.list_assets(
-                    str(Path(asset).parent.parent), recursive=False,
-                    include_folder=True
-                )
-
-                if len(asset_content) == 0:
-                    EditorAssetLibrary.delete_directory(
-                        str(Path(asset).parent.parent))
-
-        master_sequence = None
-        master_level = None
-        sequences = []
-
-        if create_sequences:
-            # Remove the Level Sequence from the parent.
-            # We need to traverse the hierarchy from the master sequence to
-            # find the level sequence.
-            namespace = container.get('namespace').replace(f"{root}/", "")
-            ms_asset = namespace.split('/')[0]
-            ar = unreal.AssetRegistryHelpers.get_asset_registry()
-            _filter = unreal.ARFilter(
-                class_names=["LevelSequence"],
-                package_paths=[f"{root}/{ms_asset}"],
-                recursive_paths=False)
-            sequences = ar.get_assets(_filter)
-            master_sequence = sequences[0].get_asset()
-            _filter = unreal.ARFilter(
-                class_names=["World"],
-                package_paths=[f"{root}/{ms_asset}"],
-                recursive_paths=False)
-            levels = ar.get_assets(_filter)
-            master_level = levels[0].get_asset().get_path_name()
-
-            sequences = [master_sequence]
-
-            parent = None
-            for s in sequences:
-                tracks = s.get_master_tracks()
-                subscene_track = None
-                visibility_track = None
-                for t in tracks:
-                    if t.get_class() == MovieSceneSubTrack.static_class():
-                        subscene_track = t
-                    if (t.get_class() ==
-                            MovieSceneLevelVisibilityTrack.static_class()):
-                        visibility_track = t
-                if subscene_track:
-                    sections = subscene_track.get_sections()
-                    for ss in sections:
-                        try:
-                            if (ss.get_sequence().get_name() ==
-                                    container.get('asset')):
-                                parent = s
-                                subscene_track.remove_section(ss)
-                                break
-                            sequences.append(ss.get_sequence())
-                        except AttributeError:
-                            unreal.log("Cannot get the level sequences")
-                    # Update subscenes indexes.
-                    i = 0
-                    for ss in sections:
-                        ss.set_row_index(i)
-                        i += 1
-
-                if visibility_track:
-                    sections = visibility_track.get_sections()
-                    for ss in sections:
-                        if (unreal.Name(f"{container.get('asset')}_map")
-                                in ss.get_level_names()):
-                            visibility_track.remove_section(ss)
-                    # Update visibility sections indexes.
-                    i = -1
-                    prev_name = []
-                    for ss in sections:
-                        if prev_name != ss.get_level_names():
-                            i += 1
-                        ss.set_row_index(i)
-                        prev_name = ss.get_level_names()
-                if parent:
-                    break
-
-            assert parent, "Could not find the parent sequence"
-
-        # Create a temporary level to delete the layout level.
-        EditorLevelLibrary.save_all_dirty_levels()
-        EditorAssetLibrary.make_directory(f"{root}/tmp")
-        tmp_level = f"{root}/tmp/temp_map"
-        if not EditorAssetLibrary.does_asset_exist(f"{tmp_level}.temp_map"):
-            EditorLevelLibrary.new_level(tmp_level)
-        else:
-            EditorLevelLibrary.load_level(tmp_level)
-
-        # Delete the layout directory.
-        if EditorAssetLibrary.does_directory_exist(str(path)):
-            EditorAssetLibrary.delete_directory(str(path))
-
-        if create_sequences:
-            EditorLevelLibrary.load_level(master_level)
-            # Load the default level
-            default_level_path = "/Engine/Maps/Templates/OpenWorld"
-            EditorLevelLibrary.load_level(default_level_path)
-            EditorAssetLibrary.delete_directory(f"{root}/tmp")
+        remove_loaded_assets = data["unreal"].get("remove_loaded_assets", False)
+        if remove_loaded_assets:
+            remove_asset_confirmation_dialog = unreal.EditorDialog.show_message(
+                "The removal of the loaded assets",
+                "The layout will be removed. Do you want to delete all associated assets as well?",
+                unreal.AppMsgType.YES_NO)
+            if (remove_asset_confirmation_dialog == unreal.AppReturnType.YES):
+                _remove_loaded_asset(container)
