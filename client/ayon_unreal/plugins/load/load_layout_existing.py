@@ -12,9 +12,9 @@ from ayon_core.pipeline import (
     get_representation_path,
     AYON_CONTAINER_ID,
 )
+from ayon_core.settings import get_current_project_settings
 from ayon_unreal.api import plugin
 from ayon_unreal.api import pipeline as upipeline
-from ayon_core.lib import EnumDef
 
 
 class ExistingLayoutLoader(plugin.Loader):
@@ -40,59 +40,6 @@ class ExistingLayoutLoader(plugin.Loader):
         cls.delete_unmatched_assets = (
             project_settings["unreal"]["delete_unmatched_assets"]
         )
-        # Apply import settings
-        folder_representation_type = (
-            project_settings.get("unreal", {}).get("folder_representation_type", {})
-        )
-        use_force_loaded = (
-            project_settings.get("unreal", {}).get("force_loaded", {})
-        )
-        if folder_representation_type:
-            cls.folder_representation_type = folder_representation_type
-        if use_force_loaded:
-            cls.force_loaded = use_force_loaded
-
-    def _create_container(
-        self,
-        asset_name,
-        asset_dir,
-        folder_path,
-        representation,
-        version_id,
-        product_type
-    ):
-        container_name = f"{asset_name}_CON"
-
-        if not unreal.EditorAssetLibrary.does_asset_exist(
-            f"{asset_dir}/{container_name}"
-        ):
-            container = upipeline.create_container(container_name, asset_dir)
-        else:
-            ar = unreal.AssetRegistryHelpers.get_asset_registry()
-            obj = ar.get_asset_by_object_path(
-                f"{asset_dir}/{container_name}.{container_name}")
-            container = obj.get_asset()
-
-        data = {
-            "schema": "ayon:container-2.0",
-            "id": AYON_CONTAINER_ID,
-            "folder_path": folder_path,
-            "namespace": asset_dir,
-            "container_name": container_name,
-            "asset_name": asset_name,
-            "loader": str(self.__class__.__name__),
-            "representation": representation,
-            "parent": version_id,
-            "product_type": product_type,
-            # TODO these shold be probably removed
-            "asset": folder_path,
-            "family": product_type,
-        }
-
-        upipeline.imprint(
-            "{}/{}".format(asset_dir, container_name), data)
-
-        return container.get_path_name()
 
     @staticmethod
     def _get_current_level():
@@ -106,24 +53,6 @@ class ExistingLayoutLoader(plugin.Loader):
 
         raise NotImplementedError(
             f"Unreal version {ue_major} not supported")
-
-    @classmethod
-    def get_options(cls, contexts):
-        defs = []
-        if cls.force_loaded:
-            defs.append(
-                EnumDef(
-                    "folder_representation_type",
-                    label="Override layout representation by",
-                    items={
-                        "json": "json",
-                        "fbx": "fbx",
-                        "abc": "abc"
-                    },
-                    default=cls.folder_representation_type
-                )
-            )
-        return defs
 
     def _transform_from_basis(self, transform, basis):
         """Transform a transform from a basis to a new basis."""
@@ -315,11 +244,6 @@ class ExistingLayoutLoader(plugin.Loader):
             # Otherwise, remove it from the scene.
             found = False
             repre_id = repre_entity["id"]
-            repre_parents = repre_parents_by_id[repre_id]
-            folder_path = repre_parents.folder["path"]
-            folder_name = repre_parents.folder["name"]
-            product_name = repre_parents.product["name"]
-            product_type = repre_parents.product["productType"]
 
             for actor in actors:
                 if not actor.get_class().get_name() == 'StaticMeshActor':
@@ -342,19 +266,11 @@ class ExistingLayoutLoader(plugin.Loader):
                     unreal.log("Path is not found in representation entity")
                     continue
 
-                mesh_path = Path(mesh.get_path_name()).parent.as_posix()
+                mesh_path = mesh.get_path_name()
 
-                # Create the container for the asset.
-                container = self._create_container(
-                    f"{folder_name}_{product_name}",
-                    mesh_path,
-                    folder_path,
-                    repre_entity["id"],
-                    repre_entity["versionId"],
-                    product_type
-                )
-                containers.append(container)
-
+                obj = ar.get_asset_by_object_path(mesh_path).get_asset()
+                if obj.get_class().get_name() == 'AyonAssetContainer':
+                    container = obj
                 # Set the transform for the actor.
                 transform = lasset.get('transform_matrix')
                 basis = lasset.get('basis')
@@ -419,8 +335,12 @@ class ExistingLayoutLoader(plugin.Loader):
                 obj = ar.get_asset_by_object_path(asset).get_asset()
                 if not obj.get_class().get_name() == 'StaticMesh':
                     continue
-                self._spawn_actor(obj, lasset)
 
+                self._spawn_actor(obj, lasset)
+                obj = ar.get_asset_by_object_path(asset).get_asset()
+                if obj.get_class().get_name() == 'AyonAssetContainer':
+                    container = obj
+                containers.append(container.get_path_name())
                 break
 
         # Check if an actor was not matched to a representation.
@@ -458,7 +378,7 @@ class ExistingLayoutLoader(plugin.Loader):
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             "{}/{}/{}".format(hierarchy_dir, folder_name, name),
-            suffix=""
+            suffix="_existing"
         )
         curr_level = self._get_current_level()
 
