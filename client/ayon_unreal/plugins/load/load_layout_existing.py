@@ -14,6 +14,7 @@ from ayon_core.pipeline import (
 )
 from ayon_unreal.api import plugin
 from ayon_unreal.api import pipeline as upipeline
+from ayon_core.lib import EnumDef
 
 
 class ExistingLayoutLoader(plugin.Loader):
@@ -39,6 +40,17 @@ class ExistingLayoutLoader(plugin.Loader):
         cls.delete_unmatched_assets = (
             project_settings["unreal"]["delete_unmatched_assets"]
         )
+        # Apply import settings
+        folder_representation_type = (
+            project_settings.get("unreal", {}).get("folder_representation_type", {})
+        )
+        use_force_loaded = (
+            project_settings.get("unreal", {}).get("force_loaded", {})
+        )
+        if folder_representation_type:
+            cls.folder_representation_type = folder_representation_type
+        if use_force_loaded:
+            cls.force_loaded = use_force_loaded
 
     def _create_container(
         self,
@@ -94,6 +106,24 @@ class ExistingLayoutLoader(plugin.Loader):
 
         raise NotImplementedError(
             f"Unreal version {ue_major} not supported")
+
+    @classmethod
+    def get_options(cls, contexts):
+        defs = []
+        if cls.force_loaded:
+            defs.append(
+                EnumDef(
+                    "folder_representation_type",
+                    label="Override layout representation by",
+                    items={
+                        "json": "json",
+                        "fbx": "fbx",
+                        "abc": "abc"
+                    },
+                    default=cls.folder_representation_type
+                )
+            )
+        return defs
 
     def _transform_from_basis(self, transform, basis):
         """Transform a transform from a basis to a new basis."""
@@ -239,7 +269,9 @@ class ExistingLayoutLoader(plugin.Loader):
             if repre_id:
                 repre_ids.add(repre_id)
                 elements.append(element)
-            if extension:
+            if extension == "ma":
+                extensions.extend(["fbx", "abc"])
+            else:
                 extensions.append(extension)
 
         repre_entities = ayon_api.get_representations(
