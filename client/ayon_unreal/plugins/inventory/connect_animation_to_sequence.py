@@ -86,12 +86,6 @@ class ConnectFbxAnimation(InventoryAction):
             if container.get("family") == "camera"]
         if not has_camera_product:
             return
-        has_tracks = [
-            track for track in sequence.get_tracks()
-            if track.get_class() == unreal.MovieSceneCameraCutTrack.static_class()
-        ]
-        if has_tracks:
-            return
         parent_id = next((
             container.get("parent") for container in containers
             if container.get("family") == "camera"), None)
