@@ -227,10 +227,6 @@ class ExistingLayoutLoader(plugin.Loader):
             layout_data.append((repre_entity, element))
             version_ids.add(repre_entity["versionId"])
 
-        repre_parents_by_id = ayon_api.get_representations_parents(
-            project_name, list(repre_entities_by_id.keys())
-        )
-
         # Prequery valid repre documents for all elements at once
         valid_repre_entities_by_version_id = self._get_valid_repre_entities(
             project_name, version_ids, extensions)
