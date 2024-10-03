@@ -7,7 +7,6 @@ import logging
 from typing import List, Any
 from contextlib import contextmanager
 import time
-from pathlib import Path
 
 import semver
 import pyblish.api
