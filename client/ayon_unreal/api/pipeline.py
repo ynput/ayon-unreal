@@ -1039,32 +1039,3 @@ def has_asset_directory_pattern_matched(asset_name, asset_dir, name, extension=N
         return asset_path
 
     return None
-
-
-def remove_loaded_asset(container):
-    # Check if the assets have been loaded by other layouts, and deletes
-    # them if they haven't.
-    containers = ls()
-    layout_containers = [
-        c for c in containers
-        if (c.get('asset_name') != container.get('asset_name') and
-            c.get('family') == "layout")]
-
-    for asset in eval(container.get('loaded_assets')):
-        layouts = [
-            lc for lc in layout_containers
-            if asset in lc.get('loaded_assets')]
-
-        if not layouts:
-            unreal.EditorAssetLibrary.delete_directory(str(Path(asset).parent))
-
-            # Delete the parent folder if there aren't any more
-            # layouts in it.
-            asset_content = unreal.EditorAssetLibrary.list_assets(
-                str(Path(asset).parent.parent), recursive=False,
-                include_folder=True
-            )
-
-            if len(asset_content) == 0:
-                unreal.EditorAssetLibrary.delete_directory(
-                    str(Path(asset).parent.parent))
