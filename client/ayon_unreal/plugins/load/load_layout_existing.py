@@ -12,7 +12,6 @@ from ayon_core.pipeline import (
     get_representation_path,
     AYON_CONTAINER_ID,
 )
-from ayon_core.settings import get_current_project_settings
 from ayon_unreal.api import plugin
 from ayon_unreal.api import pipeline as upipeline
 
