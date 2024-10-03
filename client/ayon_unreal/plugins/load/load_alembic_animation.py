@@ -12,6 +12,7 @@ from ayon_unreal.api import pipeline as unreal_pipeline
 import unreal  # noqa
 
 
+
 class AnimationAlembicLoader(plugin.Loader):
     """Load Unreal SkeletalMesh from Alembic"""
 
@@ -56,8 +57,16 @@ class AnimationAlembicLoader(plugin.Loader):
         conversion_settings = unreal.AbcConversionSettings()
         abc_conversion_preset = loaded_options.get("abc_conversion_preset")
         if abc_conversion_preset == "maya":
-            conversion_settings = unreal.AbcConversionSettings(
-                preset= unreal.AbcConversionPreset.MAYA)
+            if unreal_pipeline.UNREAL_VERSION.major >= 5 and (
+                unreal_pipeline.UNREAL_VERSION.minor >= 4):
+                    conversion_settings = unreal.AbcConversionSettings(
+                        preset= unreal.AbcConversionPreset.MAYA)
+            else:
+                conversion_settings = unreal.AbcConversionSettings(
+                    preset=unreal.AbcConversionPreset.CUSTOM,
+                    flip_u=False, flip_v=True,
+                    rotation=[90.0, 0.0, 0.0],
+                    scale=[1.0, -1.0, 1.0])
         else:
             conversion_settings = unreal.AbcConversionSettings(
                 preset=unreal.AbcConversionPreset.CUSTOM,
