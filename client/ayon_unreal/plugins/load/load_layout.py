@@ -342,10 +342,14 @@ class LayoutLoader(plugin.Loader):
             if element.get("representation")
         }
         # Update extensions based on the force_loaded flag
-        updated_extensions = {
-            ("fbx" if ext == "ma" else ext)
-            for ext in repre_extension
-        }
+        updated_extensions = set()
+
+        for ext in repre_extension:
+            if ext == "ma":
+                updated_extensions.update({"fbx", "abc"})
+            else:
+                updated_extensions.add(ext)
+
         project_name = get_current_project_name()
         repre_entities = ayon_api.get_representations(
             project_name,
