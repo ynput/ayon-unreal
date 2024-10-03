@@ -33,6 +33,7 @@ def _render_format_enum():
 
 def _loaded_asset_enum():
     return [
+        {"value": "json", "label": "json"},
         {"value": "fbx", "label": "fbx"},
         {"value": "abc", "label": "abc"}
     ]
@@ -76,11 +77,16 @@ class UnrealSettings(BaseSettingsModel):
         description="Presets for converting the loaded alembic "
                     "with correct UV and transform"
     )
-    loaded_assets_extension: str = SettingsField(
-        "fbx",
-        title="Loaded Assets Extension",
+    force_loaded: bool = SettingsField(
+        False,
+        title="Enable user override layout representation",
+        description="Loading assets by override layout representation type"
+    )
+    folder_representation_type: str = SettingsField(
+        "json",
+        title="Override layout representation by",
         enum_resolver=_loaded_asset_enum,
-        description="Extension for the loaded assets"
+        description="The overriding folder representation type during loading"
     )
     render_queue_path: str = SettingsField(
         "",
@@ -113,7 +119,8 @@ DEFAULT_VALUES = {
     "remove_loaded_assets": False,
     "delete_unmatched_assets": False,
     "abc_conversion_preset": "maya",
-    "loaded_assets_extension": "fbx",
+    "force_loaded": False,
+    "folder_representation_type": "json",
     "render_queue_path": "/Game/Ayon/renderQueue",
     "render_config_path": "/Game/Ayon/DefaultMovieRenderQueueConfig.DefaultMovieRenderQueueConfig",
     "preroll_frames": 0,
