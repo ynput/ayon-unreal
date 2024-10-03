@@ -98,12 +98,12 @@ class ConnectFbxAnimation(InventoryAction):
         version_id = next((
             container.get("representation") for container in containers
             if container.get("family") == "camera"), None)
-        container_name = next((
-            container.get("cotnainer_name") for container in containers
+        namespace = next((
+            container.get("namespace") for container in containers
             if container.get("family") == "camera"), None)
         layout_world = self.get_layout_asset(containers, asset_name="World")
         import_camera_to_level_sequence(
-            sequence, parent_id, version_id, container_name, layout_world)
+            sequence, parent_id, version_id, namespace, layout_world)
 
     def import_animation_sequence(self, asset_content, sequence, frameStart, frameEnd):
         import_animation_sequence(asset_content, sequence, frameStart, frameEnd)
