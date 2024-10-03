@@ -380,10 +380,9 @@ class LayoutLoader(plugin.Loader):
         }
 
         # Update extensions based on the force_loaded flag
-        # Update extensions based on the force_loaded flag
         updated_extensions = set()
 
-        for ext in repre_extension:
+        for ext in extensions:
             if not force_loaded or repre_extension == "json":
                 if ext == "ma":
                     updated_extensions.update({"fbx", "abc"})
