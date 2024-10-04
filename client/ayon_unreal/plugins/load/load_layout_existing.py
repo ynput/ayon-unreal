@@ -329,8 +329,14 @@ class ExistingLayoutLoader(plugin.Loader):
                 continue
 
             version_id = lasset.get('version')
+            repre_entities = valid_repre_entities_by_version_id.get(version_id)
+            if not repre_entities:
+                self.log.error(
+                    f"No valid representation found for version"
+                    f" {version_id}")
+                continue
             assets = self._load_asset(
-                valid_repre_entities_by_version_id.get(version_id),
+                repre_entities,
                 lasset.get('representation'),
                 lasset.get('instance_name'),
                 lasset.get('family')
