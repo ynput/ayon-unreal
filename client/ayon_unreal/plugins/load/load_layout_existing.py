@@ -321,9 +321,6 @@ class ExistingLayoutLoader(plugin.Loader):
                 for asset in assets:
                     obj = asset.get_asset()
                     self._spawn_actor(obj, lasset)
-                    if obj.get_class().get_name() == 'AyonAssetContainer':
-                        container = obj
-                    containers.append(container.get_path_name())
                 loaded = True
                 break
 
