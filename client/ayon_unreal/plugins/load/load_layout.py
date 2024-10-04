@@ -443,7 +443,7 @@ class LayoutLoader(plugin.Loader):
                 if not force_loaded or loaded_extension == "json":
                     repre_entity = next((repre_entity for repre_entity in repre_entities
                                          if repre_entity["name"] == extension), None)
-                    if not repre_entity:
+                    if not repre_entity or extension == "ma":
                         repre_entity = repre_entities[0]
                 else:
                     # use the prioritized representation
