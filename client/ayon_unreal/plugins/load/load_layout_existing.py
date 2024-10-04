@@ -146,7 +146,7 @@ class ExistingLayoutLoader(plugin.Loader):
             if repr_format == "ma":
                 msg = (
                     f"No valid {family} loader found for {representation} ({repr_format}), "
-                    f"using {family} loader (fbx/abc) instead."
+                    f"consider using {family} loader (fbx/abc) instead."
                 )
                 self.log.warning(msg)
             else:
