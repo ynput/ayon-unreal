@@ -491,7 +491,7 @@ class LayoutLoader(plugin.Loader):
                     if repr_format == "ma":
                         msg = (
                             f"No valid {product_type} loader found for {repre_id} ({repr_format}), "
-                            f"using {product_type} loader (fbx/abc) instead."
+                            f"consider using {product_type} loader (fbx/abc) instead."
                         )
                         self.log.warning(msg)
                     else:
