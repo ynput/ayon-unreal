@@ -488,10 +488,17 @@ class LayoutLoader(plugin.Loader):
                     loader = self._get_abc_loader(loaders, product_type)
 
                 if not loader:
-                    self.log.error(
-                        f"No valid loader found for {repre_id} "
-                        f"({repr_format}) "
-                        f"{product_type}")
+                    if repr_format == "ma":
+                        msg = (
+                            f"No valid {product_type} loader found for {repre_id} ({repr_format}), "
+                            f"using {product_type} loader (fbx/abc) instead."
+                        )
+                        self.log.warning(msg)
+                    else:
+                        self.log.error(
+                            f"No valid loader found for {repre_id} "
+                            f"({repr_format}) "
+                            f"{product_type}")
                     continue
 
                 options = {

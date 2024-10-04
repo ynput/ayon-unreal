@@ -143,7 +143,17 @@ class ExistingLayoutLoader(plugin.Loader):
             loader = self._get_abc_loader(loaders, family)
 
         if not loader:
-            self.log.error(f"No valid loader found for {representation}")
+            if repr_format == "ma":
+                msg = (
+                    f"No valid {family} loader found for {representation} ({repr_format}), "
+                    f"using {family} loader (fbx/abc) instead."
+                )
+                self.log.warning(msg)
+            else:
+                self.log.error(
+                    f"No valid loader found for {representation} "
+                    f"({repr_format}) "
+                    f"{family}")
             return []
 
         # This option is necessary to avoid importing the assets with a
@@ -260,12 +270,13 @@ class ExistingLayoutLoader(plugin.Loader):
                         path.name not in repre_entity["attrib"]["path"]):
                     unreal.log("Path is not found in representation entity")
                     continue
-
-                mesh_path = mesh.get_path_name()
-
-                obj = ar.get_asset_by_object_path(mesh_path).get_asset()
-                if obj.get_class().get_name() == 'AyonAssetContainer':
-                    container = obj
+                existing_asset_dir = unreal.Paths.get_path(mesh.get_path_name())
+                assets = ar.get_assets_by_path(existing_asset_dir, recursive=False)
+                for asset in assets:
+                    obj = asset.get_asset()
+                    if asset.get_class().get_name() == 'AyonAssetContainer':
+                        container = obj
+                containers.append(container.get_path_name())
                 # Set the transform for the actor.
                 transform = lasset.get('transform_matrix')
                 basis = lasset.get('basis')
@@ -310,7 +321,9 @@ class ExistingLayoutLoader(plugin.Loader):
                 for asset in assets:
                     obj = asset.get_asset()
                     self._spawn_actor(obj, lasset)
-
+                    if obj.get_class().get_name() == 'AyonAssetContainer':
+                        container = obj
+                    containers.append(container.get_path_name())
                 loaded = True
                 break
 
@@ -412,6 +425,8 @@ class ExistingLayoutLoader(plugin.Loader):
             "asset": folder_path,
             "family": product_type,
         }
+        unreal.log("data")
+        unreal.log(data)
         upipeline.imprint(f"{curr_level_path}/{container_name}", data)
 
     def update(self, container, context):
