@@ -350,7 +350,6 @@ class ExistingLayoutLoader(plugin.Loader):
                     container = obj
                 containers.append(container.get_path_name())
                 break
-
         # Check if an actor was not matched to a representation.
         # If so, remove it from the scene.
         for actor in actors:
@@ -425,8 +424,6 @@ class ExistingLayoutLoader(plugin.Loader):
             "asset": folder_path,
             "family": product_type,
         }
-        unreal.log("data")
-        unreal.log(data)
         upipeline.imprint(f"{curr_level_path}/{container_name}", data)
 
     def update(self, container, context):
