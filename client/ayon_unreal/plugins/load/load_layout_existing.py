@@ -303,7 +303,7 @@ class ExistingLayoutLoader(plugin.Loader):
                     obj = asset.get_asset()
                     if asset.get_class().get_name() == 'AyonAssetContainer':
                         container = obj
-                containers.append(container.get_path_name())
+                        containers.append(container.get_path_name())
                 # Set the transform for the actor.
                 transform = lasset.get('transform_matrix')
                 basis = lasset.get('basis')
@@ -373,17 +373,16 @@ class ExistingLayoutLoader(plugin.Loader):
                 product_type,
                 extension
             )
-
+            con = None
             for asset in assets:
                 obj = ar.get_asset_by_object_path(asset).get_asset()
                 if not obj.get_class().get_name() == 'StaticMesh':
                     continue
 
                 self._spawn_actor(obj, lasset)
-                obj = ar.get_asset_by_object_path(asset).get_asset()
                 if obj.get_class().get_name() == 'AyonAssetContainer':
-                    container = obj
-                #containers.append(container.get_path_name())
+                    con = obj
+                    containers.append(con.get_path_name())
                 break
         # Check if an actor was not matched to a representation.
         # If so, remove it from the scene.
