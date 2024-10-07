@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 import unreal
+import collections
 from unreal import EditorLevelLibrary
 import ayon_api
 
@@ -128,9 +129,14 @@ class ExistingLayoutLoader(plugin.Loader):
 
         return None
 
-    def _load_asset(self, repr_data, instance_name, family):
-        repr_format = repr_data.get('name')
-        representation = repr_data.get('id')
+    def _load_asset(self, repr_data, instance_name, family, extension):
+        repre_entity = next((repre_entity for repre_entity in repr_data
+                             if repre_entity["name"] == extension), None)
+        if not repre_entity or extension == "ma":
+            repre_entity = repr_data[0]
+
+        repr_format = repre_entity.get('name')
+        representation = repre_entity.get('id')
         all_loaders = discover_loader_plugins()
         loaders = loaders_from_representation(
             all_loaders, representation)
@@ -173,8 +179,7 @@ class ExistingLayoutLoader(plugin.Loader):
 
         return assets
 
-    def _get_valid_repre_entities(self, data, project_name):
-        import collections
+    def _get_repre_entities_by_version_id(self, project_name, data):
         version_ids = {
             element.get("version")
             for element in data
@@ -222,7 +227,6 @@ class ExistingLayoutLoader(plugin.Loader):
         elements = []
         repre_ids = set()
         extensions = []
-        repre_entities_by_version_id = self._get_valid_repre_entities(data, project_name)
         # Get all the representations in the JSON from the database.
         for element in data:
             repre_id = element.get('representation')
@@ -235,18 +239,34 @@ class ExistingLayoutLoader(plugin.Loader):
             else:
                 extensions.append(extension)
 
+        repre_entities = ayon_api.get_representations(
+            project_name, representation_ids=repre_ids
+        )
+        repre_entities_by_id = {
+            repre_entity["id"]: repre_entity
+            for repre_entity in repre_entities
+        }
         layout_data = []
+        version_ids = set()
         for element in elements:
-            extension = element.get("extension")
-            repre_id = element.get("version")
-            repre_entities = repre_entities_by_version_id[repre_id]
-            repre_entity = next((repre_entity for repre_entity in repre_entities
-                                 if repre_entity["name"] == extension), None)
+            repre_id = element.get("representation")
+            repre_entity = repre_entities_by_id.get(repre_id)
             if not repre_entity:
-                repre_entity = repre_entities[0]
+                raise AssertionError("Representation not found")
+            if not (
+                repre_entity.get("attrib")
+                or repre_entity["attrib"].get("path")
+            ):
+                raise AssertionError("Representation does not have path")
+            if not repre_entity.get('context'):
+                raise AssertionError("Representation does not have context")
 
             layout_data.append((repre_entity, element))
+            version_ids.add(repre_entity["versionId"])
 
+        repre_entities_by_version_id = self._get_repre_entities_by_version_id(
+            project_name, data
+        )
         containers = []
         actors_matched = []
 
@@ -269,7 +289,14 @@ class ExistingLayoutLoader(plugin.Loader):
                 mesh = smc.get_editor_property('static_mesh')
                 if not mesh:
                     continue
+                import_data = mesh.get_editor_property('asset_import_data')
+                filename = import_data.get_first_filename()
+                path = Path(filename)
 
+                if (not path.name or
+                        path.name not in repre_entity["attrib"]["path"]):
+                    unreal.log("Path is not found in representation entity")
+                    continue
                 existing_asset_dir = unreal.Paths.get_path(mesh.get_path_name())
                 assets = ar.get_assets_by_path(existing_asset_dir, recursive=False)
                 for asset in assets:
@@ -330,16 +357,21 @@ class ExistingLayoutLoader(plugin.Loader):
 
             version_id = lasset.get('version')
             repre_entities = repre_entities_by_version_id.get(version_id)
-
             if not repre_entities:
                 self.log.error(
                     f"No valid representation found for version"
                     f" {version_id}")
                 continue
+
+            product_type = lasset.get("product_type")
+            if product_type is None:
+                product_type = lasset.get("family")
+            extension = lasset.get("extension")
             assets = self._load_asset(
                 repre_entities,
                 lasset.get('instance_name'),
-                lasset.get('family')
+                product_type,
+                extension
             )
 
             for asset in assets:
@@ -351,7 +383,7 @@ class ExistingLayoutLoader(plugin.Loader):
                 obj = ar.get_asset_by_object_path(asset).get_asset()
                 if obj.get_class().get_name() == 'AyonAssetContainer':
                     container = obj
-                containers.append(container.get_path_name())
+                #containers.append(container.get_path_name())
                 break
         # Check if an actor was not matched to a representation.
         # If so, remove it from the scene.
