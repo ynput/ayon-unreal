@@ -116,7 +116,7 @@ class ExistingLayoutLoader(plugin.Loader):
         name = ""
         if family == 'rig':
             name = "SkeletalMeshAlembicLoader"
-        elif family == 'model':
+        elif family == 'model' or family == 'staticMesh':
             name = "StaticMeshAlembicLoader"
 
         if name == "":
@@ -128,9 +128,9 @@ class ExistingLayoutLoader(plugin.Loader):
 
         return None
 
-    def _load_asset(self, repr_data, representation, instance_name, family):
+    def _load_asset(self, repr_data, instance_name, family):
         repr_format = repr_data.get('name')
-
+        representation = repr_data.get('id')
         all_loaders = discover_loader_plugins()
         loaders = loaders_from_representation(
             all_loaders, representation)
@@ -173,21 +173,43 @@ class ExistingLayoutLoader(plugin.Loader):
 
         return assets
 
-    def _get_valid_repre_entities(self, project_name, version_ids, extensions):
-        if not extensions:
-            extensions = ['fbx', 'abc']
+    def _get_valid_repre_entities(self, data, project_name):
+        import collections
+        version_ids = {
+            element.get("version")
+            for element in data
+            if element.get("representation")
+        }
+        version_ids.discard(None)
+        output = collections.defaultdict(list)
+        if not version_ids:
+            return output
+        # Extract extensions from data with backward compatibility for "ma"
+        extensions = {
+            element["extension"]
+            for element in data
+            if element.get("representation")
+        }
 
-        repre_entities = list(ayon_api.get_representations(
+        # Update extensions based on the force_loaded flag
+        updated_extensions = set()
+
+        for ext in extensions:
+            if ext == "ma":
+                updated_extensions.update({"fbx", "abc"})
+            else:
+                updated_extensions.add(ext)
+
+        repre_entities = ayon_api.get_representations(
             project_name,
-            representation_names=extensions,
+            representation_names=updated_extensions,
             version_ids=version_ids,
             fields={"id", "versionId", "name"}
-        ))
-        repre_entities_by_version_id = {}
+        )
         for repre_entity in repre_entities:
             version_id = repre_entity["versionId"]
-            repre_entities_by_version_id[version_id] = repre_entity
-        return repre_entities_by_version_id
+            output[version_id].append(repre_entity)
+        return output
 
     def _process(self, lib_path, project_name):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
@@ -200,6 +222,7 @@ class ExistingLayoutLoader(plugin.Loader):
         elements = []
         repre_ids = set()
         extensions = []
+        repre_entities_by_version_id = self._get_valid_repre_entities(data, project_name)
         # Get all the representations in the JSON from the database.
         for element in data:
             repre_id = element.get('representation')
@@ -212,34 +235,18 @@ class ExistingLayoutLoader(plugin.Loader):
             else:
                 extensions.append(extension)
 
-        repre_entities = ayon_api.get_representations(
-            project_name, representation_ids=repre_ids
-        )
-        repre_entities_by_id = {
-            repre_entity["id"]: repre_entity
-            for repre_entity in repre_entities
-        }
         layout_data = []
-        version_ids = set()
         for element in elements:
-            repre_id = element.get("representation")
-            repre_entity = repre_entities_by_id.get(repre_id)
+            extension = element.get("extension")
+            repre_id = element.get("version")
+            repre_entities = repre_entities_by_version_id[repre_id]
+            repre_entity = next((repre_entity for repre_entity in repre_entities
+                                 if repre_entity["name"] == extension), None)
             if not repre_entity:
-                raise AssertionError("Representation not found")
-            if not (
-                repre_entity.get("attrib")
-                or repre_entity["attrib"].get("path")
-            ):
-                raise AssertionError("Representation does not have path")
-            if not repre_entity.get('context'):
-                raise AssertionError("Representation does not have context")
+                repre_entity = repre_entities[0]
 
             layout_data.append((repre_entity, element))
-            version_ids.add(repre_entity["versionId"])
 
-        # Prequery valid repre documents for all elements at once
-        valid_repre_entities_by_version_id = self._get_valid_repre_entities(
-            project_name, version_ids, extensions)
         containers = []
         actors_matched = []
 
@@ -262,14 +269,7 @@ class ExistingLayoutLoader(plugin.Loader):
                 mesh = smc.get_editor_property('static_mesh')
                 if not mesh:
                     continue
-                import_data = mesh.get_editor_property('asset_import_data')
-                filename = import_data.get_first_filename()
-                path = Path(filename)
 
-                if (not path.name or
-                        path.name not in repre_entity["attrib"]["path"]):
-                    unreal.log("Path is not found in representation entity")
-                    continue
                 existing_asset_dir = unreal.Paths.get_path(mesh.get_path_name())
                 assets = ar.get_assets_by_path(existing_asset_dir, recursive=False)
                 for asset in assets:
@@ -329,7 +329,8 @@ class ExistingLayoutLoader(plugin.Loader):
                 continue
 
             version_id = lasset.get('version')
-            repre_entities = valid_repre_entities_by_version_id.get(version_id)
+            repre_entities = repre_entities_by_version_id.get(version_id)
+
             if not repre_entities:
                 self.log.error(
                     f"No valid representation found for version"
@@ -337,7 +338,6 @@ class ExistingLayoutLoader(plugin.Loader):
                 continue
             assets = self._load_asset(
                 repre_entities,
-                lasset.get('representation'),
                 lasset.get('instance_name'),
                 lasset.get('family')
             )
