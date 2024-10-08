@@ -11,7 +11,8 @@ from ayon_unreal.api.pipeline import (
     create_container,
     imprint,
     has_asset_directory_pattern_matched,
-    format_asset_directory
+    format_asset_directory,
+    UNREAL_VERSION
 )
 from ayon_core.lib import EnumDef, BoolDef
 import unreal  # noqa
@@ -108,8 +109,15 @@ class StaticMeshAlembicLoader(plugin.Loader):
             conversion_settings = None
             abc_conversion_preset = loaded_options.get("abc_conversion_preset")
             if abc_conversion_preset == "maya":
-                conversion_settings = unreal.AbcConversionSettings(
-                    preset=unreal.AbcConversionPreset.MAYA)
+                if UNREAL_VERSION.major >= 5 and UNREAL_VERSION.minor >= 4:
+                    conversion_settings = unreal.AbcConversionSettings(
+                        preset=unreal.AbcConversionPreset.MAYA)
+                else:
+                    conversion_settings = unreal.AbcConversionSettings(
+                        preset=unreal.AbcConversionPreset.CUSTOM,
+                        flip_u=False, flip_v=True,
+                        rotation=[90.0, 0.0, 0.0],
+                        scale=[1.0, -1.0, 1.0])
             else:
                 conversion_settings = unreal.AbcConversionSettings(
                     preset=unreal.AbcConversionPreset.CUSTOM,

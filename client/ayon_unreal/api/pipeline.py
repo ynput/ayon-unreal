@@ -842,17 +842,10 @@ def format_asset_directory(name, context, directory_template,
     """
 
     data = {}
-    asset_name = None
     name_version = None
     data["folder"] = context["folder"]
     folder_name = context["folder"]["name"]
-
-    if not extension:
-        asset_name = name
-    elif folder_name:
-        asset_name = "{}_{}_{}".format(folder_name, name, extension)
-    else:
-        asset_name = "{}_{}".format(name, extension)
+    asset_name = set_asset_name(folder_name, name, extension)
 
     if use_version:
         version = context["version"]["version"]
@@ -864,10 +857,31 @@ def format_asset_directory(name, context, directory_template,
     else:
         name_version = asset_name
 
+    asset_name_with_version = set_asset_name(folder_name, name_version, extension)
     data["product"] = {"name": name_version}
     asset_dir = StringTemplate(directory_template).format_strict(data)
+    return f"{AYON_ROOT_DIR}/{asset_dir}", asset_name_with_version
 
-    return f"{AYON_ROOT_DIR}/{asset_dir}", asset_name
+
+def set_asset_name(folder_name, name, extension):
+    """Set the name of the asset during loading
+
+    Args:
+        folder_name (str): folder name
+        name (str): instance name
+        extension (str): extension
+
+    Returns:
+        str: asset name
+    """
+    asset_name = None
+    if not extension:
+        asset_name = name
+    elif folder_name:
+        asset_name = "{}_{}_{}".format(folder_name, name, extension)
+    else:
+        asset_name = "{}_{}".format(name, extension)
+    return asset_name
 
 
 def get_sequence(files):
