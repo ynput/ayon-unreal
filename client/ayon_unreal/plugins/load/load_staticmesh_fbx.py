@@ -31,20 +31,20 @@ class StaticMeshFBXLoader(plugin.Loader):
     pipeline_path = ""
     loaded_asset_dir = "{folder[path]}/{product[name]}"
 
-    @classmethod  
-    def apply_settings(cls, project_settings):  
-        super(StaticMeshFBXLoader, cls).apply_settings(project_settings)  
-        # Apply import settings  
+    @classmethod
+    def apply_settings(cls, project_settings):
+        super(StaticMeshFBXLoader, cls).apply_settings(project_settings)
+        # Apply import settings
         unreal_settings = project_settings.get("unreal", {})
         import_settings = unreal_settings.get("import_settings", {})
-        cls.use_interchange = import_settings.get("use_interchange", 
-                                                  cls.use_interchange)  
-        cls.show_dialog = import_settings.get("show_dialog", 
-                                                  cls.show_dialog)  
-        cls.use_nanite = import_settings.get("use_nanite", 
-                                                  cls.use_nanite)  
-        cls.pipeline_path = import_settings.get("interchange", {}).get(  
-            "pipeline_path_static_mesh", cls.pipeline_path  
+        cls.use_interchange = import_settings.get("use_interchange",
+                                                  cls.use_interchange)
+        cls.show_dialog = import_settings.get("show_dialog",
+                                                  cls.show_dialog)
+        cls.use_nanite = import_settings.get("use_nanite",
+                                                  cls.use_nanite)
+        cls.pipeline_path = import_settings.get("interchange", {}).get(
+            "pipeline_path_static_mesh", cls.pipeline_path
         )
         if unreal_settings.get("loaded_asset_dir", cls.loaded_asset_dir):
             cls.loaded_asset_dir = unreal_settings.get(
