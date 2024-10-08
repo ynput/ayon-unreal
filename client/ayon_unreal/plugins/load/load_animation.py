@@ -98,7 +98,7 @@ class AnimationFBXLoader(plugin.Loader):
 
         task.options.anim_sequence_import_data.set_editor_property(
             'animation_length',
-            unreal.FBXAnimationLengthImportType.FBXALIT_EXPORTED_TIME
+            unreal.FBXAnimationLengthImportType.FBXALIT_ANIMATED_KEY
         )
         task.options.anim_sequence_import_data.set_editor_property(
             'import_meshes_in_bone_hierarchy', False)
