@@ -3,6 +3,7 @@ import ast
 import collections
 import sys
 import six
+import json
 from abc import (
     ABC,
     ABCMeta,
@@ -77,9 +78,9 @@ class UnrealCreateLogic():
         for instance in self.collection_shared_data[
                 "unreal_cached_subsets"].get(self.identifier, []):
             # Unreal saves metadata as string, so we need to convert it back
-            instance['creator_attributes'] = ast.literal_eval(
+            instance['creator_attributes'] = json.loads(
                 instance.get('creator_attributes', '{}'))
-            instance['publish_attributes'] = ast.literal_eval(
+            instance['publish_attributes'] = json.loads(
                 instance.get('publish_attributes', '{}'))
             instance['members'] = ast.literal_eval(
                 instance.get('members', '[]'))
