@@ -267,9 +267,8 @@ class AnimationFBXLoader(plugin.Loader):
             if container["parent"] not in rigs:
                 unreal.log("{}".format(container["parent"]))
                 # we found loaded version of the linked rigs
-                if container["product_type"] != "rig":
+                if container["loader"] != "SkeletalMeshFBXLoader":
                     continue
-
                 namespace = container["namespace"]
 
                 _filter = unreal.ARFilter(
