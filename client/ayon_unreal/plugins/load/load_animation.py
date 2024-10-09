@@ -107,8 +107,6 @@ class AnimationFBXLoader(plugin.Loader):
                 max=loaded_options.get("frameEnd")
         ))
         task.options.anim_sequence_import_data.set_editor_property(
-            'end_frame', loaded_options.get("frameEnd"))
-        task.options.anim_sequence_import_data.set_editor_property(
             'import_meshes_in_bone_hierarchy', False)
         task.options.anim_sequence_import_data.set_editor_property(
             'use_default_sample_rate', False)
@@ -269,6 +267,9 @@ class AnimationFBXLoader(plugin.Loader):
             if container["parent"] not in rigs:
                 unreal.log("{}".format(container["parent"]))
                 # we found loaded version of the linked rigs
+                if container["product_type"] != "rig":
+                    continue
+
                 namespace = container["namespace"]
 
                 _filter = unreal.ARFilter(
