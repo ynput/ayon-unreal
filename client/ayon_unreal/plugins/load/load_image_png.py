@@ -32,18 +32,18 @@ class TexturePNGLoader(plugin.Loader):
     pipeline_path = ""
     loaded_asset_dir = "{folder[path]}/{product[name]}"
 
-    @classmethod  
-    def apply_settings(cls, project_settings):  
-        super(TexturePNGLoader, cls).apply_settings(project_settings)  
+    @classmethod
+    def apply_settings(cls, project_settings):
+        super(TexturePNGLoader, cls).apply_settings(project_settings)
         unreal_settings = project_settings.get("unreal", {})
-        # Apply import settings  
+        # Apply import settings
         import_settings = unreal_settings.get("import_settings", {})
-        cls.use_interchange = import_settings.get("use_interchange", 
-                                                  cls.use_interchange)  
+        cls.use_interchange = import_settings.get("use_interchange",
+                                                  cls.use_interchange)
         cls.show_dialog = import_settings.get("show_dialog", cls.show_dialog)
-        cls.pipeline_path = import_settings.get("interchange", {}).get(  
-            "pipeline_path_static_mesh", cls.pipeline_path  
-        )  
+        cls.pipeline_path = import_settings.get("interchange", {}).get(
+            "pipeline_path_static_mesh", cls.pipeline_path
+        )
         if unreal_settings.get("loaded_asset_dir", cls.loaded_asset_dir):
             cls.loaded_asset_dir = unreal_settings.get(
                     "loaded_asset_dir", cls.loaded_asset_dir)
@@ -64,11 +64,11 @@ class TexturePNGLoader(plugin.Loader):
         return task
 
     @classmethod
-    def import_and_containerize(  
+    def import_and_containerize(
         self, filepath, asset_dir, asset_name, container_name, asset_path=None
-    ):  
-        if self.use_interchange:  
-            print("Import using interchange method")  
+    ):
+        if self.use_interchange:
+            print("Import using interchange method")
 
             unreal.SystemLibrary.execute_console_command(
                 None, "Interchange.FeatureFlags.Import.PNG 1")

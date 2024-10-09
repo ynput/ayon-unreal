@@ -129,5 +129,6 @@ def import_camera_to_level_sequence(sequence, parent_id, version_id, namespace, 
         world, unreal.CameraActor)
     if namespace:
         camera_actor_name = unreal.Paths.split(namespace)[1]
+        unreal.log(f"Spawning camera: {camera_actor_name}")
         for actor in camera_actors:
             actor.set_actor_label(camera_actor_name)
