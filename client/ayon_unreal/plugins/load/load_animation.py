@@ -70,7 +70,9 @@ class AnimationFBXLoader(plugin.Loader):
         return assets
 
     def _import_animation(
-        self, path, asset_dir, asset_name, skeleton, automated, replace=False
+        self, path, asset_dir, asset_name,
+        skeleton, automated, replace=False,
+        loaded_options=None
     ):
         task = unreal.AssetImportTask()
         task.options = unreal.FbxImportUI()
@@ -95,11 +97,15 @@ class AnimationFBXLoader(plugin.Loader):
         task.options.set_editor_property('import_animations', True)
         task.options.set_editor_property('override_full_name', True)
         task.options.set_editor_property('skeleton', skeleton)
-
         task.options.anim_sequence_import_data.set_editor_property(
             'animation_length',
-            unreal.FBXAnimationLengthImportType.FBXALIT_EXPORTED_TIME
+            unreal.FBXAnimationLengthImportType.FBXALIT_SET_RANGE
         )
+        task.options.anim_sequence_import_data.set_editor_property(
+            'frame_import_range', unreal.Int32Interval(
+                min=loaded_options.get("frameStart"),
+                max=loaded_options.get("frameEnd")
+        ))
         task.options.anim_sequence_import_data.set_editor_property(
             'import_meshes_in_bone_hierarchy', False)
         task.options.anim_sequence_import_data.set_editor_property(
@@ -121,7 +127,8 @@ class AnimationFBXLoader(plugin.Loader):
 
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
 
-    def _process(self, path, asset_dir, asset_name, instance_name):
+    def _process(self, path, asset_dir, asset_name,
+                 instance_name, loaded_options=None):
         automated = False
         actor = None
 
@@ -145,7 +152,8 @@ class AnimationFBXLoader(plugin.Loader):
             return None
 
         self._import_animation(
-            path, asset_dir, asset_name, skeleton, automated)
+            path, asset_dir, asset_name,
+            skeleton, automated, loaded_options=loaded_options)
 
         asset_content = EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=True
@@ -171,14 +179,17 @@ class AnimationFBXLoader(plugin.Loader):
         return animation
 
     def _load_from_json(
-        self, libpath, path, asset_dir, asset_name, hierarchy_dir
+        self, libpath, path, asset_dir, asset_name, hierarchy_dir,
+        loaded_options=None
     ):
         with open(libpath, "r") as fp:
             data = json.load(fp)
 
         instance_name = data.get("instance_name")
 
-        animation = self._process(path, asset_dir, asset_name, instance_name)
+        animation = self._process(
+            path, asset_dir, asset_name,
+            instance_name, loaded_options=loaded_options)
 
         asset_content = EditorAssetLibrary.list_assets(
             hierarchy_dir, recursive=True, include_folder=False)
@@ -217,7 +228,8 @@ class AnimationFBXLoader(plugin.Loader):
         return asset.get_class() == unreal.Skeleton.static_class()
 
     def _load_standalone_animation(
-        self, path, asset_dir, asset_name, version_id
+        self, path, asset_dir, asset_name,
+        version_id, loaded_options=None
     ):
         selection = unreal.EditorUtilityLibrary.get_selected_assets()
         skeleton = None
@@ -255,6 +267,8 @@ class AnimationFBXLoader(plugin.Loader):
             if container["parent"] not in rigs:
                 unreal.log("{}".format(container["parent"]))
                 # we found loaded version of the linked rigs
+                if container["loader"] != "SkeletalMeshFBXLoader":
+                    continue
                 namespace = container["namespace"]
 
                 _filter = unreal.ARFilter(
@@ -278,11 +292,13 @@ class AnimationFBXLoader(plugin.Loader):
 
         self.log.info(f"Using skeleton: {skeleton.get_name()}")
         self._import_animation(
-            path, asset_dir, asset_name, skeleton, True)
+            path, asset_dir, asset_name,
+            skeleton, True, loaded_options=loaded_options)
 
     def _import_animation_with_json(self, path, context, hierarchy,
                                     asset_dir, folder_name,
-                                    asset_name, asset_path=None):
+                                    asset_name, asset_path=None,
+                                    loaded_options=None):
             libpath = path.replace(".fbx", ".json")
 
             master_level = None
@@ -321,7 +337,8 @@ class AnimationFBXLoader(plugin.Loader):
                 if not unreal.EditorAssetLibrary.does_asset_exist(
                     f"{asset_dir}/{asset_name}"):
                         self._load_standalone_animation(
-                            path, asset_dir, asset_name, version_id)
+                            path, asset_dir, asset_name,
+                            version_id, loaded_options=loaded_options)
 
             return master_level
 
@@ -354,7 +371,7 @@ class AnimationFBXLoader(plugin.Loader):
         }
         unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
 
-    def load(self, context, name, namespace, options=None):
+    def load(self, context, name, namespace, options):
         """
         Load and containerise representation into Content Browser.
 
@@ -398,10 +415,15 @@ class AnimationFBXLoader(plugin.Loader):
         asset_path = unreal_pipeline.has_asset_directory_pattern_matched(asset_name, asset_dir, name)
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             EditorAssetLibrary.make_directory(asset_dir)
+        loaded_options = {
+            "frameStart": folder_entity["attrib"]["frameStart"],
+            "frameEnd": folder_entity["attrib"]["frameEnd"]
+        }
         master_level = self._import_animation_with_json(
             path, context, hierarchy,
             asset_dir, folder_name,
-            asset_name, asset_path=asset_path
+            asset_name, asset_path=asset_path,
+            loaded_options=loaded_options
         )
         if not unreal.EditorAssetLibrary.does_asset_exist(
             f"{asset_dir}/{container_name}"):
