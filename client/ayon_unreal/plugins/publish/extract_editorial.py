@@ -16,18 +16,16 @@ class ExtractEditorial(publish.Extractor):
     families = ["editorial"]
 
     def process(self, instance):
-        pass
         staging_dir = self.staging_dir(instance)
-        sequence_data = instance.data.get("sequence_data")
         filename = "{}.edl".format(instance.name)
 
         if "representations" not in instance.data:
             instance.data["representations"] = []
 
-            representation = {
-                'name': 'edl',
-                'ext': 'edl',
-                'files': filename,
-                "stagingDir": staging_dir,
-            }
+        representation = {
+            'name': 'edl',
+            'ext': 'edl',
+            'files': filename,
+            "stagingDir": staging_dir,
+        }
         instance.data["representations"].append(representation)
