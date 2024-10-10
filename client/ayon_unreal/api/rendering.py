@@ -252,3 +252,13 @@ def start_rendering():
         executor.on_individual_job_finished_delegate.add_callable_unique(
             _job_finish_callback)  # Only available on PIE Executor
         executor.execute(queue)
+
+
+def clear_render_queue():
+    # Movie render queue
+    subsystem = unreal.get_editor_subsystem(unreal.MoviePipelineQueueSubsystem)
+    queue = subsystem.get_queue()
+    if not queue.get_jobs():
+        return
+    for job in queue.get_jobs():
+        queue.delete_job(job)
