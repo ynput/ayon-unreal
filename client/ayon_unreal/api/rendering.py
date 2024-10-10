@@ -262,33 +262,3 @@ def clear_render_queue():
         return
     for job in queue.get_jobs():
         queue.delete_job(job)
-
-
-def editorial_rendering(shot_name, sequence_path, master_level):
-    subsystem = unreal.get_editor_subsystem(unreal.MoviePipelineQueueSubsystem)
-    job = queue.allocate_new_job(unreal.MoviePipelineExecutorJob)
-    job.set_editor_property("job_name", f"{shot_name}")
-
-    job.sequence.assign(unreal.SoftObjectPath(sequence_path))
-    job.map.assign(unreal.SoftObjectPath(master_level))
-
-    config = job.get_configuration()
-    output_setting = config.find_or_add_setting_by_class(unreal.MoviePipelineOutputSetting)
-    # output_setting.set_editor_property(
-    #     "output_directory",
-    #     unreal.DirectoryPath(os.path.dirname(shot_render_path))
-    # )
-    # output_setting.set_editor_property(
-    #     "file_name_format",
-    #     os.path.basename(shot_render_path).rsplit(".mov", 1)[0]
-    # )
-
-    output_setting.set_editor_property("output_resolution", unreal.IntPoint(1920 / 2, 1080 / 2))
-    output_setting.set_editor_property("override_existing_output", True)  # Overwrite existing files
-
-    pro_res_setting = config.find_or_add_setting_by_class(unreal.MoviePipelineAppleProResOutput)
-    pro_res_setting.set_editor_property("codec", unreal.AppleProResEncoderCodec.PRO_RES_422_PROXY)
-
-    # Render itself
-    executor = unreal.MoviePipelinePIEExecutor()
-    subsystem.render_queue_with_executor_instance(executor)
