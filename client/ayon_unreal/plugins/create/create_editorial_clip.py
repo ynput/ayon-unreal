@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 from pathlib import Path
-
+import ast
 import unreal
 
-from ayon_core.pipeline import CreatorError
+from ayon_core.pipeline import CreatorError, CreatedInstance
 from ayon_unreal.api.lib import get_shot_tracks
 from ayon_unreal.api.plugin import (
     UnrealAssetCreator
@@ -21,6 +21,25 @@ class CreateShotClip(UnrealAssetCreator):
     product_type = "clip"
     icon = "film"
     sel_objects = unreal.EditorUtilityLibrary.get_selected_assets()
+
+    def _default_collect_instances(self):
+        # cache instances if missing
+        self.get_cached_instances(self.collection_shared_data)
+        for instance in self.collection_shared_data[
+                "unreal_cached_subsets"].get(self.identifier, []):
+            # Unreal saves metadata as string, so we need to convert it back
+            instance['creator_attributes'] = ast.literal_eval(
+                instance.get('creator_attributes', '{}'))
+            instance['publish_attributes'] = ast.literal_eval(
+                instance.get('publish_attributes', '{}'))
+            instance['members'] = ast.literal_eval(
+                instance.get('members', '[]'))
+            instance['families'] = ast.literal_eval(
+                instance.get('families', '[]'))
+            instance['active'] = ast.literal_eval(
+                instance.get('active', ''))
+            created_instance = CreatedInstance.from_existing(instance, self)
+            self._add_instance_to_context(created_instance)
 
     def create(self, product_name, instance_data, pre_create_data):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
