@@ -11,20 +11,20 @@ from ayon_core.pipeline import publish
 class ExtractEditorial(publish.Extractor):
     """Extract Editorial"""
 
-    label = "Extract Editorial"
+    label = "Extract Shot Render(Clip)"
     hosts = ["unreal"]
-    families = ["editorial"]
+    families = ["clip"]
 
     def process(self, instance):
         staging_dir = self.staging_dir(instance)
-        filename = "{}.edl".format(instance.name)
+        filename = "{}.mov".format(instance.name)
 
         if "representations" not in instance.data:
             instance.data["representations"] = []
 
         representation = {
-            'name': 'edl',
-            'ext': 'edl',
+            'name': 'mov',
+            'ext': 'mov',
             'files': filename,
             "stagingDir": staging_dir,
         }
