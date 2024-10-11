@@ -213,7 +213,6 @@ class StaticMeshFBXLoader(plugin.Loader):
 
     def update(self, container, context):
         folder_path = context["folder"]["path"]
-        product_name = context["product"]["name"]
         product_type = context["product"]["productType"]
         repre_entity = context["representation"]
 
