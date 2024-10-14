@@ -52,17 +52,26 @@ def update_assets(containers, selected):
                 i.get("objectName") != container.get("objectName")
             )
         ]
-
+        if not sa_containers:
+            return
+        unreal.log("sa_containers")
+        unreal.log(sa_containers)
         asset_content = unreal.EditorAssetLibrary.list_assets(
             container_dir, recursive=True, include_folder=False
         )
-
+        unreal.log("asset_content")
+        unreal.log(asset_content)
         # Update all actors in level
         for sa_cont in sa_containers:
             sa_dir = sa_cont.get("namespace")
+            if sa_dir == container_dir:
+                return
             old_content = unreal.EditorAssetLibrary.list_assets(
                 sa_dir, recursive=True, include_folder=False
             )
+
+            unreal.log("old_content")
+            unreal.log(old_content)
 
             if container.get("family") == "rig":
                 replace_skeletal_mesh_actors(
