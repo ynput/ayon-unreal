@@ -20,7 +20,6 @@ class CreateEditorial(UnrealAssetCreator):
     label = "Editorial"
     product_type = "Editorial"
     icon = "film"
-    sel_objects = unreal.EditorUtilityLibrary.get_selected_assets()
 
     def _default_collect_instances(self):
         # cache instances if missing
@@ -38,6 +37,8 @@ class CreateEditorial(UnrealAssetCreator):
                 instance.get('families', '[]'))
             instance['active'] = ast.literal_eval(
                 instance.get('active', ''))
+            instance['shot_tracks'] = ast.literal_eval(
+                instance.get('shot_tracks', '[]'))
             created_instance = CreatedInstance.from_existing(instance, self)
             self._add_instance_to_context(created_instance)
 
@@ -66,22 +67,23 @@ class CreateEditorial(UnrealAssetCreator):
             except IndexError:
                 raise CreatorError("Could not find any map for the selected sequence.")
 
-        if not get_shot_tracks(sel_objects):
+        _, shot_sections = get_shot_tracks(sel_objects)
+        if not shot_sections:
             raise CreatorError("No movie shot tracks found in the selected level sequence")
 
         instance_data["members"] = selection
         instance_data["level"] = master_lvl
+        instance_data["shot_tracks"] = shot_sections
 
         super(CreateEditorial, self).create(
             product_name,
             instance_data,
             pre_create_data)
-    # TODO: create sub-instances for publishing
 
     def get_instance_attr_defs(self):
         def header_label(text):
             return f"<br><b>{text}</b>"
-        gui_tracks = get_shot_tracks(self.sel_objects)
+        gui_tracks, _ = get_shot_tracks()
 
         return [
             # hierarchyData
