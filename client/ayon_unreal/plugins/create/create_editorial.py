@@ -11,14 +11,14 @@ from ayon_unreal.api.plugin import (
 from ayon_core.lib import BoolDef, EnumDef, TextDef, UILabelDef, NumberDef
 
 
-class CreateShotClip(UnrealAssetCreator):
+class CreateEditorial(UnrealAssetCreator):
     """Create Clip
     Process publishes shot from the selected level sequences
     """
 
-    identifier = "io.ayon.creators.unreal.clip"
-    label = "Editorial Clip"
-    product_type = "clip"
+    identifier = "io.ayon.creators.unreal.editorial"
+    label = "Editorial"
+    product_type = "Editorial"
     icon = "film"
     sel_objects = unreal.EditorUtilityLibrary.get_selected_assets()
 
@@ -72,19 +72,18 @@ class CreateShotClip(UnrealAssetCreator):
         instance_data["members"] = selection
         instance_data["level"] = master_lvl
 
-        super(CreateShotClip, self).create(
+        super(CreateEditorial, self).create(
             product_name,
             instance_data,
             pre_create_data)
     # TODO: create sub-instances for publishing
 
-    def get_pre_create_attr_defs(self):
-        attrs = super().get_pre_create_attr_defs()
+    def get_instance_attr_defs(self):
         def header_label(text):
             return f"<br><b>{text}</b>"
         gui_tracks = get_shot_tracks(self.sel_objects)
 
-        return attrs + [
+        return [
             # hierarchyData
             UILabelDef(
                 label=header_label("Shot Template Keywords")

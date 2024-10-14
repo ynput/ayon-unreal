@@ -141,8 +141,9 @@ def get_shot_tracks(sel_objects):
     ]
 
     sub_sequence_tracks = [
-        sel.find_master_tracks_by_type(
-        unreal.MovieSceneSubTrack) for sel in selection
+        track for sel in selection for track in
+        sel.find_master_tracks_by_type(unreal.MovieSceneSubTrack)
     ]
+
     return [track.get_name() for track in sub_sequence_tracks
             if isinstance(track, unreal.MovieSceneCinematicShotTrack)]
