@@ -54,13 +54,11 @@ def update_assets(containers, selected):
         ]
         if not sa_containers:
             return
-        unreal.log("sa_containers")
-        unreal.log(sa_containers)
+
         asset_content = unreal.EditorAssetLibrary.list_assets(
             container_dir, recursive=True, include_folder=False
         )
-        unreal.log("asset_content")
-        unreal.log(asset_content)
+
         # Update all actors in level
         for sa_cont in sa_containers:
             sa_dir = sa_cont.get("namespace")
