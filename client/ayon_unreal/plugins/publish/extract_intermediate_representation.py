@@ -3,17 +3,18 @@
 import os
 
 import unreal
+import pyblish.api
 
 from ayon_core.pipeline import publish
 
 
 
-class ExtractEditorial(publish.Extractor):
-    """Extract Editorial"""
+class ExtractIntermediateRepresentation(publish.Extractor):
+    """Extract Intermediate Files for Editorial Package"""
 
-    label = "Extract Shot Render(Clip)"
-    hosts = ["unreal"]
-    families = ["clip"]
+    label = "Extract Intermediate Representation"
+    order = pyblish.api.ExtractorOrder - 0.45
+    families = ["editorial_pkg"]
 
     def process(self, instance):
         staging_dir = self.staging_dir(instance)
@@ -23,8 +24,8 @@ class ExtractEditorial(publish.Extractor):
             instance.data["representations"] = []
 
         representation = {
-            'name': 'mov',
-            'ext': 'mov',
+            "name": "intermediate",
+            "ext": "mov",
             'files': filename,
             "stagingDir": staging_dir,
         }
