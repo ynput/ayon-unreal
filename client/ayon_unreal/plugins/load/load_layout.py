@@ -634,7 +634,9 @@ class LayoutLoader(plugin.Loader):
         # Create directory for asset and Ayon container
         folder_entity = context["folder"]
         folder_path = folder_entity["path"]
-        hierarchy = folder_path.lstrip("/").split("/")
+        hierarchy = folder_path.split("/")
+        # Remove empty string
+        hierarchy.pop(0)
         # Remove folder name
         folder_name = hierarchy.pop(-1)
         root = self.ASSET_ROOT
