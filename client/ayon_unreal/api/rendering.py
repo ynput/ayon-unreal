@@ -252,3 +252,54 @@ def start_rendering():
         executor.on_individual_job_finished_delegate.add_callable_unique(
             _job_finish_callback)  # Only available on PIE Executor
         executor.execute(queue)
+
+
+def clear_render_queue():
+    # Movie render queue
+    subsystem = unreal.get_editor_subsystem(unreal.MoviePipelineQueueSubsystem)
+    queue = subsystem.get_queue()
+    if not queue.get_jobs():
+        return
+    for job in queue.get_jobs():
+        queue.delete_job(job)
+
+
+def editorial_rendering(track, shot_name, sequence_path, master_level, render_dir, render_filename):
+    subsystem = unreal.get_editor_subsystem(unreal.MoviePipelineQueueSubsystem)
+    queue = subsystem.get_queue()
+    job = queue.allocate_new_job(unreal.MoviePipelineExecutorJob)
+    job.set_editor_property("job_name", f"{shot_name}")
+    job.author = "Ayon"
+    job.sequence.assign(unreal.SoftObjectPath(sequence_path))
+    job.map.assign(unreal.SoftObjectPath(master_level))
+
+    config = job.get_configuration()
+    output_setting = config.find_or_add_setting_by_class(unreal.MoviePipelineOutputSetting)
+    output_setting.set_editor_property(
+        "output_directory",
+        unreal.DirectoryPath(render_dir)
+    )
+    output_setting.set_editor_property("file_name_format", f"{render_filename}" + ".{frame_number}")
+
+    output_setting.set_editor_property("output_resolution", unreal.IntPoint(1920, 1080))
+    output_setting.set_editor_property("override_existing_output", True)  # Overwrite existing files
+    output_setting.set_editor_property("use_custom_playback_range", True)
+    output_setting.set_editor_property("custom_start_frame", track.get_start_frame())
+    output_setting.set_editor_property("custom_end_frame", track.get_end_frame())
+    config.find_or_add_setting_by_class(
+        unreal.MoviePipelineDeferredPassBase)
+
+    set_output_extension_from_settings("exr", config)
+    # Render itself
+    executor = unreal.MoviePipelinePIEExecutor()
+    subsystem.render_queue_with_executor_instance(executor)
+    # Register the callback
+    executor.on_executor_finished_delegate.add_callable(render_finished)
+
+
+# Define the callback function
+def render_finished(executor, is_success):
+    if is_success:
+        unreal.log("Render finished successfully!")
+    else:
+        unreal.log_warning("Render did not finish successfully.")
