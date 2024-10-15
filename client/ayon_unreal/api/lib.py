@@ -134,12 +134,7 @@ def import_camera_to_level_sequence(sequence, parent_id, version_id, namespace, 
             actor.set_actor_label(camera_actor_name)
 
 
-def get_shot_tracks(sel_objects=None):
-    if sel_objects is None:
-        asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
-        all_assets = asset_registry.get_all_assets()
-        sel_objects = [obj.get_asset() for obj in all_assets]
-
+def get_shot_track_names(sel_objects=None, get_name=True):
     selection = [
         a for a in sel_objects
         if a.get_class().get_name() == "LevelSequence"
@@ -152,8 +147,17 @@ def get_shot_tracks(sel_objects=None):
 
     movie_shot_tracks = [track for track in sub_sequence_tracks
                          if isinstance(track, unreal.MovieSceneCinematicShotTrack)]
-    # shot_display_names = [section.get_shot_display_name() for shot_tracks in
-    #                       movie_shot_tracks for section in shot_tracks.get_sections()]
-    shot_sections_tracks = [section for shot_tracks in
-                            movie_shot_tracks for section in shot_tracks.get_sections()]
-    return shot_sections_tracks
+    if get_name:
+        return [section.get_shot_display_name() for shot_tracks in
+                movie_shot_tracks for section in shot_tracks.get_sections()]
+    else:
+        return [section for shot_tracks in
+                movie_shot_tracks for section in shot_tracks.get_sections()]
+
+
+def get_shot_tracks(members):
+    ar = unreal.AssetRegistryHelpers.get_asset_registry()
+    selected_sequences = [
+        ar.get_asset_by_object_path(member).get_asset() for member in members
+    ]
+    return get_shot_track_names(selected_sequences, get_name=False)
