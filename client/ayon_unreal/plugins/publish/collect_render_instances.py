@@ -103,6 +103,11 @@ class CollectRenderInstances(pyblish.api.InstancePlugin):
 
                     render_dir = f"{root}/{project}/{s.get('output')}"
                     render_path = Path(render_dir)
+                    if not os.path.exists(render_path):
+                        raise RuntimeError(
+                            "Render directory not found. "
+                            "Please render with the AyonPublishInstance."
+                        )
                     self.log.debug(f"Collecting render path: {render_path}")
                     frames = [str(x) for x in render_path.iterdir() if x.is_file()]
                     frames = pipeline.get_sequence(frames)
