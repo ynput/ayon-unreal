@@ -152,8 +152,8 @@ def get_shot_tracks(sel_objects=None):
 
     movie_shot_tracks = [track for track in sub_sequence_tracks
                          if isinstance(track, unreal.MovieSceneCinematicShotTrack)]
-    shot_display_names = [section.get_shot_display_name() for shot_tracks in
-                          movie_shot_tracks for section in shot_tracks.get_sections()]
-    shot_sections_tracks = [section.get_shot_display_name() for shot_tracks in
+    # shot_display_names = [section.get_shot_display_name() for shot_tracks in
+    #                       movie_shot_tracks for section in shot_tracks.get_sections()]
+    shot_sections_tracks = [section for shot_tracks in
                             movie_shot_tracks for section in shot_tracks.get_sections()]
-    return shot_display_names, shot_sections_tracks
+    return shot_sections_tracks

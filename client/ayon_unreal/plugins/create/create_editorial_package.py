@@ -64,7 +64,7 @@ class CreateEditorialPackage(UnrealAssetCreator):
             except IndexError:
                 raise CreatorError("Could not find any map for the selected sequence.")
 
-        _, shot_sections = get_shot_tracks(sel_objects)
+        shot_sections = get_shot_tracks(sel_objects)
         if not shot_sections:
             raise CreatorError("No movie shot tracks found in the selected level sequence")
 
