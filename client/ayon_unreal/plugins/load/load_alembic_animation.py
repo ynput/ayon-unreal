@@ -22,7 +22,8 @@ class AnimationAlembicLoader(plugin.Loader):
     icon = "cube"
     color = "orange"
     abc_conversion_preset = "maya"
-    loaded_asset_dir = "{folder[path]}/{product[name]}"
+    # check frame padding
+    loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -93,7 +94,7 @@ class AnimationAlembicLoader(plugin.Loader):
         return task
 
     def import_and_containerize(
-        self, filepath, asset_dir, asset_name, container_name, loaded_options,
+        self, filepath, asset_dir, asset_name, container_name, loaded_options=None,
         asset_path=None
     ):
         task = None
@@ -178,9 +179,7 @@ class AnimationAlembicLoader(plugin.Loader):
         suffix = "_CON"
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        asset_root, asset_name = unreal_pipeline.format_asset_directory(
-            name, context, self.loaded_asset_dir, extension=ext
-        )
+        asset_root, asset_name = unreal_pipeline.format_asset_directory(context, self.loaded_asset_dir)
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
@@ -189,14 +188,16 @@ class AnimationAlembicLoader(plugin.Loader):
         container_name += suffix
         asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
             asset_name, asset_dir, folder_name, extension=ext)
+
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
-            loaded_options = {
-                "abc_conversion_preset": options.get(
-                    "abc_conversion_preset", self.abc_conversion_preset),
-                "frameStart": folder_entity["attrib"]["frameStart"],
-                "frameEnd": folder_entity["attrib"]["frameEnd"]
-            }
+
+        loaded_options = {
+            "abc_conversion_preset": options.get(
+                "abc_conversion_preset", self.abc_conversion_preset),
+            "frameStart": folder_entity["attrib"]["frameStart"],
+            "frameEnd": folder_entity["attrib"]["frameEnd"]
+        }
 
         path = self.filepath_from_context(context)
         self.import_and_containerize(
@@ -234,7 +235,6 @@ class AnimationAlembicLoader(plugin.Loader):
 
     def update(self, container, context):
         folder_path = context["folder"]["path"]
-        product_name = context["product"]["name"]
         product_type = context["product"]["productType"]
         repre_entity = context["representation"]
 
@@ -243,9 +243,7 @@ class AnimationAlembicLoader(plugin.Loader):
         source_path = get_representation_path(repre_entity)
 
         ext = os.path.splitext(source_path)[-1].lstrip(".")
-        asset_root, asset_name = unreal_pipeline.format_asset_directory(
-            product_name, context, self.loaded_asset_dir, extension=ext
-        )
+        asset_root, asset_name = unreal_pipeline.format_asset_directory(context, self.loaded_asset_dir)
         # do import fbx and replace existing data
         asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
         asset_dir, container_name = asset_tools.create_unique_asset_name(

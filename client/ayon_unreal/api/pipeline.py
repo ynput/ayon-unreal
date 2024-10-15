@@ -3,6 +3,7 @@ import os
 import re
 import json
 import clique
+import copy
 import logging
 from typing import List, Any
 from contextlib import contextmanager
@@ -826,9 +827,7 @@ def select_camera(sequence):
                 actor_subsys.set_actor_selection_state(actor, False)
 
 
-def format_asset_directory(name, context, directory_template,
-                           extension="",
-                           use_version=True):
+def format_asset_directory(context, directory_template):
     """Setting up the asset directory path and name.
     Args:
         name (str): Instance name
@@ -841,29 +840,21 @@ def format_asset_directory(name, context, directory_template,
         tuple[str, str]: asset directory, asset name
     """
 
-    data = {}
-    name_version = None
-    data["folder"] = context["folder"]
-    folder_name = context["folder"]["name"]
-    asset_name = set_asset_name(folder_name, name, extension)
-
-    if use_version:
-        version = context["version"]["version"]
-        # Check if version is hero version and use different name
-        if version < 0:
-            name_version = f"{name}_hero"
-        else:
-            name_version = f"{name}_v{version:03d}"
+    data = copy.deepcopy(context)
+    version = data["version"]["version"]
+    # if user set {version[version]},
+    # the copied data from data["version"]["version"] convert
+    # to set the version of the exclusive version folder
+    if version < 0:
+        data["version"]["version"] = "hero"
     else:
-        name_version = asset_name
-
-    asset_name_with_version = set_asset_name(folder_name, name_version, extension)
-    data["product"] = {"name": name_version}
+        data["version"]["version"] = f"v{version:03d}"
+    asset_name_with_version = set_asset_name(data)
     asset_dir = StringTemplate(directory_template).format_strict(data)
     return f"{AYON_ROOT_DIR}/{asset_dir}", asset_name_with_version
 
 
-def set_asset_name(folder_name, name, extension):
+def set_asset_name(data):
     """Set the name of the asset during loading
 
     Args:
@@ -874,13 +865,18 @@ def set_asset_name(folder_name, name, extension):
     Returns:
         str: asset name
     """
-    asset_name = None
+    asset_name = None,
+    name = data["product"]["name"]
+    version = data["version"]["version"]
+    folder_name = data["folder"]["name"]
+    extension = data["representation"]["name"]
     if not extension:
         asset_name = name
     elif folder_name:
-        asset_name = "{}_{}_{}".format(folder_name, name, extension)
+        asset_name = "{}_{}_{}_{}".format(
+            folder_name, name, version, extension)
     else:
-        asset_name = "{}_{}".format(name, extension)
+        asset_name = "{}_{}_{}".format(name, version, extension)
     return asset_name
 
 

@@ -24,7 +24,7 @@ class UAssetLoader(plugin.Loader):
 
     extension = "uasset"
 
-    loaded_asset_dir = "{folder[path]}/{product[name]}"
+    loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -55,21 +55,12 @@ class UAssetLoader(plugin.Loader):
         # Create directory for asset and Ayon container
         folder_path = context["folder"]["path"]
         suffix = "_CON"
-        asset_root, asset_name = unreal_pipeline.format_asset_directory(
-            name, context, self.loaded_asset_dir, use_version=False)
+        asset_root, asset_name = unreal_pipeline.format_asset_directory(context, self.loaded_asset_dir)
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=""
         )
-
-        unique_number = 1
-        while unreal.EditorAssetLibrary.does_directory_exist(
-            f"{asset_dir}_{unique_number:02}"
-        ):
-            unique_number += 1
-
-        asset_dir = f"{asset_dir}_{unique_number:02}"
-        container_name = f"{container_name}_{unique_number:02}{suffix}"
+        container_name = f"{container_name}_{suffix}"
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
 
