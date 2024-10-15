@@ -657,6 +657,15 @@ def generate_sequence(h, h_dir):
     return sequence, (min_frame, max_frame)
 
 
+def find_common_name(asset_name):
+    # Find the common prefix
+    prefix_match = re.match(r"^(.*?)(\d+)(.*?)$", asset_name)
+    if not prefix_match:
+        return
+    name, _, ext = prefix_match.groups()
+    return f"{name}_{ext}"
+
+
 def _get_comps_and_assets(
     component_class, asset_class, old_assets, new_assets, selected
 ):
@@ -680,7 +689,8 @@ def _get_comps_and_assets(
     for a in old_assets:
         asset = unreal.EditorAssetLibrary.load_asset(a)
         if isinstance(asset, asset_class):
-            selected_old_assets[asset.get_name()] = asset
+            asset_name = find_common_name(asset.get_name())
+            selected_old_assets[asset_name] = asset
 
     # Get all the static meshes among the new assets in a dictionary with
     # the name as key
@@ -688,7 +698,8 @@ def _get_comps_and_assets(
     for a in new_assets:
         asset = unreal.EditorAssetLibrary.load_asset(a)
         if isinstance(asset, asset_class):
-            selected_new_assets[asset.get_name()] = asset
+            asset_name = find_common_name(asset.get_name())
+            selected_new_assets[asset_name] = asset
 
     return components, selected_old_assets, selected_new_assets
 
@@ -703,6 +714,15 @@ def replace_static_mesh_actors(old_assets, new_assets, selected):
         new_assets,
         selected
     )
+    unreal.log("static_mesh_comps")
+    unreal.log(static_mesh_comps)
+
+    unreal.log("old_meshes")
+    unreal.log(old_meshes)
+
+    unreal.log("new_meshes")
+    unreal.log(old_meshes)
+
 
     for old_name, old_mesh in old_meshes.items():
         new_mesh = new_meshes.get(old_name)
