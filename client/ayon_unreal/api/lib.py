@@ -99,7 +99,9 @@ def get_representation(parent_id, version_id):
         ), None)
 
 
-def import_camera_to_level_sequence(sequence, parent_id, version_id, namespace, world):
+def import_camera_to_level_sequence(sequence, parent_id, version_id,
+                                    namespace, world, frameStart,
+                                    frameEnd):
     # Add a camera cut track to the sequence
     if not get_camera_tracks(sequence):
         sequence.add_master_track(unreal.MovieSceneCameraCutTrack)
@@ -132,3 +134,5 @@ def import_camera_to_level_sequence(sequence, parent_id, version_id, namespace, 
         unreal.log(f"Spawning camera: {camera_actor_name}")
         for actor in camera_actors:
             actor.set_actor_label(camera_actor_name)
+
+    set_sequence_frame_range(sequence, frameStart, frameEnd)
