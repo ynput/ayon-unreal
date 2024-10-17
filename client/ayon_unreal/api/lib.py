@@ -109,6 +109,12 @@ def import_camera_to_level_sequence(sequence, parent_id, version_id,
     import_fbx_settings = unreal.MovieSceneUserImportFBXSettings()
     import_fbx_settings.set_editor_property('reduce_keys', False)
     camera_path = get_representation_path(repre_entity)
+
+    camera_actor_name = unreal.Paths.split(namespace)[1]
+    for spawned_actor in sequence.get_possessables():
+        if spawned_actor.get_display_name() == camera_actor_name:
+            spawned_actor.remove()
+
     sel_actors = unreal.GameplayStatics().get_all_actors_of_class(
         world, unreal.CameraActor)
     if sel_actors:
@@ -130,7 +136,6 @@ def import_camera_to_level_sequence(sequence, parent_id, version_id,
     camera_actors = unreal.GameplayStatics().get_all_actors_of_class(
         world, unreal.CameraActor)
     if namespace:
-        camera_actor_name = unreal.Paths.split(namespace)[1]
         unreal.log(f"Spawning camera: {camera_actor_name}")
         for actor in camera_actors:
             actor.set_actor_label(camera_actor_name)
