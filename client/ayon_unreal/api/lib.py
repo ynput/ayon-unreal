@@ -100,11 +100,7 @@ def get_representation(parent_id, version_id):
 
 
 def import_camera_to_level_sequence(sequence, parent_id, version_id,
-                                    namespace, world, frameStart,
-                                    frameEnd):
-    # Add a camera cut track to the sequence
-    if not get_camera_tracks(sequence):
-        sequence.add_master_track(unreal.MovieSceneCameraCutTrack)
+                                    namespace, world):
     repre_entity = get_representation(parent_id, version_id)
     import_fbx_settings = unreal.MovieSceneUserImportFBXSettings()
     import_fbx_settings.set_editor_property('reduce_keys', False)
@@ -120,12 +116,6 @@ def import_camera_to_level_sequence(sequence, parent_id, version_id,
     if sel_actors:
         for actor in sel_actors:
             unreal.EditorLevelLibrary.destroy_actor(actor)
-    tracks = get_camera_tracks(sequence)
-    if tracks:
-        for track in tracks:
-            sections = track.get_sections()
-            for section in sections:
-                track.remove_section(section)
     unreal.SequencerTools.import_level_sequence_fbx(
             world,
             sequence,
@@ -139,19 +129,3 @@ def import_camera_to_level_sequence(sequence, parent_id, version_id,
         unreal.log(f"Spawning camera: {camera_actor_name}")
         for actor in camera_actors:
             actor.set_actor_label(camera_actor_name)
-
-    for binding in sequence.get_bindings():
-        if binding.get_display_name() == camera_actor_name:
-            camera_binding = sequence.get_binding_id(binding)
-            unreal.log("camera_binding: {}".format(camera_binding))
-            sections = get_sections(sequence)
-            for section in sections:
-                section.set_camera_binding_id(camera_binding)
-
-    set_sequence_frame_range(sequence, frameStart, frameEnd)
-
-
-def get_sections(sequence):
-    tracks = get_camera_tracks(sequence)
-    sections = [section for track in tracks for section in track.get_sections()] if tracks else []
-    return sections
