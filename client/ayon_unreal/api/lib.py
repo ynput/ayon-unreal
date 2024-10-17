@@ -143,7 +143,7 @@ def import_camera_to_level_sequence(sequence, parent_id, version_id,
     for binding in sequence.get_bindings():
         if binding.get_display_name() == camera_actor_name:
             camera_binding = sequence.get_binding_id(binding)
-            unreal.log("camera_binding: {}".format(camera_binding.tostring()))
+            unreal.log("camera_binding: {}".format(camera_binding))
             sections = get_sections(sequence)
             for section in sections:
                 section.set_camera_binding_id(camera_binding)
