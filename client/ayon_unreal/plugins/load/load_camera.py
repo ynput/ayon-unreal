@@ -64,7 +64,8 @@ class CameraLoader(plugin.Loader):
         asset_name,
         representation,
         folder_name,
-        product_type):
+        product_type,
+        folder_entity):
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
@@ -78,7 +79,9 @@ class CameraLoader(plugin.Loader):
             "product_type": product_type,
             # TODO these should be probably removed
             "asset": folder_name,
-            "family": product_type
+            "family": product_type,
+            "frameStart": folder_entity["attrib"]["frameStart"],
+            "frameEnd": folder_entity["attrib"]["frameEnd"]
         }
         imprint(f"{asset_dir}/{container_name}", data)
 
@@ -271,7 +274,8 @@ class CameraLoader(plugin.Loader):
             asset_name,
             context["representation"],
             folder_name,
-            context["product"]["productType"]
+            context["product"]["productType"],
+            folder_entity
         )
 
         EditorLevelLibrary.save_all_dirty_levels()
@@ -341,7 +345,8 @@ class CameraLoader(plugin.Loader):
             asset_name,
             context["representation"],
             folder_name,
-            context["product"]["productType"]
+            context["product"]["productType"],
+            folder_entity
         )
 
         EditorLevelLibrary.save_all_dirty_levels()

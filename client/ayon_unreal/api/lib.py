@@ -3,6 +3,7 @@ from ayon_core.pipeline import (
     get_current_project_name,
     get_representation_path
 )
+from ayon_unreal.api.pipeline import get_camera_tracks
 import ayon_api
 
 
@@ -99,7 +100,7 @@ def get_representation(parent_id, version_id):
 
 
 def import_camera_to_level_sequence(sequence, parent_id, version_id,
-                                    namespace, world):
+                                    namespace, world, frameStart, frameEnd):
     repre_entity = get_representation(parent_id, version_id)
     import_fbx_settings = unreal.MovieSceneUserImportFBXSettings()
     import_fbx_settings.set_editor_property('reduce_keys', False)
@@ -128,3 +129,10 @@ def import_camera_to_level_sequence(sequence, parent_id, version_id,
         unreal.log(f"Spawning camera: {camera_actor_name}")
         for actor in camera_actors:
             actor.set_actor_label(camera_actor_name)
+    tracks = get_camera_tracks(sequence)
+    for track in tracks:
+        sections = track.get_sections()
+        for section in sections:
+            section.set_range(frameStart, frameEnd)
+
+    set_sequence_frame_range(sequence, frameStart, frameEnd)
