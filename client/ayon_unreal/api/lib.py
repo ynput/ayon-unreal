@@ -3,7 +3,6 @@ from ayon_core.pipeline import (
     get_current_project_name,
     get_representation_path
 )
-from ayon_unreal.api.pipeline import get_camera_tracks
 import ayon_api
 
 
