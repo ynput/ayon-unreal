@@ -447,7 +447,7 @@ class LayoutLoader(plugin.Loader):
                 if not force_loaded or loaded_extension == "json":
                     repre_entity = next((repre_entity for repre_entity in repre_entities
                                          if repre_entity["name"] == extension), None)
-                    if not repre_entity:
+                    if not repre_entity or extension == "ma":
                         repre_entity = repre_entities[0]
                 else:
                     # use the prioritized representation
@@ -492,10 +492,17 @@ class LayoutLoader(plugin.Loader):
                     loader = self._get_abc_loader(loaders, product_type)
 
                 if not loader:
-                    self.log.error(
-                        f"No valid loader found for {repre_id} "
-                        f"({repr_format}) "
-                        f"{product_type}")
+                    if repr_format == "ma":
+                        msg = (
+                            f"No valid {product_type} loader found for {repre_id} ({repr_format}), "
+                            f"consider using {product_type} loader (fbx/abc) instead."
+                        )
+                        self.log.warning(msg)
+                    else:
+                        self.log.error(
+                            f"No valid loader found for {repre_id} "
+                            f"({repr_format}) "
+                            f"{product_type}")
                     continue
 
                 options = {
@@ -662,8 +669,9 @@ class LayoutLoader(plugin.Loader):
         shot = None
         sequences = []
 
-        level = f"{asset_dir}/{folder_name}_map.{folder_name}_map"
-        EditorLevelLibrary.new_level(f"{asset_dir}/{folder_name}_map")
+        asset_level = f"{asset_dir}/{folder_name}_map.{folder_name}_map"
+        if not EditorAssetLibrary.does_asset_exist(asset_level):
+            EditorLevelLibrary.new_level(f"{asset_dir}/{folder_name}_map")
 
         if create_sequences:
             # Create map for the shot, and create hierarchy of map. If the
@@ -679,11 +687,11 @@ class LayoutLoader(plugin.Loader):
                 EditorLevelLibrary.load_level(master_level)
                 EditorLevelUtils.add_level_to_world(
                     EditorLevelLibrary.get_editor_world(),
-                    level,
+                    asset_level,
                     unreal.LevelStreamingDynamic
                 )
                 EditorLevelLibrary.save_all_dirty_levels()
-                EditorLevelLibrary.load_level(level)
+                EditorLevelLibrary.load_level(asset_level)
 
             # Get all the sequences in the hierarchy. It will create them, if
             # they don't exist.
@@ -729,7 +737,7 @@ class LayoutLoader(plugin.Loader):
                     sequences[i], sequences[i + 1],
                     frame_ranges[i][1],
                     frame_ranges[i + 1][0], frame_ranges[i + 1][1],
-                    [level])
+                    [asset_level])
 
             project_name = get_current_project_name()
             folder_attributes = (
@@ -753,9 +761,9 @@ class LayoutLoader(plugin.Loader):
                     frame_ranges[-1][1],
                     min_frame,
                     max_frame,
-                    [level])
+                    [asset_level])
 
-            EditorLevelLibrary.load_level(level)
+            EditorLevelLibrary.load_level(asset_level)
         extension = options.get(
             "folder_representation_type", self.folder_representation_type)
         path = self.filepath_from_context(context)
@@ -798,9 +806,6 @@ class LayoutLoader(plugin.Loader):
 
         for a in asset_content:
             EditorAssetLibrary.save_asset(a)
-
-        if master_level:
-            EditorLevelLibrary.load_level(master_level)
 
         return asset_content
 

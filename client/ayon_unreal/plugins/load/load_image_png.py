@@ -30,20 +30,20 @@ class TexturePNGLoader(plugin.Loader):
     use_interchange = False
     show_dialog = False
     pipeline_path = ""
-    loaded_asset_dir = "{folder[path]}/{product[name]}"
+    loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
 
-    @classmethod  
-    def apply_settings(cls, project_settings):  
-        super(TexturePNGLoader, cls).apply_settings(project_settings)  
+    @classmethod
+    def apply_settings(cls, project_settings):
+        super(TexturePNGLoader, cls).apply_settings(project_settings)
         unreal_settings = project_settings.get("unreal", {})
-        # Apply import settings  
+        # Apply import settings
         import_settings = unreal_settings.get("import_settings", {})
-        cls.use_interchange = import_settings.get("use_interchange", 
-                                                  cls.use_interchange)  
+        cls.use_interchange = import_settings.get("use_interchange",
+                                                  cls.use_interchange)
         cls.show_dialog = import_settings.get("show_dialog", cls.show_dialog)
-        cls.pipeline_path = import_settings.get("interchange", {}).get(  
-            "pipeline_path_static_mesh", cls.pipeline_path  
-        )  
+        cls.pipeline_path = import_settings.get("interchange", {}).get(
+            "pipeline_path_static_mesh", cls.pipeline_path
+        )
         if unreal_settings.get("loaded_asset_dir", cls.loaded_asset_dir):
             cls.loaded_asset_dir = unreal_settings.get(
                     "loaded_asset_dir", cls.loaded_asset_dir)
@@ -64,11 +64,11 @@ class TexturePNGLoader(plugin.Loader):
         return task
 
     @classmethod
-    def import_and_containerize(  
+    def import_and_containerize(
         self, filepath, asset_dir, asset_name, container_name, asset_path=None
-    ):  
-        if self.use_interchange:  
-            print("Import using interchange method")  
+    ):
+        if self.use_interchange:
+            print("Import using interchange method")
 
             unreal.SystemLibrary.execute_console_command(
                 None, "Interchange.FeatureFlags.Import.PNG 1")
@@ -166,8 +166,7 @@ class TexturePNGLoader(plugin.Loader):
         suffix = "_CON"
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        asset_root, asset_name = format_asset_directory(
-            name, context, self.loaded_asset_dir, extension=ext)
+        asset_root, asset_name = format_asset_directory(context, self.loaded_asset_dir)
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
@@ -210,7 +209,6 @@ class TexturePNGLoader(plugin.Loader):
 
     def update(self, container, context):
         folder_path = context["folder"]["path"]
-        product_name = context["product"]["name"]
         product_type = context["product"]["productType"]
         repre_entity = context["representation"]
         path = get_representation_path(repre_entity)
@@ -218,8 +216,7 @@ class TexturePNGLoader(plugin.Loader):
 
         # Create directory for asset and Ayon container
         suffix = "_CON"
-        asset_root, asset_name = format_asset_directory(
-            product_name, context, self.loaded_asset_dir, extension=ext)
+        asset_root, asset_name = format_asset_directory(context, self.loaded_asset_dir)
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(

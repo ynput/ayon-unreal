@@ -28,8 +28,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
     color = "orange"
 
     abc_conversion_preset = "maya"
-    loaded_asset_dir = "{folder[path]}/{product[name]}"
-
+    loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -201,9 +200,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
         suffix = "_CON"
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        asset_root, asset_name = format_asset_directory(
-            name, context, self.loaded_asset_dir, extension=ext
-        )
+        asset_root, asset_name = format_asset_directory(context, self.loaded_asset_dir)
         loaded_options = {
             "default_conversion": options.get("default_conversion", False),
             "abc_conversion_preset": options.get(
@@ -249,7 +246,6 @@ class StaticMeshAlembicLoader(plugin.Loader):
 
     def update(self, container, context):
         folder_path = context["folder"]["path"]
-        product_name = context["product"]["name"]
         product_type = context["product"]["productType"]
         repre_entity = context["representation"]
 
@@ -257,8 +253,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
         suffix = "_CON"
         path = get_representation_path(repre_entity)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        asset_root, asset_name = format_asset_directory(
-            product_name, context, self.loaded_asset_dir, extension=ext)
+        asset_root, asset_name = format_asset_directory(context, self.loaded_asset_dir)
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")

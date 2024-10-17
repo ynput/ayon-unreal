@@ -99,8 +99,8 @@ def get_representation(parent_id, version_id):
         ), None)
 
 
-def import_camera_to_level_sequence(sequence, parent_id, version_id, world):
-     # Add a camera cut track to the sequence
+def import_camera_to_level_sequence(sequence, parent_id, version_id, namespace, world):
+    # Add a camera cut track to the sequence
     if not get_camera_tracks(sequence):
         sequence.add_master_track(unreal.MovieSceneCameraCutTrack)
     repre_entity = get_representation(parent_id, version_id)
@@ -112,12 +112,12 @@ def import_camera_to_level_sequence(sequence, parent_id, version_id, world):
     if sel_actors:
         for actor in sel_actors:
             unreal.EditorLevelLibrary.destroy_actor(actor)
-        tracks = get_camera_tracks(sequence)
-        if tracks:
-            for track in tracks:
-                sections = track.get_sections()
-                for section in sections:
-                    track.remove_section(section)
+    tracks = get_camera_tracks(sequence)
+    if tracks:
+        for track in tracks:
+            sections = track.get_sections()
+            for section in sections:
+                track.remove_section(section)
     unreal.SequencerTools.import_level_sequence_fbx(
             world,
             sequence,
@@ -125,3 +125,10 @@ def import_camera_to_level_sequence(sequence, parent_id, version_id, world):
             import_fbx_settings,
             camera_path
         )
+    camera_actors = unreal.GameplayStatics().get_all_actors_of_class(
+        world, unreal.CameraActor)
+    if namespace:
+        camera_actor_name = unreal.Paths.split(namespace)[1]
+        unreal.log(f"Spawning camera: {camera_actor_name}")
+        for actor in camera_actors:
+            actor.set_actor_label(camera_actor_name)
