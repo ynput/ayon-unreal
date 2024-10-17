@@ -87,7 +87,6 @@ def import_animation_sequence(asset_content, sequence, frameStart, frameEnd):
             params.set_editor_property('Animation', animation)
             anim_section.set_editor_property('Params', params)
             anim_section.set_range(frameStart, frameEnd)
-            set_sequence_frame_range(sequence, frameStart, frameEnd)
 
 
 def get_representation(parent_id, version_id):
