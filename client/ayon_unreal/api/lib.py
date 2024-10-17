@@ -135,4 +135,18 @@ def import_camera_to_level_sequence(sequence, parent_id, version_id,
         for actor in camera_actors:
             actor.set_actor_label(camera_actor_name)
 
+    for binding in sequence.get_bindings():
+        if binding.get_display_name() == camera_actor_name:
+            camera_binding = sequence.get_binding_id(binding)
+            unreal.log("camera_binding: {}".format(camera_binding.tostring()))
+            sections = get_sections(sequence)
+            for section in sections:
+                section.set_camera_binding_id(camera_binding)
+
     set_sequence_frame_range(sequence, frameStart, frameEnd)
+
+
+def get_sections(sequence):
+    tracks = get_camera_tracks(sequence)
+    sections = [section for track in tracks for section in track.get_sections()] if tracks else []
+    return sections
