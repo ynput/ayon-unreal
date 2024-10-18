@@ -132,3 +132,32 @@ def import_camera_to_level_sequence(sequence, parent_id, version_id, namespace, 
         unreal.log(f"Spawning camera: {camera_actor_name}")
         for actor in camera_actors:
             actor.set_actor_label(camera_actor_name)
+
+
+def get_shot_track_names(sel_objects=None, get_name=True):
+    selection = [
+        a for a in sel_objects
+        if a.get_class().get_name() == "LevelSequence"
+    ]
+
+    sub_sequence_tracks = [
+        track for sel in selection for track in
+        sel.find_master_tracks_by_type(unreal.MovieSceneSubTrack)
+    ]
+
+    movie_shot_tracks = [track for track in sub_sequence_tracks
+                         if isinstance(track, unreal.MovieSceneCinematicShotTrack)]
+    if get_name:
+        return [section.get_shot_display_name() for shot_tracks in
+                movie_shot_tracks for section in shot_tracks.get_sections()]
+    else:
+        return [section for shot_tracks in
+                movie_shot_tracks for section in shot_tracks.get_sections()]
+
+
+def get_shot_tracks(members):
+    ar = unreal.AssetRegistryHelpers.get_asset_registry()
+    selected_sequences = [
+        ar.get_asset_by_object_path(member).get_asset() for member in members
+    ]
+    return get_shot_track_names(selected_sequences, get_name=False)
