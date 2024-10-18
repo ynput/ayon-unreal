@@ -49,10 +49,10 @@ def set_sequence_frame_range(sequence, frameStart, frameEnd):
     fps = float(display_rate.numerator) / float(display_rate.denominator)
     sequence.set_playback_start(frameStart)
     sequence.set_playback_end(frameEnd)
-    sequence.set_work_range_start(frameStart / fps)
-    sequence.set_work_range_end(frameEnd / fps)
-    sequence.set_view_range_start(frameStart / fps)
-    sequence.set_view_range_end(frameEnd / fps)
+    sequence.set_work_range_start(float(frameStart / fps))
+    sequence.set_work_range_end(float(frameEnd / fps))
+    sequence.set_view_range_start(float(frameStart / fps))
+    sequence.set_view_range_end(float(frameEnd / fps))
 
 
 def import_animation_sequence(asset_content, sequence, frameStart, frameEnd):
