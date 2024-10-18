@@ -422,26 +422,27 @@ class ExistingLayoutLoader(plugin.Loader):
             "{}/{}/{}".format(hierarchy_dir, folder_name, name),
             suffix="_existing"
         )
+
         curr_level = self._get_current_level()
-        level_seq_filter = unreal.ARFilter(
-            class_names=["LevelSequence"],
-            package_paths=[asset_dir],
-            recursive_paths=False)
-
-        ar = unreal.AssetRegistryHelpers.get_asset_registry()
-        sequence = next((asset for asset in ar.get_assets(level_seq_filter)), None)
-        if not curr_level:
-            raise AssertionError("Current level not saved")
-
-        project_name = context["project"]["name"]
-        path = self.filepath_from_context(context)
-        containers = self._process(path, project_name, sequence)
         curr_level_path = Path(
             curr_level.get_outer().get_path_name()).parent.as_posix()
         if curr_level_path == "/Temp":
             curr_level_path = asset_dir
         #TODO: make sure curr_level_path is not a temp path,
         # create new level for layout level
+        level_seq_filter = unreal.ARFilter(
+            class_names=["LevelSequence"],
+            package_paths=[curr_level_path],
+            recursive_paths=False)
+
+        ar = unreal.AssetRegistryHelpers.get_asset_registry()
+        sequence = next((asset.get_asset() for asset in ar.get_assets(level_seq_filter)), None)
+        if not curr_level:
+            raise AssertionError("Current level not saved")
+
+        project_name = context["project"]["name"]
+        path = self.filepath_from_context(context)
+        containers = self._process(path, project_name, sequence)
         container_name += suffix
         if not unreal.EditorAssetLibrary.does_asset_exist(
             f"{curr_level_path}/{container_name}"
