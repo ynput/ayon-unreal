@@ -51,6 +51,8 @@ def set_sequence_frame_range(sequence, frameStart, frameEnd):
     sequence.set_playback_end(frameEnd)
     sequence.set_work_range_start(frameStart / fps)
     sequence.set_work_range_end(frameEnd / fps)
+    sequence.set_view_range_start(frameStart / fps)
+    sequence.set_view_range_end(frameEnd / fps)
 
 
 def import_animation_sequence(asset_content, sequence, frameStart, frameEnd):
