@@ -1,11 +1,7 @@
-import os
-from pathlib import Path
 
 import unreal
 import pyblish.api
 
-from ayon_core.pipeline import get_current_project_name
-from ayon_core.pipeline import Anatomy
 from ayon_unreal.api import pipeline
 
 
@@ -91,34 +87,3 @@ class CollectRenderInstances(pyblish.api.InstancePlugin):
                     new_data["master_level"] = data["master_level"]
 
                     self.log.debug(f"new instance data: {new_data}")
-
-                    try:
-                        project = get_current_project_name()
-                        anatomy = Anatomy(project)
-                        root = anatomy.roots['renders']
-                    except Exception as e:
-                        raise Exception((
-                            "Could not find render root "
-                            "in anatomy settings.")) from e
-
-                    render_dir = f"{root}/{project}/{s.get('output')}"
-                    render_path = Path(render_dir)
-                    self.log.debug(f"Collecting render path: {render_path}")
-                    frames = [str(x) for x in render_path.iterdir() if x.is_file()]
-                    frames = pipeline.get_sequence(frames)
-                    image_format = next((os.path.splitext(x)[-1].lstrip(".")
-                                         for x in frames), "exr")
-
-                    if "representations" not in new_instance.data:
-                        new_instance.data["representations"] = []
-
-                    repr = {
-                        'frameStart': instance.data["frameStart"],
-                        'frameEnd': instance.data["frameEnd"],
-                        'name': image_format,
-                        'ext': image_format,
-                        'files': frames,
-                        'stagingDir': render_dir,
-                        'tags': ['review']
-                    }
-                    new_instance.data["representations"].append(repr)
