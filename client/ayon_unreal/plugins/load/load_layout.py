@@ -636,7 +636,7 @@ class LayoutLoader(plugin.Loader):
         folder_path = folder_entity["path"]
         hierarchy = folder_path.lstrip("/").split("/")
         # Remove folder name
-        folder_name = hierarchy.pop(-1)
+        folder_name = hierarchy.pop(-1) if len(hierarchy) > 1 else hierarchy
         root = self.ASSET_ROOT
         hierarchy_dir = root
         hierarchy_dir_list = []
