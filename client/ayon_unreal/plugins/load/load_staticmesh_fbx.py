@@ -40,10 +40,8 @@ class StaticMeshFBXLoader(plugin.Loader):
         cls.use_interchange = import_settings.get("interchange", {}).get(
             "enabled", cls.use_interchange
         )
-        cls.show_dialog = import_settings.get("show_dialog",
-                                                  cls.show_dialog)
-        cls.use_nanite = import_settings.get("use_nanite",
-                                                  cls.use_nanite)
+        cls.show_dialog = import_settings.get("show_dialog", cls.show_dialog)
+        cls.use_nanite = import_settings.get("use_nanite", cls.use_nanite)
         cls.pipeline_path = import_settings.get("interchange", {}).get(
             "pipeline_path_static_mesh", cls.pipeline_path
         )

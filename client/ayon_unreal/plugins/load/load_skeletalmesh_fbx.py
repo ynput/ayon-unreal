@@ -47,8 +47,7 @@ class SkeletalMeshFBXLoader(plugin.Loader):
             project_settings.get("unreal", {}).get("import_settings", {})  
         )  
 
-        cls.show_dialog = import_settings.get("show_dialog", 
-                                                cls.show_dialog)   
+        cls.show_dialog = import_settings.get("show_dialog", cls.show_dialog)
 
     @staticmethod
     def get_task(cls, filename, asset_dir, asset_name, replace):
