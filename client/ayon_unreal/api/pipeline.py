@@ -3,6 +3,7 @@ import os
 import re
 import json
 import clique
+import copy
 import logging
 from typing import List, Any
 from contextlib import contextmanager
@@ -22,6 +23,7 @@ from ayon_core.pipeline import (
     AYON_CONTAINER_ID,
     get_current_project_name,
 )
+from ayon_core.lib import StringTemplate
 from ayon_core.pipeline.context_tools import (
     get_current_folder_entity
 )
@@ -35,6 +37,7 @@ import unreal  # noqa
 logger = logging.getLogger("ayon_core.hosts.unreal")
 
 AYON_CONTAINERS = "AyonContainers"
+AYON_ROOT_DIR = "/Game/Ayon"
 AYON_ASSET_DIR = "/Game/Ayon/Assets"
 CONTEXT_CONTAINER = "Ayon/context.json"
 UNREAL_VERSION = semver.VersionInfo(
@@ -654,6 +657,15 @@ def generate_sequence(h, h_dir):
     return sequence, (min_frame, max_frame)
 
 
+def find_common_name(asset_name):
+    # Find the common prefix
+    prefix_match = re.match(r"^(.*?)(\d+)(.*?)$", asset_name)
+    if not prefix_match:
+        return
+    name, _, ext = prefix_match.groups()
+    return f"{name}_{ext}"
+
+
 def _get_comps_and_assets(
     component_class, asset_class, old_assets, new_assets, selected
 ):
@@ -677,7 +689,8 @@ def _get_comps_and_assets(
     for a in old_assets:
         asset = unreal.EditorAssetLibrary.load_asset(a)
         if isinstance(asset, asset_class):
-            selected_old_assets[asset.get_name()] = asset
+            asset_name = find_common_name(asset.get_name())
+            selected_old_assets[asset_name] = asset
 
     # Get all the static meshes among the new assets in a dictionary with
     # the name as key
@@ -685,7 +698,8 @@ def _get_comps_and_assets(
     for a in new_assets:
         asset = unreal.EditorAssetLibrary.load_asset(a)
         if isinstance(asset, asset_class):
-            selected_new_assets[asset.get_name()] = asset
+            asset_name = find_common_name(asset.get_name())
+            selected_new_assets[asset_name] = asset
 
     return components, selected_old_assets, selected_new_assets
 
@@ -700,6 +714,15 @@ def replace_static_mesh_actors(old_assets, new_assets, selected):
         new_assets,
         selected
     )
+    unreal.log("static_mesh_comps")
+    unreal.log(static_mesh_comps)
+
+    unreal.log("old_meshes")
+    unreal.log(old_meshes)
+
+    unreal.log("new_meshes")
+    unreal.log(old_meshes)
+
 
     for old_name, old_mesh in old_meshes.items():
         new_mesh = new_meshes.get(old_name)
@@ -822,6 +845,59 @@ def select_camera(sequence):
                 actor_subsys.set_actor_selection_state(actor, True)
             else:
                 actor_subsys.set_actor_selection_state(actor, False)
+
+
+def format_asset_directory(context, directory_template):
+    """Setting up the asset directory path and name.
+    Args:
+        name (str): Instance name
+        context (dict): context
+        directory_template (str): directory template path
+        extension (str, optional): file extension. Defaults to "abc".
+        use_version (bool, optional): use context version for asset
+            directory. Defaults to True.
+    Returns:
+        tuple[str, str]: asset directory, asset name
+    """
+
+    data = copy.deepcopy(context)
+    version = data["version"]["version"]
+    # if user set {version[version]},
+    # the copied data from data["version"]["version"] convert
+    # to set the version of the exclusive version folder
+    if version < 0:
+        data["version"]["version"] = "hero"
+    else:
+        data["version"]["version"] = f"v{version:03d}"
+    asset_name_with_version = set_asset_name(data)
+    asset_dir = StringTemplate(directory_template).format_strict(data)
+    return f"{AYON_ROOT_DIR}/{asset_dir}", asset_name_with_version
+
+
+def set_asset_name(data):
+    """Set the name of the asset during loading
+
+    Args:
+        folder_name (str): folder name
+        name (str): instance name
+        extension (str): extension
+
+    Returns:
+        str: asset name
+    """
+    asset_name = None,
+    name = data["product"]["name"]
+    version = data["version"]["version"]
+    folder_name = data["folder"]["name"]
+    extension = data["representation"]["name"]
+    if not extension:
+        asset_name = name
+    elif folder_name:
+        asset_name = "{}_{}_{}_{}".format(
+            folder_name, name, version, extension)
+    else:
+        asset_name = "{}_{}_{}".format(name, version, extension)
+    return asset_name
 
 
 def get_sequence(files):
@@ -969,9 +1045,9 @@ def has_asset_directory_pattern_matched(asset_name, asset_dir, name, extension=N
     existing_asset_dir = unreal.Paths.split(asset_path)[0]
     existing_version_folder = existing_asset_dir.split("/")[-1]
     # TODO: make it not hardcoded
-    pattern = f"{name}_\d{{3}}"
+    pattern = rf"{name}_\d{{3}}"
     if extension:
-        pattern = f"{name}_v\d{{3}}_{extension}"
+        pattern = rf"{name}_v\d{{3}}_{extension}"
     is_version_folder_matched = re.match(pattern, version_folder)
     is_existing_version_folder_matched = re.match(pattern, existing_version_folder)
     if not is_version_folder_matched or not is_existing_version_folder_matched:

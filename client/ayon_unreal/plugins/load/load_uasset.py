@@ -24,6 +24,17 @@ class UAssetLoader(plugin.Loader):
 
     extension = "uasset"
 
+    loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
+
+    @classmethod
+    def apply_settings(cls, project_settings):
+        super(UAssetLoader, cls).apply_settings(project_settings)
+        # Apply import settings
+        unreal_settings = project_settings.get("unreal", {})
+        if unreal_settings.get("loaded_asset_dir", cls.loaded_asset_dir):
+            cls.loaded_asset_dir = unreal_settings.get(
+                    "loaded_asset_dir", cls.loaded_asset_dir)
+
     def load(self, context, name, namespace, options):
         """Load and containerise representation into Content Browser.
 
@@ -42,23 +53,14 @@ class UAssetLoader(plugin.Loader):
         """
 
         # Create directory for asset and Ayon container
-        root = unreal_pipeline.AYON_ASSET_DIR
         folder_path = context["folder"]["path"]
-        folder_name = context["folder"]["name"]
         suffix = "_CON"
+        asset_root, asset_name = unreal_pipeline.format_asset_directory(context, self.loaded_asset_dir)
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{root}/{folder_name}/{name}", suffix=""
+            asset_root, suffix=""
         )
-
-        unique_number = 1
-        while unreal.EditorAssetLibrary.does_directory_exist(
-            f"{asset_dir}_{unique_number:02}"
-        ):
-            unique_number += 1
-
-        asset_dir = f"{asset_dir}_{unique_number:02}"
-        container_name = f"{container_name}_{unique_number:02}{suffix}"
+        container_name = f"{container_name}_{suffix}"
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
 

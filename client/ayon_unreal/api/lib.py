@@ -37,8 +37,11 @@ def update_skeletal_mesh(asset_content, sequence):
                     skeletal_mesh = skeletal_mesh_component.skeletal_mesh
                     if skeletal_mesh:
                         skel_mesh_comp = actor.get_editor_property('skeletal_mesh_component')
-                        if skel_mesh_comp.get_editor_property("skeletal_mesh") != imported_skeletal_mesh:
-                            skel_mesh_comp.set_editor_property('skeletal_mesh', skeletal_mesh_asset)
+                        unreal.log("Replacing skeleton mesh component to alembic")
+                        unreal.log(skel_mesh_comp)
+                        if skel_mesh_comp:
+                            if skel_mesh_comp.get_editor_property("skeletal_mesh") != imported_skeletal_mesh:
+                                skel_mesh_comp.set_editor_property('skeletal_mesh', skeletal_mesh_asset)
 
 
 def set_sequence_frame_range(sequence, frameStart, frameEnd):
@@ -96,8 +99,8 @@ def get_representation(parent_id, version_id):
         ), None)
 
 
-def import_camera_to_level_sequence(sequence, parent_id, version_id, world):
-     # Add a camera cut track to the sequence
+def import_camera_to_level_sequence(sequence, parent_id, version_id, namespace, world):
+    # Add a camera cut track to the sequence
     if not get_camera_tracks(sequence):
         sequence.add_master_track(unreal.MovieSceneCameraCutTrack)
     repre_entity = get_representation(parent_id, version_id)
@@ -109,12 +112,12 @@ def import_camera_to_level_sequence(sequence, parent_id, version_id, world):
     if sel_actors:
         for actor in sel_actors:
             unreal.EditorLevelLibrary.destroy_actor(actor)
-        tracks = get_camera_tracks(sequence)
-        if tracks:
-            for track in tracks:
-                sections = track.get_sections()
-                for section in sections:
-                    track.remove_section(section)
+    tracks = get_camera_tracks(sequence)
+    if tracks:
+        for track in tracks:
+            sections = track.get_sections()
+            for section in sections:
+                track.remove_section(section)
     unreal.SequencerTools.import_level_sequence_fbx(
             world,
             sequence,
@@ -122,3 +125,10 @@ def import_camera_to_level_sequence(sequence, parent_id, version_id, world):
             import_fbx_settings,
             camera_path
         )
+    camera_actors = unreal.GameplayStatics().get_all_actors_of_class(
+        world, unreal.CameraActor)
+    if namespace:
+        camera_actor_name = unreal.Paths.split(namespace)[1]
+        unreal.log(f"Spawning camera: {camera_actor_name}")
+        for actor in camera_actors:
+            actor.set_actor_label(camera_actor_name)
