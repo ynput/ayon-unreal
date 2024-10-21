@@ -26,6 +26,7 @@ class SkeletalMeshFBXLoader(plugin.Loader):
     color = "orange"
 
     loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
+    show_dialog = False
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -34,19 +35,10 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         if unreal_settings.get("loaded_asset_dir", cls.loaded_asset_dir):
             cls.loaded_asset_dir = unreal_settings.get(
                     "loaded_asset_dir", cls.loaded_asset_dir)
-
-    
-    show_dialog = False
-
-    @classmethod  
-    def apply_settings(cls, project_settings):  
-        super(SkeletalMeshFBXLoader, cls).apply_settings(project_settings)  
-        
-        # Apply import settings  
-        import_settings = (  
-            project_settings.get("unreal", {}).get("import_settings", {})  
-        )  
-
+        # Apply import settings
+        import_settings = (
+            project_settings.get("unreal", {}).get("import_settings", {})
+        )
         cls.show_dialog = import_settings.get("show_dialog", cls.show_dialog)
 
     @staticmethod
