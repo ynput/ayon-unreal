@@ -917,7 +917,7 @@ class LayoutLoader(plugin.Loader):
             # We need to traverse the hierarchy from the master sequence to
             # find the level sequence.
             master_directory = container.get("master_directory", "")
-            if not ms_asset:
+            if not master_directory:
                 namespace = container.get('namespace').replace(f"{root}/", "")
                 ms_asset = namespace.split('/')[0]
                 master_directory = f"{root}/{ms_asset}"
