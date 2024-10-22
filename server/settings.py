@@ -52,7 +52,7 @@ class UnrealSettings(BaseSettingsModel):
     loaded_layout_dir: str = SettingsField(
         "{folder[path]}/{product[name]}",
         title="Directories for loaded layouts",
-        description="Directories to store the loaded layouts or cameras"
+        description="Directories to store the loaded layouts"
     )
     master_dir: str = SettingsField(
         "{project[name]}",
