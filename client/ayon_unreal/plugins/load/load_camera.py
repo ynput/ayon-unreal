@@ -29,9 +29,22 @@ class CameraLoader(plugin.Loader):
     representations = {"fbx"}
     icon = "cube"
     color = "orange"
-    root = AYON_ROOT_DIR
     loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
     master_dir = "{project[name]}"
+
+    @classmethod
+    def apply_settings(cls, project_settings):
+        super(CameraLoader, cls).apply_settings(
+            project_settings
+        )
+        cls.loaded_layout_dir = (
+            project_settings["unreal"].get(
+                "loaded_layout_dir", cls.loaded_layout_dir)
+        )
+        cls.master_dir = (
+            project_settings["unreal"].get(
+                "master_dir", cls.master_dir)
+        )
 
     def _import_camera(
         self, world, sequence, bindings, import_fbx_settings, import_filename
@@ -208,7 +221,7 @@ class CameraLoader(plugin.Loader):
                             key.set_time(unreal.FrameNumber(value=new_time))
         return master_level
 
-    def load(self, context, name, namespace, data):
+    def load(self, context, name, namespace, options):
         """
         Load and containerise representation into Content Browser.
 
@@ -346,8 +359,8 @@ class CameraLoader(plugin.Loader):
         asset_dir = container.get('namespace')
         # Create a temporary level to delete the layout level.
         EditorLevelLibrary.save_all_dirty_levels()
-        EditorAssetLibrary.make_directory(f"{self.root}/tmp")
-        tmp_level = f"{self.root}/tmp/temp_map"
+        EditorAssetLibrary.make_directory(f"{AYON_ROOT_DIR}/tmp")
+        tmp_level = f"{AYON_ROOT_DIR}/tmp/temp_map"
         if not EditorAssetLibrary.does_asset_exist(f"{tmp_level}.temp_map"):
             EditorLevelLibrary.new_level(tmp_level)
         else:
@@ -359,4 +372,4 @@ class CameraLoader(plugin.Loader):
         # Load the default level
         default_level_path = "/Engine/Maps/Templates/OpenWorld"
         EditorLevelLibrary.load_level(default_level_path)
-        EditorAssetLibrary.delete_directory(f"{self.root}/tmp")
+        EditorAssetLibrary.delete_directory(f"{AYON_ROOT_DIR}/tmp")

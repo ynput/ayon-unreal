@@ -85,18 +85,23 @@ class LayoutLoader(plugin.Loader):
     @classmethod
     def apply_settings(cls, project_settings):
         super(LayoutLoader, cls).apply_settings(project_settings)
-
+        unreal_settings =  project_settings.get("unreal", {})
         # Apply import settings
-        folder_representation_type = (
-            project_settings.get("unreal", {}).get("folder_representation_type", {})
-        )
-        use_force_loaded = (
-            project_settings.get("unreal", {}).get("force_loaded", {})
-        )
+        folder_representation_type = unreal_settings.get(
+            "folder_representation_type", {})
+        use_force_loaded = unreal_settings.get("force_loaded", {})
+        # Apply import settings
+        loaded_layout_dir = unreal_settings.get(
+            "loaded_layout_dir", cls.loaded_layout_dir)
+        master_dir = unreal_settings.get("master_dir", cls.master_dir)
         if folder_representation_type:
             cls.folder_representation_type = folder_representation_type
         if use_force_loaded:
             cls.force_loaded = use_force_loaded
+        if loaded_layout_dir:
+            cls.loaded_layout_dir = loaded_layout_dir
+        if master_dir:
+            cls.master_dir = master_dir
 
     @classmethod
     def get_options(cls, contexts):

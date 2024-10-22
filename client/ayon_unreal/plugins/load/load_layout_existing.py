@@ -28,7 +28,6 @@ class ExistingLayoutLoader(plugin.Loader):
     label = "Load Layout on Existing Scene"
     icon = "code-fork"
     color = "orange"
-    ASSET_ROOT = "/Game/Ayon"
 
     delete_unmatched_assets = True
     loaded_layout_dir = "{folder[path]}/{product[name]}"
@@ -41,6 +40,14 @@ class ExistingLayoutLoader(plugin.Loader):
         )
         cls.delete_unmatched_assets = (
             project_settings["unreal"]["delete_unmatched_assets"]
+        )
+        cls.loaded_layout_dir = (
+            project_settings["unreal"].get(
+                "loaded_layout_dir", cls.loaded_layout_dir)
+        )
+        cls.master_dir = (
+            project_settings["unreal"].get(
+                "master_dir", cls.master_dir)
         )
 
     @staticmethod
