@@ -88,7 +88,7 @@ def import_animation_sequence(asset_content, sequence, frameStart, frameEnd):
             params = unreal.MovieSceneSkeletalAnimationParams()
             params.set_editor_property('Animation', animation)
             anim_section.set_editor_property('Params', params)
-            anim_section.set_range(frameStart, frameEnd)
+            anim_section.set_range(frameStart + 1, frameEnd + 2)
 
 
 def get_representation(parent_id, version_id):
@@ -134,6 +134,6 @@ def import_camera_to_level_sequence(sequence, parent_id, version_id,
     for track in tracks:
         sections = track.get_sections()
         for section in sections:
-            section.set_range(frameStart, frameEnd)
+            section.set_range(frameStart + 1, frameEnd + 2)
 
     set_sequence_frame_range(sequence, frameStart, frameEnd)
