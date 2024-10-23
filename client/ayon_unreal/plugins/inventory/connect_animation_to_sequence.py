@@ -95,9 +95,19 @@ class ConnectFbxAnimation(InventoryAction):
         namespace = next((
             container.get("namespace") for container in containers
             if container.get("family") == "camera"), None)
+        start_frame, end_frame = get_frame_range_from_folder_attributes()
+        # use the clipIn/Out value for the frameStart and frameEnd
+        frameStart = next((
+            int(container.get("frameStart", start_frame)) for container in containers
+            if container.get("family") == "camera"), None)
+        frameEnd = next((
+            int(container.get("frameEnd", end_frame)) for container in containers
+            if container.get("family") == "camera"), None)
         layout_world = self.get_layout_asset(containers, asset_name="World")
         import_camera_to_level_sequence(
-            sequence, parent_id, version_id, namespace, layout_world)
+            sequence, parent_id, version_id,
+            namespace, layout_world, frameStart,
+            frameEnd)
 
     def import_animation_sequence(self, asset_content, sequence, frameStart, frameEnd):
         import_animation_sequence(asset_content, sequence, frameStart, frameEnd)

@@ -31,6 +31,8 @@ class ExistingLayoutLoader(plugin.Loader):
     ASSET_ROOT = "/Game/Ayon"
 
     delete_unmatched_assets = True
+    loaded_layout_dir = "{folder[path]}/{product[name]}"
+    master_dir = "{project[name]}"
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -75,7 +77,7 @@ class ExistingLayoutLoader(plugin.Loader):
 
         return new_transform.transform()
 
-    def _spawn_actor(self, obj, lasset):
+    def _spawn_actor(self, obj, lasset, sequence):
         actor = EditorLevelLibrary.spawn_actor_from_object(
             obj, unreal.Vector(0.0, 0.0, 0.0)
         )
@@ -92,6 +94,7 @@ class ExistingLayoutLoader(plugin.Loader):
                 roll=rotation["x"], pitch=rotation["z"],
                 yaw=-rotation["y"])
             actor.set_actor_rotation(actor_rotation, False)
+        sequence.add_possessable(actor)
 
     @staticmethod
     def _get_fbx_loader(loaders, family):
@@ -216,7 +219,7 @@ class ExistingLayoutLoader(plugin.Loader):
             output[version_id].append(repre_entity)
         return output
 
-    def _process(self, lib_path, project_name):
+    def _process(self, lib_path, project_name, sequence):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
         actors = EditorLevelLibrary.get_all_level_actors()
@@ -347,7 +350,7 @@ class ExistingLayoutLoader(plugin.Loader):
 
                 for asset in assets:
                     obj = asset.get_asset()
-                    self._spawn_actor(obj, lasset)
+                    self._spawn_actor(obj, lasset, sequence)
                 loaded = True
                 break
 
@@ -379,7 +382,7 @@ class ExistingLayoutLoader(plugin.Loader):
                 if not obj.get_class().get_name() == 'StaticMesh':
                     continue
 
-                self._spawn_actor(obj, lasset)
+                self._spawn_actor(obj, lasset, sequence)
                 if obj.get_class().get_name() == 'AyonAssetContainer':
                     con = obj
                     containers.append(con.get_path_name())
@@ -402,39 +405,40 @@ class ExistingLayoutLoader(plugin.Loader):
         # Create directory for asset and Ayon container
         folder_entity = context["folder"]
         folder_path = folder_entity["path"]
-        hierarchy = folder_path.lstrip("/").split("/")
-        # Remove folder name
-        folder_name = hierarchy.pop(-1)
-        product_type = context["product"]["productType"]
-        root = self.ASSET_ROOT
-        hierarchy_dir = root
-        hierarchy_dir_list = []
-        for h in hierarchy:
-            hierarchy_dir = f"{hierarchy_dir}/{h}"
-            hierarchy_dir_list.append(hierarchy_dir)
 
+        folder_name = folder_entity["name"]
+        product_type = context["product"]["productType"]
+        asset_root, _ = upipeline.format_asset_directory(
+            context, self.loaded_layout_dir)
         suffix = "_CON"
         asset_name = f"{folder_name}_{name}" if folder_name else name
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            "{}/{}/{}".format(hierarchy_dir, folder_name, name),
+            asset_root,
             suffix="_existing"
         )
+
         curr_level = self._get_current_level()
-
-        if not curr_level:
-            raise AssertionError("Current level not saved")
-
-        project_name = context["project"]["name"]
-        path = self.filepath_from_context(context)
-        containers = self._process(path, project_name)
         curr_level_path = Path(
             curr_level.get_outer().get_path_name()).parent.as_posix()
         if curr_level_path == "/Temp":
             curr_level_path = asset_dir
         #TODO: make sure curr_level_path is not a temp path,
         # create new level for layout level
+        level_seq_filter = unreal.ARFilter(
+            class_names=["LevelSequence"],
+            package_paths=[curr_level_path],
+            recursive_paths=False)
+
+        ar = unreal.AssetRegistryHelpers.get_asset_registry()
+        sequence = next((asset.get_asset() for asset in ar.get_assets(level_seq_filter)), None)
+        if not curr_level:
+            raise AssertionError("Current level not saved")
+
+        project_name = context["project"]["name"]
+        path = self.filepath_from_context(context)
+        containers = self._process(path, project_name, sequence)
         container_name += suffix
         if not unreal.EditorAssetLibrary.does_asset_exist(
             f"{curr_level_path}/{container_name}"
@@ -465,9 +469,15 @@ class ExistingLayoutLoader(plugin.Loader):
 
         project_name = context["project"]["name"]
         repre_entity = context["representation"]
+        level_seq_filter = unreal.ARFilter(
+            class_names=["LevelSequence"],
+            package_paths=[asset_dir],
+            recursive_paths=False)
 
+        ar = unreal.AssetRegistryHelpers.get_asset_registry()
+        sequence = next((asset for asset in ar.get_assets(level_seq_filter)), None)
         source_path = get_representation_path(repre_entity)
-        containers = self._process(source_path, project_name)
+        containers = self._process(source_path, project_name, sequence)
 
         data = {
             "representation": repre_entity["id"],

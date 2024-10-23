@@ -33,6 +33,8 @@ from ayon_unreal.api.pipeline import (
     create_container,
     imprint,
     ls,
+    AYON_ROOT_DIR,
+    format_asset_directory
 )
 from ayon_core.lib import EnumDef
 
@@ -75,9 +77,10 @@ class LayoutLoader(plugin.Loader):
     label = "Load Layout"
     icon = "code-fork"
     color = "orange"
-    ASSET_ROOT = "/Game/Ayon"
     folder_representation_type = "json"
     force_loaded = False
+    loaded_layout_dir = "{folder[path]}/{product[name]}"
+    master_dir = "{project[name]}"
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -634,23 +637,15 @@ class LayoutLoader(plugin.Loader):
         # Create directory for asset and Ayon container
         folder_entity = context["folder"]
         folder_path = folder_entity["path"]
-        hierarchy = folder_path.lstrip("/").split("/")
+        project_name = context["project"]["name"]
         # Remove folder name
-        folder_name = hierarchy.pop(-1)
-        root = self.ASSET_ROOT
-        hierarchy_dir = root
-        hierarchy_dir_list = []
-        for h in hierarchy:
-            hierarchy_dir = f"{hierarchy_dir}/{h}"
-            hierarchy_dir_list.append(hierarchy_dir)
+        folder_name = folder_entity["name"]
         suffix = "_CON"
         asset_name = f"{folder_name}_{name}" if folder_name else name
-
+        asset_root, _ = format_asset_directory(context, self.loaded_layout_dir)
+        hierarchy_dir, _ = format_asset_directory(context, self.master_dir)
         tools = unreal.AssetToolsHelpers().get_asset_tools()
-        asset_dir, container_name = tools.create_unique_asset_name(
-            "{}/{}/{}".format(hierarchy_dir, folder_name, name),
-            suffix=""
-        )
+        asset_dir, container_name = tools.create_unique_asset_name(asset_root, suffix="")
 
         container_name += suffix
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
@@ -663,17 +658,12 @@ class LayoutLoader(plugin.Loader):
         asset_level = f"{asset_dir}/{folder_name}_map.{folder_name}_map"
         if not EditorAssetLibrary.does_asset_exist(asset_level):
             EditorLevelLibrary.new_level(f"{asset_dir}/{folder_name}_map")
-
         if create_sequences:
             # Create map for the shot, and create hierarchy of map. If the
             # maps already exist, we will use them.
-            if hierarchy:
-                h_dir = hierarchy_dir_list[0]
-                h_asset = hierarchy[0]
-                master_level = f"{h_dir}/{h_asset}_map.{h_asset}_map"
-                if not EditorAssetLibrary.does_asset_exist(master_level):
-                    EditorLevelLibrary.new_level(f"{h_dir}/{h_asset}_map")
-
+            master_level = f"{hierarchy_dir}/{project_name}_map.{project_name}_map"
+            if not EditorAssetLibrary.does_asset_exist(master_level):
+                EditorLevelLibrary.new_level(f"{hierarchy_dir}/{project_name}_map")
             if master_level:
                 EditorLevelLibrary.load_level(master_level)
                 EditorLevelUtils.add_level_to_world(
@@ -687,28 +677,27 @@ class LayoutLoader(plugin.Loader):
             # Get all the sequences in the hierarchy. It will create them, if
             # they don't exist.
             frame_ranges = []
-            for (h_dir, h) in zip(hierarchy_dir_list, hierarchy):
-                root_content = EditorAssetLibrary.list_assets(
-                    h_dir, recursive=False, include_folder=False)
+            root_content = EditorAssetLibrary.list_assets(
+                hierarchy_dir, recursive=False, include_folder=False)
 
-                existing_sequences = [
-                    EditorAssetLibrary.find_asset_data(asset)
-                    for asset in root_content
-                    if EditorAssetLibrary.find_asset_data(
-                        asset).get_class().get_name() == 'LevelSequence'
-                ]
+            existing_sequences = [
+                EditorAssetLibrary.find_asset_data(asset)
+                for asset in root_content
+                if EditorAssetLibrary.find_asset_data(
+                    asset).get_class().get_name() == 'LevelSequence'
+            ]
 
-                if not existing_sequences:
-                    sequence, frame_range = generate_sequence(h, h_dir)
+            if not existing_sequences:
+                sequence, frame_range = generate_sequence(project_name, hierarchy_dir)
 
-                    sequences.append(sequence)
-                    frame_ranges.append(frame_range)
-                else:
-                    for e in existing_sequences:
-                        sequences.append(e.get_asset())
-                        frame_ranges.append((
-                            e.get_asset().get_playback_start(),
-                            e.get_asset().get_playback_end()))
+                sequences.append(sequence)
+                frame_ranges.append(frame_range)
+            else:
+                for e in existing_sequences:
+                    sequences.append(e.get_asset())
+                    frame_ranges.append((
+                        e.get_asset().get_playback_start(),
+                        e.get_asset().get_playback_end()))
 
             shot_name = f"{asset_dir}/{folder_name}.{folder_name}"
             shot = None
@@ -785,12 +774,13 @@ class LayoutLoader(plugin.Loader):
                 "representation": context["representation"]["id"],
                 "parent": context["representation"]["versionId"],
                 "family": context["product"]["productType"],
-                "loaded_assets": loaded_assets
+                "loaded_assets": loaded_assets,
+                "master_directory": hierarchy_dir
             }
             imprint(
                 "{}/{}".format(asset_dir, container_name), data)
 
-        save_dir = hierarchy_dir_list[0] if create_sequences else asset_dir
+        save_dir = hierarchy_dir if create_sequences else asset_dir
 
         asset_content = EditorAssetLibrary.list_assets(
             save_dir, recursive=True, include_folder=False)
@@ -813,23 +803,16 @@ class LayoutLoader(plugin.Loader):
         editor_subsystem = unreal.UnrealEditorSubsystem()
         vp_loc, vp_rot = editor_subsystem.get_level_viewport_camera_info()
 
-        root = "/Game/Ayon"
-
         asset_dir = container.get('namespace')
-
-        folder_entity = context["folder"]
         repre_entity = context["representation"]
-
-        hierarchy = folder_entity["path"].lstrip("/").split("/")
-        first_parent_name = hierarchy[0]
-
         sequence = None
         master_level = None
-
+        hierarchy_dir = container.get("master_directory", "")
+        if not hierarchy_dir:
+            hierarchy_dir, _ = format_asset_directory(context, self.master_dir)
         if create_sequences:
-            h_dir = f"{root}/{first_parent_name}"
-            h_asset = first_parent_name
-            master_level = f"{h_dir}/{h_asset}_map.{h_asset}_map"
+            h_asset = context["project"]["name"]
+            master_level = f"{hierarchy_dir}/{h_asset}_map.{h_asset}_map"
 
             filter = unreal.ARFilter(
                 class_names=["LevelSequence"],
@@ -868,8 +851,6 @@ class LayoutLoader(plugin.Loader):
         if create_sequences:
             EditorLevelLibrary.save_current_level()
 
-        EditorAssetLibrary.delete_directory(f"{asset_dir}/animations/")
-
         source_path = get_representation_path(repre_entity)
 
         loaded_assets = self._process(
@@ -887,7 +868,7 @@ class LayoutLoader(plugin.Loader):
 
         EditorLevelLibrary.save_current_level()
 
-        save_dir = f"{root}/{first_parent_name}" if create_sequences else asset_dir
+        save_dir = hierarchy_dir if create_sequences else asset_dir
 
         asset_content = EditorAssetLibrary.list_assets(
             save_dir, recursive=True, include_folder=False)
@@ -916,7 +897,7 @@ class LayoutLoader(plugin.Loader):
         create_sequences = data["unreal"]["level_sequences_for_layouts"]
         remove_loaded_assets = data["unreal"].get("remove_loaded_assets", False)
 
-        root = "/Game/Ayon"
+        root = AYON_ROOT_DIR
         path = Path(container["namespace"])
 
         if remove_loaded_assets:
@@ -935,18 +916,21 @@ class LayoutLoader(plugin.Loader):
             # Remove the Level Sequence from the parent.
             # We need to traverse the hierarchy from the master sequence to
             # find the level sequence.
-            namespace = container.get('namespace').replace(f"{root}/", "")
-            ms_asset = namespace.split('/')[0]
+            master_directory = container.get("master_directory", "")
+            if not ms_asset:
+                namespace = container.get('namespace').replace(f"{root}/", "")
+                ms_asset = namespace.split('/')[0]
+                master_directory = f"{root}/{ms_asset}"
             ar = unreal.AssetRegistryHelpers.get_asset_registry()
             _filter = unreal.ARFilter(
                 class_names=["LevelSequence"],
-                package_paths=[f"{root}/{ms_asset}"],
+                package_paths=[master_directory],
                 recursive_paths=False)
             sequences = ar.get_assets(_filter)
             master_sequence = sequences[0].get_asset()
             _filter = unreal.ARFilter(
                 class_names=["World"],
-                package_paths=[f"{root}/{ms_asset}"],
+                package_paths=[master_directory],
                 recursive_paths=False)
             levels = ar.get_assets(_filter)
             master_level = levels[0].get_asset().get_path_name()
