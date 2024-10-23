@@ -31,8 +31,6 @@ class ExistingLayoutLoader(plugin.Loader):
     ASSET_ROOT = "/Game/Ayon"
 
     delete_unmatched_assets = True
-    loaded_layout_dir = "{folder[path]}/{product[name]}"
-    master_dir = "{project[name]}"
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -405,17 +403,23 @@ class ExistingLayoutLoader(plugin.Loader):
         # Create directory for asset and Ayon container
         folder_entity = context["folder"]
         folder_path = folder_entity["path"]
-
-        folder_name = folder_entity["name"]
+        hierarchy = folder_path.lstrip("/").split("/")
+        # Remove folder name
+        folder_name = hierarchy.pop(-1) if len(hierarchy) > 0 else hierarchy
         product_type = context["product"]["productType"]
-        asset_root, _ = upipeline.format_asset_directory(
-            context, self.loaded_layout_dir)
+        root = self.ASSET_ROOT
+        hierarchy_dir = root
+        hierarchy_dir_list = []
+        for h in hierarchy:
+            hierarchy_dir = f"{hierarchy_dir}/{h}"
+            hierarchy_dir_list.append(hierarchy_dir)
+
         suffix = "_CON"
         asset_name = f"{folder_name}_{name}" if folder_name else name
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            asset_root,
+            "{}/{}/{}".format(hierarchy_dir, folder_name, name),
             suffix="_existing"
         )
 
