@@ -1,8 +1,11 @@
-
+from pathlib import Path
+import os
 import unreal
-import pyblish.api
 
+from ayon_core.pipeline import get_current_project_name
+from ayon_core.pipeline import Anatomy
 from ayon_unreal.api import pipeline
+import pyblish.api
 
 
 class CollectRenderInstances(pyblish.api.InstancePlugin):
@@ -22,9 +25,12 @@ class CollectRenderInstances(pyblish.api.InstancePlugin):
         if render_target == "farm":
             instance.data["families"].append("render.farm")
             instance.data["farm"] = True
+            self.preparing_rendering_instance(instance)
+
         else:
             instance.data["families"].append("render.local")
 
+    def preparing_rendering_instance(self, instance):
         context = instance.context
 
         data = instance.data
