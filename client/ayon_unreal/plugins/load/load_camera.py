@@ -37,9 +37,9 @@ class CameraLoader(plugin.Loader):
         super(CameraLoader, cls).apply_settings(
             project_settings
         )
-        cls.loaded_layout_dir = (
+        cls.loaded_asset_dir = (
             project_settings["unreal"].get(
-                "loaded_layout_dir", cls.loaded_layout_dir)
+                "loaded_asset_dir", cls.loaded_asset_dir)
         )
         cls.master_dir = (
             project_settings["unreal"].get(
