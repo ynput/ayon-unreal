@@ -299,7 +299,6 @@ class CameraLoader(plugin.Loader):
         repre_entity = context["representation"]
         folder_entity = context["folder"]
         folder_path = folder_entity["path"]
-        project_name = context["project"]["name"]
         master_dir = get_top_hierarchy_folder(self.loaded_asset_dir)
         hierarchy_dir, _ = format_asset_directory(context, master_dir)
         asset_root, asset_name = format_asset_directory(
