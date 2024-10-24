@@ -166,7 +166,7 @@ class LayoutLoader(plugin.Loader):
 
         return None
 
-    def _transform_from_basis(self, transform, basis):
+    def _transform_from_basis(self, transform, basis, unreal_import=False):
         """Transform a transform from a basis to a new basis."""
         # Get the basis matrix
         basis_matrix = unreal.Matrix(
@@ -181,15 +181,18 @@ class LayoutLoader(plugin.Loader):
             transform[2],
             transform[3]
         )
-
-        new_transform = (
-            basis_matrix.get_inverse() * transform_matrix * basis_matrix)
+        new_transform = None
+        if unreal_import:
+            new_transform = transform_matrix * basis_matrix
+        else:
+            new_transform = (
+                basis_matrix.get_inverse() * transform_matrix * basis_matrix)
 
         return new_transform.transform()
 
     def _process_family(
         self, assets, class_name, transform, basis, sequence, inst_name=None,
-        rotation=None
+        rotation=None, unreal_import=False
     ):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
@@ -199,7 +202,8 @@ class LayoutLoader(plugin.Loader):
         for asset in assets:
             obj = ar.get_asset_by_object_path(asset).get_asset()
             if obj.get_class().get_name() == class_name:
-                t = self._transform_from_basis(transform, basis)
+                t = self._transform_from_basis(
+                    transform, basis, unreal_import=unreal_import)
                 actor = EditorLevelLibrary.spawn_actor_from_object(
                     obj, t.translation
                 )
@@ -535,18 +539,23 @@ class LayoutLoader(plugin.Loader):
                     rotation = instance.get('rotation', {})
                     basis = instance.get('basis')
                     inst = instance.get('instance_name')
+                    unreal_import = (
+                        True if "unreal" in instance.get("host", []) else False
+                    )
 
                     actors = []
 
                     if product_type in ['model', 'staticMesh']:
                         actors, _ = self._process_family(
                             assets, 'StaticMesh', transform, basis,
-                            sequence, inst, rotation
+                            sequence, inst, rotation,
+                            unreal_import=unreal_import
                         )
                     elif product_type in ['rig', 'skeletalMesh']:
                         actors, bindings = self._process_family(
                             assets, 'SkeletalMesh', transform, basis,
-                            sequence, inst, rotation
+                            sequence, inst, rotation,
+                            unreal_import=unreal_import
                         )
                         actors_dict[inst] = actors
                         bindings_dict[inst] = bindings
