@@ -854,8 +854,6 @@ def format_asset_directory(context, directory_template):
         context (dict): context
         directory_template (str): directory template path
         extension (str, optional): file extension. Defaults to "abc".
-        use_version (bool, optional): use context version for asset
-            directory. Defaults to True.
     Returns:
         tuple[str, str]: asset directory, asset name
     """
@@ -1054,3 +1052,18 @@ def has_asset_directory_pattern_matched(asset_name, asset_dir, name, extension=N
         return asset_path
 
     return None
+
+
+def get_top_hierarchy_folder(path):
+    """Get top hierarchy of the path
+
+    Args:
+        path (str): path
+
+    Returns:
+        str: top hierarchy directory
+    """
+    # Split the path by the directory separator '/'
+    parts = path.split('/')
+    # Return the first part
+    return parts[0]
