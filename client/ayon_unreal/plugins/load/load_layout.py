@@ -34,7 +34,8 @@ from ayon_unreal.api.pipeline import (
     imprint,
     ls,
     AYON_ROOT_DIR,
-    format_asset_directory
+    format_asset_directory,
+    get_top_hierarchy_folder
 )
 from ayon_core.lib import EnumDef
 
@@ -80,7 +81,6 @@ class LayoutLoader(plugin.Loader):
     folder_representation_type = "json"
     force_loaded = False
     loaded_layout_dir = "{folder[path]}/{product[name]}"
-    master_dir = "{project[name]}"
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -93,15 +93,13 @@ class LayoutLoader(plugin.Loader):
         # Apply import settings
         loaded_layout_dir = unreal_settings.get(
             "loaded_layout_dir", cls.loaded_layout_dir)
-        master_dir = unreal_settings.get("master_dir", cls.master_dir)
+
         if folder_representation_type:
             cls.folder_representation_type = folder_representation_type
         if use_force_loaded:
             cls.force_loaded = use_force_loaded
         if loaded_layout_dir:
             cls.loaded_layout_dir = loaded_layout_dir
-        if master_dir:
-            cls.master_dir = master_dir
 
     @classmethod
     def get_options(cls, contexts):
@@ -648,7 +646,8 @@ class LayoutLoader(plugin.Loader):
         suffix = "_CON"
         asset_name = f"{folder_name}_{name}" if folder_name else name
         asset_root, _ = format_asset_directory(context, self.loaded_layout_dir)
-        hierarchy_dir, _ = format_asset_directory(context, self.master_dir)
+        master_dir = get_top_hierarchy_folder(self.loaded_layout_dir)
+        hierarchy_dir, _ = format_asset_directory(context, master_dir)
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(asset_root, suffix="")
 
@@ -814,7 +813,8 @@ class LayoutLoader(plugin.Loader):
         master_level = None
         hierarchy_dir = container.get("master_directory", "")
         if not hierarchy_dir:
-            hierarchy_dir, _ = format_asset_directory(context, self.master_dir)
+            master_dir = get_top_hierarchy_folder(self.loaded_layout_dir)
+            hierarchy_dir, _ = format_asset_directory(context, master_dir)
         if create_sequences:
             h_asset = context["project"]["name"]
             master_level = f"{hierarchy_dir}/{h_asset}_map.{h_asset}_map"

@@ -31,7 +31,6 @@ class ExistingLayoutLoader(plugin.Loader):
 
     delete_unmatched_assets = True
     loaded_layout_dir = "{folder[path]}/{product[name]}"
-    master_dir = "{project[name]}"
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -44,10 +43,6 @@ class ExistingLayoutLoader(plugin.Loader):
         cls.loaded_layout_dir = (
             project_settings["unreal"].get(
                 "loaded_layout_dir", cls.loaded_layout_dir)
-        )
-        cls.master_dir = (
-            project_settings["unreal"].get(
-                "master_dir", cls.master_dir)
         )
 
     @staticmethod

@@ -54,11 +54,6 @@ class UnrealSettings(BaseSettingsModel):
         title="Directories for loaded layouts",
         description="Directories to store the loaded layouts"
     )
-    master_dir: str = SettingsField(
-        "{project[name]}",
-        title="Parent Directories for loaded layouts",
-        description="Parent directories for the loaded layouts"
-    )
     import_settings: UnrealImportModel = SettingsField(
         default_factory=UnrealImportModel,
         title="Import settings"
@@ -126,7 +121,6 @@ class UnrealSettings(BaseSettingsModel):
 DEFAULT_VALUES = {
     "loaded_asset_dir": "{folder[path]}/{product[name]}_{version[version]}",
     "loaded_layout_dir": "{folder[path]}/{product[name]}",
-    "master_dir": "{project[name]}",
     "level_sequences_for_layouts": True,
     "remove_loaded_assets": False,
     "delete_unmatched_assets": False,

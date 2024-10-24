@@ -17,7 +17,8 @@ from ayon_unreal.api.pipeline import (
     create_container,
     imprint,
     format_asset_directory,
-    AYON_ROOT_DIR
+    AYON_ROOT_DIR,
+    get_top_hierarchy_folder
 )
 
 
@@ -30,7 +31,6 @@ class CameraLoader(plugin.Loader):
     icon = "cube"
     color = "orange"
     loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
-    master_dir = "{project[name]}"
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -40,10 +40,6 @@ class CameraLoader(plugin.Loader):
         cls.loaded_asset_dir = (
             project_settings["unreal"].get(
                 "loaded_asset_dir", cls.loaded_asset_dir)
-        )
-        cls.master_dir = (
-            project_settings["unreal"].get(
-                "master_dir", cls.master_dir)
         )
 
     def _import_camera(
@@ -248,8 +244,8 @@ class CameraLoader(plugin.Loader):
         folder_path = folder_entity["path"]
         folder_name = folder_entity["name"]
         project_name = context["project"]["name"]
-
-        hierarchy_dir, _ = format_asset_directory(context, self.master_dir)
+        master_dir = get_top_hierarchy_folder(self.loaded_asset_dir)
+        hierarchy_dir, _ = format_asset_directory(context, master_dir)
         suffix = "_CON"
         tools = unreal.AssetToolsHelpers().get_asset_tools()
 
@@ -305,7 +301,8 @@ class CameraLoader(plugin.Loader):
         folder_entity = context["folder"]
         folder_path = folder_entity["path"]
         project_name = context["project"]["name"]
-        hierarchy_dir, _ = format_asset_directory(context, self.master_dir)
+        master_dir = get_top_hierarchy_folder(self.loaded_asset_dir)
+        hierarchy_dir, _ = format_asset_directory(context, master_dir)
         asset_root, asset_name = format_asset_directory(
             context, self.loaded_asset_dir)
         suffix = "_CON"
