@@ -645,7 +645,7 @@ class LayoutLoader(plugin.Loader):
         suffix = "_CON"
         asset_name = f"{folder_name}_{name}" if folder_name else name
         asset_root, _ = format_asset_directory(context, self.loaded_layout_dir)
-        master_dir = get_top_hierarchy_folder(self.loaded_layout_dir)
+        master_dir = get_top_hierarchy_folder(asset_root)
         hierarchy_dir, _ = format_asset_directory(context, master_dir)
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(asset_root, suffix="")
@@ -812,7 +812,7 @@ class LayoutLoader(plugin.Loader):
         master_level = None
         hierarchy_dir = container.get("master_directory", "")
         if not hierarchy_dir:
-            master_dir = get_top_hierarchy_folder(self.loaded_layout_dir)
+            master_dir = get_top_hierarchy_folder(asset_dir)
             hierarchy_dir, _ = format_asset_directory(context, master_dir)
         if create_sequences:
             h_asset = context["project"]["name"]

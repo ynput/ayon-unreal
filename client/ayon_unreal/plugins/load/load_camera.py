@@ -243,13 +243,14 @@ class CameraLoader(plugin.Loader):
         folder_entity = context["folder"]
         folder_path = folder_entity["path"]
         folder_name = folder_entity["name"]
-        master_dir = get_top_hierarchy_folder(self.loaded_asset_dir)
+        asset_root, asset_name = format_asset_directory(
+            context, self.loaded_asset_dir)
+        master_dir = get_top_hierarchy_folder(asset_root)
         hierarchy_dir, _ = format_asset_directory(context, master_dir)
         suffix = "_CON"
         tools = unreal.AssetToolsHelpers().get_asset_tools()
-
-        asset_root, asset_name = format_asset_directory(
-            context, self.loaded_asset_dir)
+        unreal.log("asset_root")
+        unreal.log(asset_root)
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix="")
 
@@ -299,10 +300,10 @@ class CameraLoader(plugin.Loader):
         repre_entity = context["representation"]
         folder_entity = context["folder"]
         folder_path = folder_entity["path"]
-        master_dir = get_top_hierarchy_folder(self.loaded_asset_dir)
-        hierarchy_dir, _ = format_asset_directory(context, master_dir)
         asset_root, asset_name = format_asset_directory(
             context, self.loaded_asset_dir)
+        master_dir = get_top_hierarchy_folder(asset_root)
+        hierarchy_dir, _ = format_asset_directory(context, master_dir)
         suffix = "_CON"
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
