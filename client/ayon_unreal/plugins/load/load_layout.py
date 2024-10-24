@@ -640,7 +640,6 @@ class LayoutLoader(plugin.Loader):
         # Create directory for asset and Ayon container
         folder_entity = context["folder"]
         folder_path = folder_entity["path"]
-        project_name = context["project"]["name"]
         # Remove folder name
         folder_name = folder_entity["name"]
         suffix = "_CON"
@@ -665,9 +664,9 @@ class LayoutLoader(plugin.Loader):
         if create_sequences:
             # Create map for the shot, and create hierarchy of map. If the
             # maps already exist, we will use them.
-            master_level = f"{hierarchy_dir}/{project_name}_map.{project_name}_map"
+            master_level = f"{hierarchy_dir}/{master_dir}_map.{master_dir}_map"
             if not EditorAssetLibrary.does_asset_exist(master_level):
-                EditorLevelLibrary.new_level(f"{hierarchy_dir}/{project_name}_map")
+                EditorLevelLibrary.new_level(f"{hierarchy_dir}/{master_dir}_map")
             if master_level:
                 EditorLevelLibrary.load_level(master_level)
                 EditorLevelUtils.add_level_to_world(
@@ -692,7 +691,7 @@ class LayoutLoader(plugin.Loader):
             ]
 
             if not existing_sequences:
-                sequence, frame_range = generate_sequence(project_name, hierarchy_dir)
+                sequence, frame_range = generate_sequence(master_dir, hierarchy_dir)
 
                 sequences.append(sequence)
                 frame_ranges.append(frame_range)

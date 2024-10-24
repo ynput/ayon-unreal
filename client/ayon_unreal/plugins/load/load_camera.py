@@ -99,12 +99,12 @@ class CameraLoader(plugin.Loader):
         imprint(f"{asset_dir}/{container_name}", data)
 
     def _create_map_camera(self, context, path, tools, hierarchy_dir,
-                           project_name, asset_dir, asset_name):
+                           master_dir, asset_dir, asset_name):
         # Create map for the shot, and create hierarchy of map. If the maps
         # already exist, we will use them.
-        master_level = f"{hierarchy_dir}/{project_name}_map.{project_name}_map"
+        master_level = f"{hierarchy_dir}/{master_dir}_map.{master_dir}_map"
         if not EditorAssetLibrary.does_asset_exist(master_level):
-            EditorLevelLibrary.new_level(f"{hierarchy_dir}/{project_name}_map")
+            EditorLevelLibrary.new_level(f"{hierarchy_dir}/{master_dir}_map")
 
         level = (
             f"{asset_dir}/{asset_name}_map_camera.{asset_name}_map_camera"
@@ -146,7 +146,7 @@ class CameraLoader(plugin.Loader):
                     seq.get_asset().get_playback_end()))
         else:
             sequence, frame_range = generate_sequence(
-                project_name, hierarchy_dir)
+                master_dir, hierarchy_dir)
 
             sequences.append(sequence)
             frame_ranges.append(frame_range)
@@ -243,7 +243,6 @@ class CameraLoader(plugin.Loader):
         folder_entity = context["folder"]
         folder_path = folder_entity["path"]
         folder_name = folder_entity["name"]
-        project_name = context["project"]["name"]
         master_dir = get_top_hierarchy_folder(self.loaded_asset_dir)
         hierarchy_dir, _ = format_asset_directory(context, master_dir)
         suffix = "_CON"
@@ -261,7 +260,7 @@ class CameraLoader(plugin.Loader):
             path = self.filepath_from_context(context)
             master_level = self._create_map_camera(
                 context, path, tools, hierarchy_dir,
-                project_name, asset_dir, asset_name
+                master_dir, asset_dir, asset_name
             )
 
         # Create Asset Container
@@ -317,7 +316,7 @@ class CameraLoader(plugin.Loader):
             path = get_representation_path(repre_entity)
             master_level = self._create_map_camera(
                 context, path, tools, hierarchy_dir,
-                project_name, asset_dir, asset_name
+                master_dir, asset_dir, asset_name
             )
 
         # Create Asset Container
