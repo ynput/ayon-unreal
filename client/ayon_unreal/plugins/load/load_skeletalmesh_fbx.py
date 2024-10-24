@@ -42,7 +42,7 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         cls.show_dialog = import_settings.get("show_dialog", cls.show_dialog)
 
     @staticmethod
-    def get_task(cls, filename, asset_dir, asset_name, replace):
+    def get_task(filename, asset_dir, asset_name, replace):
         task = unreal.AssetImportTask()
         options = unreal.FbxImportUI()
 
@@ -79,6 +79,7 @@ class SkeletalMeshFBXLoader(plugin.Loader):
 
         return task
 
+
     def import_and_containerize(
         self, filepath, asset_dir, asset_name, container_name,
         asset_path=None
@@ -86,7 +87,7 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         task = None
         if asset_path:
             loaded_asset_dir = unreal.Paths.split(asset_path)[0]
-            task = self.get_task(filepath, loaded_asset_dir, asset_name, True)
+            task =self.get_task(filepath, loaded_asset_dir, asset_name, False)
         else:
             if not unreal.EditorAssetLibrary.does_asset_exist(
                 f"{asset_dir}/{asset_name}"):
