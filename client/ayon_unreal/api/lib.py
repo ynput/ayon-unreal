@@ -47,8 +47,9 @@ def update_skeletal_mesh(asset_content, sequence):
 def set_sequence_frame_range(sequence, frameStart, frameEnd):
     display_rate = sequence.get_display_rate()
     fps = float(display_rate.numerator) / float(display_rate.denominator)
+    # temp fix on the incorrect frame range
     sequence.set_playback_start(frameStart)
-    sequence.set_playback_end(frameEnd)
+    sequence.set_playback_end(frameEnd + 1)
     sequence.set_work_range_start(float(frameStart / fps))
     sequence.set_work_range_end(float(frameEnd / fps))
     sequence.set_view_range_start(float(frameStart / fps))
@@ -88,7 +89,8 @@ def import_animation_sequence(asset_content, sequence, frameStart, frameEnd):
             params = unreal.MovieSceneSkeletalAnimationParams()
             params.set_editor_property('Animation', animation)
             anim_section.set_editor_property('Params', params)
-            anim_section.set_range(frameStart, frameEnd)
+            # temp fix on the incorrect frame range
+            anim_section.set_range(frameStart, frameEnd + 1)
 
 
 def get_representation(parent_id, version_id):
@@ -134,6 +136,7 @@ def import_camera_to_level_sequence(sequence, parent_id, version_id,
     for track in tracks:
         sections = track.get_sections()
         for section in sections:
-            section.set_range(frameStart, frameEnd)
+            # temp fix on the incorrect frame range
+            section.set_range(frameStart, frameEnd + 1)
 
     set_sequence_frame_range(sequence, frameStart, frameEnd)
