@@ -1064,6 +1064,7 @@ def get_top_hierarchy_folder(path):
         str: top hierarchy directory
     """
     # Split the path by the directory separator '/'
-    parts = path.split('/')
+    path = path.replace(f"{AYON_ROOT_DIR}/", "")
     # Return the first part
+    parts = [part for part in path.split('/') if part]
     return parts[0]

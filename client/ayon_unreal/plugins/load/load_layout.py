@@ -645,8 +645,8 @@ class LayoutLoader(plugin.Loader):
         suffix = "_CON"
         asset_name = f"{folder_name}_{name}" if folder_name else name
         asset_root, _ = format_asset_directory(context, self.loaded_layout_dir)
-        master_dir = get_top_hierarchy_folder(asset_root)
-        hierarchy_dir, _ = format_asset_directory(context, master_dir)
+        master_dir_name = get_top_hierarchy_folder(asset_root)
+        hierarchy_dir = f"{AYON_ROOT_DIR}/{asset_root}"
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(asset_root, suffix="")
 
@@ -664,9 +664,9 @@ class LayoutLoader(plugin.Loader):
         if create_sequences:
             # Create map for the shot, and create hierarchy of map. If the
             # maps already exist, we will use them.
-            master_level = f"{hierarchy_dir}/{master_dir}_map.{master_dir}_map"
+            master_level = f"{hierarchy_dir}/{hierarchy_dir}_map.{master_dir_name}_map"
             if not EditorAssetLibrary.does_asset_exist(master_level):
-                EditorLevelLibrary.new_level(f"{hierarchy_dir}/{master_dir}_map")
+                EditorLevelLibrary.new_level(f"{hierarchy_dir}/{master_dir_name}_map")
             if master_level:
                 EditorLevelLibrary.load_level(master_level)
                 EditorLevelUtils.add_level_to_world(
@@ -691,7 +691,7 @@ class LayoutLoader(plugin.Loader):
             ]
 
             if not existing_sequences:
-                sequence, frame_range = generate_sequence(master_dir, hierarchy_dir)
+                sequence, frame_range = generate_sequence(master_dir_name, hierarchy_dir)
 
                 sequences.append(sequence)
                 frame_ranges.append(frame_range)
@@ -812,8 +812,8 @@ class LayoutLoader(plugin.Loader):
         master_level = None
         hierarchy_dir = container.get("master_directory", "")
         if not hierarchy_dir:
-            master_dir = get_top_hierarchy_folder(asset_dir)
-            hierarchy_dir, _ = format_asset_directory(context, master_dir)
+            master_dir_name = get_top_hierarchy_folder(asset_dir)
+            hierarchy_dir = f"{AYON_ROOT_DIR}/{master_dir_name}"
         if create_sequences:
             h_asset = context["project"]["name"]
             master_level = f"{hierarchy_dir}/{h_asset}_map.{h_asset}_map"

@@ -99,12 +99,12 @@ class CameraLoader(plugin.Loader):
         imprint(f"{asset_dir}/{container_name}", data)
 
     def _create_map_camera(self, context, path, tools, hierarchy_dir,
-                           master_dir, asset_dir, asset_name):
+                           master_dir_name, asset_dir, asset_name):
         # Create map for the shot, and create hierarchy of map. If the maps
         # already exist, we will use them.
-        master_level = f"{hierarchy_dir}/{master_dir}_map.{master_dir}_map"
+        master_level = f"{hierarchy_dir}/{master_dir_name}_map.{master_dir_name}_map"
         if not EditorAssetLibrary.does_asset_exist(master_level):
-            EditorLevelLibrary.new_level(f"{hierarchy_dir}/{master_dir}_map")
+            EditorLevelLibrary.new_level(f"{hierarchy_dir}/{master_dir_name}_map")
 
         level = (
             f"{asset_dir}/{asset_name}_map_camera.{asset_name}_map_camera"
@@ -146,7 +146,7 @@ class CameraLoader(plugin.Loader):
                     seq.get_asset().get_playback_end()))
         else:
             sequence, frame_range = generate_sequence(
-                master_dir, hierarchy_dir)
+                master_dir_name, hierarchy_dir)
 
             sequences.append(sequence)
             frame_ranges.append(frame_range)
@@ -245,12 +245,10 @@ class CameraLoader(plugin.Loader):
         folder_name = folder_entity["name"]
         asset_root, asset_name = format_asset_directory(
             context, self.loaded_asset_dir)
-        master_dir = get_top_hierarchy_folder(asset_root)
-        hierarchy_dir, _ = format_asset_directory(context, master_dir)
+        master_dir_name = get_top_hierarchy_folder(asset_root)
+        hierarchy_dir = f"{AYON_ROOT_DIR}/{master_dir_name}"
         suffix = "_CON"
         tools = unreal.AssetToolsHelpers().get_asset_tools()
-        unreal.log("asset_root")
-        unreal.log(asset_root)
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix="")
 
@@ -261,7 +259,7 @@ class CameraLoader(plugin.Loader):
             path = self.filepath_from_context(context)
             master_level = self._create_map_camera(
                 context, path, tools, hierarchy_dir,
-                master_dir, asset_dir, asset_name
+                master_dir_name, asset_dir, asset_name
             )
 
         # Create Asset Container
@@ -302,8 +300,8 @@ class CameraLoader(plugin.Loader):
         folder_path = folder_entity["path"]
         asset_root, asset_name = format_asset_directory(
             context, self.loaded_asset_dir)
-        master_dir = get_top_hierarchy_folder(asset_root)
-        hierarchy_dir, _ = format_asset_directory(context, master_dir)
+        master_dir_name = get_top_hierarchy_folder(asset_root)
+        hierarchy_dir = f"{AYON_ROOT_DIR}/{master_dir_name}"
         suffix = "_CON"
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
@@ -316,7 +314,7 @@ class CameraLoader(plugin.Loader):
             path = get_representation_path(repre_entity)
             master_level = self._create_map_camera(
                 context, path, tools, hierarchy_dir,
-                master_dir, asset_dir, asset_name
+                master_dir_name, asset_dir, asset_name
             )
 
         # Create Asset Container
