@@ -31,7 +31,8 @@ from ayon_unreal.api.pipeline import (
     imprint,
     AYON_ROOT_DIR,
     format_asset_directory,
-    get_top_hierarchy_folder
+    get_top_hierarchy_folder,
+    generate_hierarchy_path
 )
 from ayon_unreal.api.lib import (
     remove_loaded_asset,
@@ -414,24 +415,19 @@ class LayoutLoader(plugin.Loader):
         # Create directory for asset and Ayon container
         folder_entity = context["folder"]
         folder_path = folder_entity["path"]
-        # Remove folder name
         folder_name = folder_entity["name"]
-        suffix = "_CON"
-        asset_name = f"{folder_name}_{name}" if folder_name else name
         asset_root, _ = format_asset_directory(context, self.loaded_layout_dir)
         master_dir_name = get_top_hierarchy_folder(asset_root)
-        hierarchy_dir = f"{AYON_ROOT_DIR}/{master_dir_name}"
-        tools = unreal.AssetToolsHelpers().get_asset_tools()
-        asset_dir, container_name = tools.create_unique_asset_name(asset_root, suffix="")
-
-        container_name += suffix
-        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            EditorAssetLibrary.make_directory(asset_dir)
-
+        asset_dir, hierarchy_dir, container_name, asset_name = (
+            generate_hierarchy_path(
+                name, folder_name, asset_root, master_dir_name
+            )
+        )
         master_level = None
         shot = None
         sequences = []
 
+        tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_level = f"{asset_dir}/{folder_name}_map.{folder_name}_map"
         if not EditorAssetLibrary.does_asset_exist(asset_level):
             EditorLevelLibrary.new_level(f"{asset_dir}/{folder_name}_map")

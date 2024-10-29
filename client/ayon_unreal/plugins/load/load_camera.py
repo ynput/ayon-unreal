@@ -18,7 +18,8 @@ from ayon_unreal.api.pipeline import (
     imprint,
     format_asset_directory,
     AYON_ROOT_DIR,
-    get_top_hierarchy_folder
+    get_top_hierarchy_folder,
+    generate_hierarchy_path
 )
 
 
@@ -246,21 +247,17 @@ class CameraLoader(plugin.Loader):
         asset_root, asset_name = format_asset_directory(
             context, self.loaded_asset_dir)
         master_dir_name = get_top_hierarchy_folder(asset_root)
-        hierarchy_dir = f"{AYON_ROOT_DIR}/{master_dir_name}"
-        suffix = "_CON"
         tools = unreal.AssetToolsHelpers().get_asset_tools()
-        asset_dir, container_name = tools.create_unique_asset_name(
-            asset_root, suffix="")
-
-        container_name += suffix
-        master_level = None
-        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            EditorAssetLibrary.make_directory(asset_dir)
-            path = self.filepath_from_context(context)
-            master_level = self._create_map_camera(
-                context, path, tools, hierarchy_dir,
-                master_dir_name, asset_dir, asset_name
+        asset_dir, hierarchy_dir, container_name, asset_name = (
+            generate_hierarchy_path(
+                name, folder_name, asset_root, master_dir_name
             )
+        )
+        path = self.filepath_from_context(context)
+        master_level = self._create_map_camera(
+            context, path, tools, hierarchy_dir,
+            master_dir_name, asset_dir, asset_name
+        )
 
         # Create Asset Container
         if not unreal.EditorAssetLibrary.does_asset_exist(

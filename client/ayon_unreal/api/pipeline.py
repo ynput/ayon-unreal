@@ -1070,18 +1070,14 @@ def get_top_hierarchy_folder(path):
     return parts[0]
 
 
-def generate_hierarchy_path(context, name, folder_entity,
-                            loaded_dir="{folder[path]}/{product[name]}",
-                            suffix=""):
-    # Remove folder name
-    folder_name = folder_entity["name"]
+def generate_hierarchy_path(name, folder_name, asset_root, master_dir_name):
     suffix = "_CON"
     asset_name = f"{folder_name}_{name}" if folder_name else name
-    asset_root, _ = format_asset_directory(context, loaded_dir)
-    master_dir_name = get_top_hierarchy_folder(asset_root)
     hierarchy_dir = f"{AYON_ROOT_DIR}/{master_dir_name}"
     tools = unreal.AssetToolsHelpers().get_asset_tools()
-    asset_dir, container_name = tools.create_unique_asset_name(
-        asset_root, suffix=suffix)
+    asset_dir, container_name = tools.create_unique_asset_name(asset_root, suffix="")
     container_name += suffix
+    if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+        unreal.EditorAssetLibrary.make_directory(asset_dir)
+
     return asset_dir, hierarchy_dir, container_name, asset_name
