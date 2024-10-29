@@ -677,8 +677,6 @@ class LayoutLoader(plugin.Loader):
             if (remove_asset_confirmation_dialog == unreal.AppReturnType.YES):
                 remove_loaded_asset(container)
 
-        root = AYON_ROOT_DIR
-
         master_sequence = None
         sequences = []
 
@@ -688,9 +686,9 @@ class LayoutLoader(plugin.Loader):
             # find the level sequence.
             master_directory = container.get("master_directory", "")
             if not master_directory:
-                namespace = container.get('namespace').replace(f"{root}/", "")
+                namespace = container.get('namespace').replace(f"{AYON_ROOT_DIR}/", "")
                 ms_asset = namespace.split('/')[0]
-                master_directory = f"{root}/{ms_asset}"
+                master_directory = f"{AYON_ROOT_DIR}/{ms_asset}"
             ar = unreal.AssetRegistryHelpers.get_asset_registry()
             _filter = unreal.ARFilter(
                 class_names=["LevelSequence"],
