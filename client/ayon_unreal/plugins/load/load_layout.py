@@ -33,7 +33,8 @@ from ayon_unreal.api.pipeline import (
     format_asset_directory,
     get_top_hierarchy_folder,
     generate_hierarchy_path,
-    remove_map_and_sequence
+    remove_map_and_sequence,
+    update_container
 )
 from ayon_unreal.api.lib import (
     remove_loaded_asset,
@@ -389,6 +390,36 @@ class LayoutLoader(plugin.Loader):
 
         return loaded_assets
 
+    def imprint(
+        self,
+        context,
+        folder_path,
+        folder_name,
+        loaded_assets,
+        asset_dir,
+        asset_name,
+        container_name,
+        hierarchy_dir=None
+    ):
+        data = {
+            "schema": "ayon:container-2.0",
+            "id": AYON_CONTAINER_ID,
+            "asset": folder_name,
+            "folder_path": folder_path,
+            "namespace": asset_dir,
+            "container_name": container_name,
+            "asset_name": asset_name,
+            "loader": str(self.__class__.__name__),
+            "representation": context["representation"]["id"],
+            "parent": context["representation"]["versionId"],
+            "family": context["product"]["productType"],
+            "loaded_assets": loaded_assets,
+        }
+        if hierarchy_dir is not None:
+            data["master_directory"] = hierarchy_dir
+        imprint(
+            "{}/{}".format(asset_dir, container_name), data)
+
     def load(self, context, name, namespace, options):
         """Load and containerise representation into Content Browser.
 
@@ -533,27 +564,17 @@ class LayoutLoader(plugin.Loader):
             f"{asset_dir}/{container_name}"
         ):
             # Create Asset Container
-            create_container(
-                container=container_name, path=asset_dir)
-
-            data = {
-                "schema": "ayon:container-2.0",
-                "id": AYON_CONTAINER_ID,
-                "asset": folder_name,
-                "folder_path": folder_path,
-                "namespace": asset_dir,
-                "container_name": container_name,
-                "asset_name": asset_name,
-                "loader": str(self.__class__.__name__),
-                "representation": context["representation"]["id"],
-                "parent": context["representation"]["versionId"],
-                "family": context["product"]["productType"],
-                "loaded_assets": loaded_assets,
-                "master_directory": hierarchy_dir
-            }
-            imprint(
-                "{}/{}".format(asset_dir, container_name), data)
-
+            create_container(container=container_name, path=asset_dir)
+        self.imprint(
+            context,
+            folder_path,
+            folder_name,
+            loaded_assets,
+            asset_dir,
+            asset_name,
+            container_name,
+            hierarchy_dir=hierarchy_dir
+        )
         save_dir = hierarchy_dir if create_sequences else asset_dir
 
         asset_content = EditorAssetLibrary.list_assets(
@@ -631,13 +652,7 @@ class LayoutLoader(plugin.Loader):
             loaded_extension=self.folder_representation_type,
             force_loaded=self.force_loaded)
 
-        data = {
-            "representation": repre_entity["id"],
-            "parent": repre_entity["versionId"],
-            "loaded_assets": loaded_assets,
-        }
-        imprint(
-            "{}/{}".format(asset_dir, container.get('container_name')), data)
+        update_container(container, repre_entity, loaded_assets=loaded_assets)
 
         EditorLevelLibrary.save_current_level()
 

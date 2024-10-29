@@ -1101,3 +1101,19 @@ def remove_map_and_sequence(container):
     default_level_path = "/Engine/Maps/Templates/OpenWorld"
     unreal.EditorLevelLibrary.load_level(default_level_path)
     unreal.EditorAssetLibrary.delete_directory(f"{AYON_ROOT_DIR}/tmp")
+
+
+def update_container(container, repre_entity, loaded_assets=None):
+    asset_dir = container.get('namespace')
+    data = {
+        "representation": repre_entity["id"],
+        "parent": repre_entity["versionId"],
+    }
+    if loaded_assets is not None:
+        data["loaded_assets"] = loaded_assets
+    imprint(
+        "{}/{}".format(
+            asset_dir,
+            container.get('container_name')),
+            data
+    )

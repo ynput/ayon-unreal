@@ -45,19 +45,6 @@ class ExistingLayoutLoader(plugin.Loader):
                 "loaded_layout_dir", cls.loaded_layout_dir)
         )
 
-    @staticmethod
-    def _get_current_level():
-        ue_version = unreal.SystemLibrary.get_engine_version().split('.')
-        ue_major = ue_version[0]
-
-        if ue_major == '4':
-            return EditorLevelLibrary.get_editor_world()
-        elif ue_major == '5':
-            return unreal.LevelEditorSubsystem().get_current_level()
-
-        raise NotImplementedError(
-            f"Unreal version {ue_major} not supported")
-
     def _transform_from_basis(self, transform, basis):
         """Transform a transform from a basis to a new basis."""
         # Get the basis matrix
@@ -401,6 +388,37 @@ class ExistingLayoutLoader(plugin.Loader):
 
         return containers
 
+    def imprint(
+        self,
+        context,
+        folder_path,
+        folder_name,
+        loaded_assets,
+        asset_dir,
+        asset_name,
+        container_name,
+        hierarchy_dir=None
+    ):
+        data = {
+            "schema": "ayon:container-2.0",
+            "id": AYON_CONTAINER_ID,
+            "folder_path": folder_path,
+            "namespace": asset_dir,
+            "container_name": container_name,
+            "asset_name": asset_name,
+            "loader": str(self.__class__.__name__),
+            "representation": context["representation"]["id"],
+            "parent": context["representation"]["versionId"],
+            "product_type": context["product"]["productType"],
+            "loaded_assets": loaded_assets,
+            # TODO these shold be probably removed
+            "asset": folder_name,
+            "family": context["product"]["productType"],
+        }
+        if hierarchy_dir is not None:
+            data["master_directory"] = hierarchy_dir
+        upipeline.imprint(f"{asset_dir}/{container_name}", data)
+
     def load(self, context, name, namespace, options):
         print("Loading Layout and Match Assets")
 
@@ -409,7 +427,6 @@ class ExistingLayoutLoader(plugin.Loader):
         folder_path = folder_entity["path"]
 
         folder_name = folder_entity["name"]
-        product_type = context["product"]["productType"]
         asset_root, _ = upipeline.format_asset_directory(
             context, self.loaded_layout_dir)
         suffix = "_CON"
@@ -421,16 +438,16 @@ class ExistingLayoutLoader(plugin.Loader):
             suffix="_existing"
         )
 
-        curr_level = self._get_current_level()
-        curr_level_path = Path(
+        curr_level = unreal.LevelEditorSubsystem().get_current_level()
+        curr_asset_dir = Path(
             curr_level.get_outer().get_path_name()).parent.as_posix()
-        if curr_level_path == "/Temp":
-            curr_level_path = asset_dir
-        #TODO: make sure curr_level_path is not a temp path,
+        if curr_asset_dir == "/Temp":
+            curr_asset_dir = asset_dir
+        #TODO: make sure asset_dir is not a temp path,
         # create new level for layout level
         level_seq_filter = unreal.ARFilter(
             class_names=["LevelSequence"],
-            package_paths=[curr_level_path],
+            package_paths=[curr_asset_dir],
             recursive_paths=False)
 
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
@@ -440,31 +457,22 @@ class ExistingLayoutLoader(plugin.Loader):
 
         project_name = context["project"]["name"]
         path = self.filepath_from_context(context)
-        containers = self._process(path, project_name, sequence)
+        loaded_assets = self._process(path, project_name, sequence)
         container_name += suffix
         if not unreal.EditorAssetLibrary.does_asset_exist(
-            f"{curr_level_path}/{container_name}"
+            f"{curr_asset_dir}/{container_name}"
         ):
             upipeline.create_container(
-                container=container_name, path=curr_level_path)
-
-        data = {
-            "schema": "ayon:container-2.0",
-            "id": AYON_CONTAINER_ID,
-            "folder_path": folder_path,
-            "namespace": curr_level_path,
-            "container_name": container_name,
-            "asset_name": asset_name,
-            "loader": str(self.__class__.__name__),
-            "representation": context["representation"]["id"],
-            "parent": context["representation"]["versionId"],
-            "product_type": product_type,
-            "loaded_assets": containers,
-            # TODO these shold be probably removed
-            "asset": folder_path,
-            "family": product_type,
-        }
-        upipeline.imprint(f"{curr_level_path}/{container_name}", data)
+                container=container_name, path=curr_asset_dir)
+        self.imprint(
+            context,
+            folder_path,
+            folder_name,
+            loaded_assets,
+            asset_dir,
+            asset_name,
+            container_name
+        )
 
     def update(self, container, context):
         asset_dir = container.get('namespace')
@@ -479,15 +487,12 @@ class ExistingLayoutLoader(plugin.Loader):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
         sequence = next((asset for asset in ar.get_assets(level_seq_filter)), None)
         source_path = get_representation_path(repre_entity)
-        containers = self._process(source_path, project_name, sequence)
+        loaded_assets = self._process(source_path, project_name, sequence)
 
-        data = {
-            "representation": repre_entity["id"],
-            "loaded_assets": containers,
-            "parent": repre_entity["versionId"],
-        }
-        upipeline.imprint(
-            "{}/{}".format(asset_dir, container.get('container_name')), data)
+        upipeline.update_container(
+            container, repre_entity, loaded_assets=loaded_assets)
+
+        unreal.EditorLevelLibrary.save_current_level()
 
     def remove(self, container):
         parent_path = Path(container["namespace"])
