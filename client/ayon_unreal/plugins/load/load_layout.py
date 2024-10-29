@@ -32,7 +32,8 @@ from ayon_unreal.api.pipeline import (
     AYON_ROOT_DIR,
     format_asset_directory,
     get_top_hierarchy_folder,
-    generate_hierarchy_path
+    generate_hierarchy_path,
+    remove_map_and_sequence
 )
 from ayon_unreal.api.lib import (
     remove_loaded_asset,
@@ -668,10 +669,6 @@ class LayoutLoader(plugin.Loader):
         data = get_current_project_settings()
         create_sequences = data["unreal"]["level_sequences_for_layouts"]
         remove_loaded_assets = data["unreal"].get("remove_loaded_assets", False)
-
-        root = AYON_ROOT_DIR
-        path = Path(container["namespace"])
-
         if remove_loaded_assets:
             remove_asset_confirmation_dialog = unreal.EditorDialog.show_message(
                 "The removal of the loaded assets",
@@ -680,8 +677,9 @@ class LayoutLoader(plugin.Loader):
             if (remove_asset_confirmation_dialog == unreal.AppReturnType.YES):
                 remove_loaded_asset(container)
 
+        root = AYON_ROOT_DIR
+
         master_sequence = None
-        master_level = None
         sequences = []
 
         if create_sequences:
@@ -700,13 +698,6 @@ class LayoutLoader(plugin.Loader):
                 recursive_paths=False)
             sequences = ar.get_assets(_filter)
             master_sequence = sequences[0].get_asset()
-            _filter = unreal.ARFilter(
-                class_names=["World"],
-                package_paths=[master_directory],
-                recursive_paths=False)
-            levels = ar.get_assets(_filter)
-            master_level = levels[0].get_asset().get_path_name()
-
             sequences = [master_sequence]
 
             parent = None
@@ -757,22 +748,4 @@ class LayoutLoader(plugin.Loader):
 
             assert parent, "Could not find the parent sequence"
 
-        # Create a temporary level to delete the layout level.
-        EditorLevelLibrary.save_all_dirty_levels()
-        EditorAssetLibrary.make_directory(f"{root}/tmp")
-        tmp_level = f"{root}/tmp/temp_map"
-        if not EditorAssetLibrary.does_asset_exist(f"{tmp_level}.temp_map"):
-            EditorLevelLibrary.new_level(tmp_level)
-        else:
-            EditorLevelLibrary.load_level(tmp_level)
-
-        # Delete the layout directory.
-        if EditorAssetLibrary.does_directory_exist(str(path)):
-            EditorAssetLibrary.delete_directory(str(path))
-
-        if create_sequences:
-            EditorLevelLibrary.load_level(master_level)
-            # Load the default level
-            default_level_path = "/Engine/Maps/Templates/OpenWorld"
-            EditorLevelLibrary.load_level(default_level_path)
-            EditorAssetLibrary.delete_directory(f"{root}/tmp")
+        remove_map_and_sequence(container)

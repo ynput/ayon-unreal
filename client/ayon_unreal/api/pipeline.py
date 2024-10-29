@@ -1081,3 +1081,22 @@ def generate_hierarchy_path(name, folder_name, asset_root, master_dir_name):
         unreal.EditorAssetLibrary.make_directory(asset_dir)
 
     return asset_dir, hierarchy_dir, container_name, asset_name
+
+def remove_map_and_sequence(container):
+    asset_dir = container.get('namespace')
+    # Create a temporary level to delete the layout level.
+    unreal.EditorLevelLibrary.save_all_dirty_levels()
+    unreal.EditorAssetLibrary.make_directory(f"{AYON_ROOT_DIR}/tmp")
+    tmp_level = f"{AYON_ROOT_DIR}/tmp/temp_map"
+    if not unreal.EditorAssetLibrary.does_asset_exist(f"{tmp_level}.temp_map"):
+        unreal.EditorLevelLibrary.new_level(tmp_level)
+    else:
+        unreal.EditorLevelLibrary.load_level(tmp_level)
+    unreal.EditorLevelLibrary.save_all_dirty_levels()
+    # Delete the camera directory.
+    if unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+        unreal.EditorAssetLibrary.delete_directory(asset_dir)
+    # Load the default level
+    default_level_path = "/Engine/Maps/Templates/OpenWorld"
+    unreal.EditorLevelLibrary.load_level(default_level_path)
+    unreal.EditorAssetLibrary.delete_directory(f"{AYON_ROOT_DIR}/tmp")

@@ -19,7 +19,8 @@ from ayon_unreal.api.pipeline import (
     format_asset_directory,
     AYON_ROOT_DIR,
     get_top_hierarchy_folder,
-    generate_hierarchy_path
+    generate_hierarchy_path,
+    remove_map_and_sequence
 )
 
 
@@ -347,20 +348,4 @@ class CameraLoader(plugin.Loader):
         self.update(container, context)
 
     def remove(self, container):
-        asset_dir = container.get('namespace')
-        # Create a temporary level to delete the layout level.
-        EditorLevelLibrary.save_all_dirty_levels()
-        EditorAssetLibrary.make_directory(f"{AYON_ROOT_DIR}/tmp")
-        tmp_level = f"{AYON_ROOT_DIR}/tmp/temp_map"
-        if not EditorAssetLibrary.does_asset_exist(f"{tmp_level}.temp_map"):
-            EditorLevelLibrary.new_level(tmp_level)
-        else:
-            EditorLevelLibrary.load_level(tmp_level)
-        EditorLevelLibrary.save_all_dirty_levels()
-        # Delete the camera directory.
-        if EditorAssetLibrary.does_directory_exist(asset_dir):
-            EditorAssetLibrary.delete_directory(asset_dir)
-        # Load the default level
-        default_level_path = "/Engine/Maps/Templates/OpenWorld"
-        EditorLevelLibrary.load_level(default_level_path)
-        EditorAssetLibrary.delete_directory(f"{AYON_ROOT_DIR}/tmp")
+        remove_map_and_sequence(container)
