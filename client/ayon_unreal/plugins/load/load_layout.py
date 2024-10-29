@@ -7,7 +7,6 @@ import unreal
 from unreal import (
     EditorAssetLibrary,
     EditorLevelLibrary,
-    EditorLevelUtils,
     MovieSceneLevelVisibilityTrack,
     MovieSceneSubTrack,
     LevelSequenceEditorBlueprintLibrary as LevelSequenceLib,
@@ -25,7 +24,7 @@ from ayon_core.pipeline import (
 from ayon_core.settings import get_current_project_settings
 from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
-    generate_sequence,
+    generate_master_level_sequence,
     set_sequence_hierarchy,
     create_container,
     imprint,
@@ -455,74 +454,19 @@ class LayoutLoader(plugin.Loader):
                 name, folder_name, asset_root, master_dir_name
             )
         )
-        master_level = None
-        shot = None
-        sequences = []
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
-        asset_level = f"{asset_dir}/{folder_name}_map.{folder_name}_map"
+
+        asset_level = f"{asset_dir}/{asset_name}_map.{asset_name}_map"
         if not EditorAssetLibrary.does_asset_exist(asset_level):
-            EditorLevelLibrary.new_level(f"{asset_dir}/{folder_name}_map")
+            EditorLevelLibrary.new_level(f"{asset_dir}/{asset_name}_map")
         if create_sequences:
-            # Create map for the shot, and create hierarchy of map. If the
-            # maps already exist, we will use them.
-            master_level = f"{hierarchy_dir}/{master_dir_name}_map.{master_dir_name}_map"
-            if not EditorAssetLibrary.does_asset_exist(master_level):
-                EditorLevelLibrary.new_level(f"{hierarchy_dir}/{master_dir_name}_map")
-            if master_level:
-                EditorLevelLibrary.load_level(master_level)
-                EditorLevelUtils.add_level_to_world(
-                    EditorLevelLibrary.get_editor_world(),
-                    asset_level,
-                    unreal.LevelStreamingDynamic
+            shot, _, asset_level, sequences, frame_ranges = (
+                generate_master_level_sequence(
+                    tools, asset_dir, asset_name,
+                    hierarchy_dir, master_dir_name
                 )
-                EditorLevelLibrary.save_all_dirty_levels()
-                EditorLevelLibrary.load_level(asset_level)
-
-            # Get all the sequences in the hierarchy. It will create them, if
-            # they don't exist.
-            frame_ranges = []
-            root_content = EditorAssetLibrary.list_assets(
-                hierarchy_dir, recursive=False, include_folder=False)
-
-            existing_sequences = [
-                EditorAssetLibrary.find_asset_data(asset)
-                for asset in root_content
-                if EditorAssetLibrary.find_asset_data(
-                    asset).get_class().get_name() == 'LevelSequence'
-            ]
-
-            if not existing_sequences:
-                sequence, frame_range = generate_sequence(master_dir_name, hierarchy_dir)
-
-                sequences.append(sequence)
-                frame_ranges.append(frame_range)
-            else:
-                for e in existing_sequences:
-                    sequences.append(e.get_asset())
-                    frame_ranges.append((
-                        e.get_asset().get_playback_start(),
-                        e.get_asset().get_playback_end()))
-
-            shot_name = f"{asset_dir}/{folder_name}.{folder_name}"
-            shot = None
-            if not EditorAssetLibrary.does_asset_exist(shot_name):
-                shot = tools.create_asset(
-                    asset_name=folder_name,
-                    package_path=asset_dir,
-                    asset_class=unreal.LevelSequence,
-                    factory=unreal.LevelSequenceFactoryNew()
-                )
-            else:
-                shot = unreal.load_asset(shot_name)
-
-            # sequences and frame_ranges have the same length
-            for i in range(0, len(sequences) - 1):
-                set_sequence_hierarchy(
-                    sequences[i], sequences[i + 1],
-                    frame_ranges[i][1],
-                    frame_ranges[i + 1][0], frame_ranges[i + 1][1],
-                    [asset_level])
+            )
 
             project_name = get_current_project_name()
             folder_attributes = (

@@ -3,8 +3,7 @@
 import unreal
 from unreal import (
     EditorAssetLibrary,
-    EditorLevelLibrary,
-    EditorLevelUtils
+    EditorLevelLibrary
 )
 from ayon_core.pipeline import (
     AYON_CONTAINER_ID,
@@ -12,7 +11,7 @@ from ayon_core.pipeline import (
 )
 from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
-    generate_sequence,
+    generate_master_level_sequence,
     set_sequence_hierarchy,
     create_container,
     imprint,
@@ -102,72 +101,12 @@ class CameraLoader(plugin.Loader):
 
     def _create_map_camera(self, context, path, tools, hierarchy_dir,
                            master_dir_name, asset_dir, asset_name):
-        # Create map for the shot, and create hierarchy of map. If the maps
-        # already exist, we will use them.
-        master_level = f"{hierarchy_dir}/{master_dir_name}_map.{master_dir_name}_map"
-        if not EditorAssetLibrary.does_asset_exist(master_level):
-            EditorLevelLibrary.new_level(f"{hierarchy_dir}/{master_dir_name}_map")
-
-        level = (
-            f"{asset_dir}/{asset_name}_map_camera.{asset_name}_map_camera"
+        cam_seq, master_level, level, sequences,frame_ranges = (
+            generate_master_level_sequence(
+                tools, asset_dir, asset_name,
+                hierarchy_dir, master_dir_name,
+                suffix="camera")
         )
-        if not EditorAssetLibrary.does_asset_exist(level):
-            EditorLevelLibrary.new_level(
-                f"{asset_dir}/{asset_name}_map_camera"
-            )
-
-            EditorLevelLibrary.load_level(master_level)
-            EditorLevelUtils.add_level_to_world(
-                EditorLevelLibrary.get_editor_world(),
-                level,
-                unreal.LevelStreamingDynamic
-            )
-        EditorLevelLibrary.save_all_dirty_levels()
-        EditorLevelLibrary.load_level(level)
-
-        # Get all the sequences in the hierarchy. It will create them, if
-        # they don't exist.
-        frame_ranges = []
-        sequences = []
-
-        root_content = EditorAssetLibrary.list_assets(
-            hierarchy_dir, recursive=False, include_folder=False)
-
-        existing_sequences = [
-            EditorAssetLibrary.find_asset_data(asset)
-            for asset in root_content
-            if EditorAssetLibrary.find_asset_data(
-                asset).get_class().get_name() == 'LevelSequence'
-        ]
-
-        if existing_sequences:
-            for seq in existing_sequences:
-                sequences.append(seq.get_asset())
-                frame_ranges.append((
-                    seq.get_asset().get_playback_start(),
-                    seq.get_asset().get_playback_end()))
-        else:
-            sequence, frame_range = generate_sequence(
-                master_dir_name, hierarchy_dir)
-
-            sequences.append(sequence)
-            frame_ranges.append(frame_range)
-
-        cam_seq = tools.create_asset(
-            asset_name=f"{asset_name}_camera",
-            package_path=asset_dir,
-            asset_class=unreal.LevelSequence,
-            factory=unreal.LevelSequenceFactoryNew()
-        )
-
-        # Add sequences data to hierarchy
-        for i in range(len(sequences) - 1):
-            set_sequence_hierarchy(
-                sequences[i], sequences[i + 1],
-                frame_ranges[i][1],
-                frame_ranges[i + 1][0], frame_ranges[i + 1][1],
-                [level])
-
         folder_entity = context["folder"]
         folder_attributes = folder_entity["attrib"]
         clip_in = folder_attributes.get("clipIn")
@@ -249,7 +188,7 @@ class CameraLoader(plugin.Loader):
             context, self.loaded_asset_dir)
         master_dir_name = get_top_hierarchy_folder(asset_root)
         tools = unreal.AssetToolsHelpers().get_asset_tools()
-        asset_dir, hierarchy_dir, container_name, asset_name = (
+        asset_dir, hierarchy_dir, container_name, _ = (
             generate_hierarchy_path(
                 name, folder_name, asset_root, master_dir_name
             )

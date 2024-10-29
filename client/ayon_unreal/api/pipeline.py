@@ -1117,3 +1117,80 @@ def update_container(container, repre_entity, loaded_assets=None):
             container.get('container_name')),
             data
     )
+
+
+def generate_master_level_sequence(tools, asset_dir, asset_name,
+                                   hierarchy_dir, master_dir_name,
+                                   suffix=""):
+    # Create map for the shot, and create hierarchy of map. If the maps
+    # already exist, we will use them.
+    master_level = f"{hierarchy_dir}/{master_dir_name}_map.{master_dir_name}_map"
+    if not unreal.EditorAssetLibrary.does_asset_exist(master_level):
+        unreal.EditorLevelLibrary.new_level(f"{hierarchy_dir}/{master_dir_name}_map")
+
+    asset_level = (
+        f"{asset_dir}/{asset_name}_map.{asset_name}_map"
+    )if not suffix else (
+        f"{asset_dir}/{asset_name}_map_{suffix}.{asset_name}_map_{suffix}"
+    )
+    unreal.log(f"asset_level: {asset_level}")
+    if not unreal.EditorAssetLibrary.does_asset_exist(asset_level):
+        unreal.EditorLevelLibrary.new_level(
+            f"{asset_dir}/{asset_name}"
+        )
+
+        unreal.EditorLevelLibrary.load_level(master_level)
+        unreal.EditorLevelUtils.add_level_to_world(
+            unreal.EditorLevelLibrary.get_editor_world(),
+            asset_level,
+            unreal.LevelStreamingDynamic
+        )
+    sequences = []
+    frame_ranges = []
+    root_content = unreal.EditorAssetLibrary.list_assets(
+        hierarchy_dir, recursive=False, include_folder=False)
+
+    existing_sequences = [
+        unreal.EditorAssetLibrary.find_asset_data(asset)
+        for asset in root_content
+        if unreal.EditorAssetLibrary.find_asset_data(
+            asset).get_class().get_name() == 'LevelSequence'
+    ]
+
+    if not existing_sequences:
+        sequence, frame_range = generate_sequence(master_dir_name, hierarchy_dir)
+
+        sequences.append(sequence)
+        frame_ranges.append(frame_range)
+    else:
+        for e in existing_sequences:
+            sequences.append(e.get_asset())
+            frame_ranges.append((
+                e.get_asset().get_playback_start(),
+                e.get_asset().get_playback_end()))
+
+    shot_name = (
+        f"{asset_dir}/{asset_name}.{asset_name}"
+    ) if not suffix else (
+        f"{asset_dir}/{asset_name}_{suffix}.{asset_name}_{suffix}"
+    )
+    shot = None
+    if not unreal.EditorAssetLibrary.does_asset_exist(shot_name):
+        shot = tools.create_asset(
+            asset_name=asset_name if not suffix else f"{asset_name}_{suffix}",
+            package_path=asset_dir,
+            asset_class=unreal.LevelSequence,
+            factory=unreal.LevelSequenceFactoryNew()
+        )
+    else:
+        shot = unreal.load_asset(shot_name)
+
+    # sequences and frame_ranges have the same length
+    for i in range(0, len(sequences) - 1):
+        set_sequence_hierarchy(
+            sequences[i], sequences[i + 1],
+            frame_ranges[i][1],
+            frame_ranges[i + 1][0], frame_ranges[i + 1][1],
+            [asset_level])
+
+    return shot, master_level, asset_level, sequences, frame_ranges
