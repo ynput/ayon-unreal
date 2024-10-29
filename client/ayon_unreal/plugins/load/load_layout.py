@@ -457,13 +457,13 @@ class LayoutLoader(plugin.Loader):
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
 
-        asset_level = f"{asset_dir}/{asset_name}_map.{asset_name}_map"
+        asset_level = f"{asset_dir}/{folder_name}_map.{folder_name}_map"
         if not EditorAssetLibrary.does_asset_exist(asset_level):
-            EditorLevelLibrary.new_level(f"{asset_dir}/{asset_name}_map")
+            EditorLevelLibrary.new_level(f"{asset_dir}/{folder_name}_map")
         if create_sequences:
             shot, _, asset_level, sequences, frame_ranges = (
                 generate_master_level_sequence(
-                    tools, asset_dir, asset_name,
+                    tools, asset_dir, folder_name,
                     hierarchy_dir, master_dir_name
                 )
             )
