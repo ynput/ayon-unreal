@@ -1082,6 +1082,7 @@ def generate_hierarchy_path(name, folder_name, asset_root, master_dir_name):
 
     return asset_dir, hierarchy_dir, container_name, asset_name
 
+
 def remove_map_and_sequence(container):
     asset_dir = container.get('namespace')
     # Create a temporary level to delete the layout level.
