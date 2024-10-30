@@ -15,8 +15,11 @@ from .pipeline import (
     create_publish_instance,
     imprint,
     ls_inst,
-    UNREAL_VERSION
+    UNREAL_VERSION,
+    remove_map_and_sequence,
+    remove_assets_in_master_sequence
 )
+from .lib import remove_loaded_asset
 from ayon_core.lib import (
     BoolDef,
     UILabelDef
@@ -298,6 +301,8 @@ class LayoutLoader(Loader):
     icon = "code-fork"
     color = "orange"
     loaded_layout_dir = "{folder[path]}/{product[name]}"
+    level_sequences_for_layouts = True
+    remove_loaded_assets = False
 
     @staticmethod
     def _get_fbx_loader(loaders, family):
@@ -464,3 +469,19 @@ class LayoutLoader(Loader):
             options=options
         )
         return assets
+
+
+    def remove(self, container):
+        """
+        Delete the layout. First, check if the assets loaded with the layout
+        are used by other layouts. If not, delete the assets.
+        """
+        if self.remove_loaded_assets:
+            remove_asset_confirmation_dialog = unreal.EditorDialog.show_message(
+                "The removal of the loaded assets",
+                "The layout will be removed. Do you want to delete all associated assets as well?",
+                unreal.AppMsgType.YES_NO)
+            if (remove_asset_confirmation_dialog == unreal.AppReturnType.YES):
+                remove_loaded_asset(container)
+        remove_assets_in_master_sequence(container, self.level_sequences_for_layouts)
+        remove_map_and_sequence(container)

@@ -6,8 +6,6 @@ import unreal
 from unreal import (
     EditorAssetLibrary,
     EditorLevelLibrary,
-    MovieSceneLevelVisibilityTrack,
-    MovieSceneSubTrack,
     LevelSequenceEditorBlueprintLibrary as LevelSequenceLib,
 )
 import ayon_api
@@ -26,11 +24,9 @@ from ayon_unreal.api.pipeline import (
     format_asset_directory,
     get_top_hierarchy_folder,
     generate_hierarchy_path,
-    remove_map_and_sequence,
     update_container
 )
 from ayon_unreal.api.lib import (
-    remove_loaded_asset,
     import_animation
 )
 from ayon_core.lib import EnumDef
@@ -46,21 +42,30 @@ class LayoutLoader(plugin.LayoutLoader):
     @classmethod
     def apply_settings(cls, project_settings):
         super(LayoutLoader, cls).apply_settings(project_settings)
-        unreal_settings =  project_settings.get("unreal", {})
         # Apply import settings
-        folder_representation_type = unreal_settings.get(
-            "folder_representation_type", {})
-        use_force_loaded = unreal_settings.get("force_loaded", {})
-        # Apply import settings
-        loaded_layout_dir = unreal_settings.get(
-            "loaded_layout_dir", cls.loaded_layout_dir)
-
-        if folder_representation_type:
-            cls.folder_representation_type = folder_representation_type
-        if use_force_loaded:
-            cls.force_loaded = use_force_loaded
-        if loaded_layout_dir:
-            cls.loaded_layout_dir = loaded_layout_dir
+        cls.folder_representation_type = (
+            project_settings["unreal"].get(
+                "folder_representation_type",
+                cls.folder_representation_type)
+        )
+        cls.use_force_loaded = (
+            project_settings["unreal"].get(
+                "force_loaded", cls.force_loaded)
+        )
+        cls.level_sequences_for_layouts = (
+            project_settings["unreal"].get(
+                "level_sequences_for_layouts",
+                cls.level_sequences_for_layouts)
+        )
+        cls.loaded_layout_dir = (
+            project_settings["unreal"].get(
+                "loaded_layout_dir", cls.loaded_layout_dir)
+        )
+        cls.remove_loaded_assets = (
+            project_settings["unreal"].get(
+                "remove_loaded_assets",
+                cls.remove_loaded_assets)
+        )
 
     @classmethod
     def get_options(cls, contexts):
@@ -449,90 +454,3 @@ class LayoutLoader(plugin.LayoutLoader):
             LevelSequenceLib.set_lock_camera_cut_to_viewport(is_cam_lock)
 
         editor_subsystem.set_level_viewport_camera_info(vp_loc, vp_rot)
-
-    def remove(self, container):
-        """
-        Delete the layout. First, check if the assets loaded with the layout
-        are used by other layouts. If not, delete the assets.
-        """
-        data = get_current_project_settings()
-        create_sequences = data["unreal"]["level_sequences_for_layouts"]
-        remove_loaded_assets = data["unreal"].get("remove_loaded_assets", False)
-        if remove_loaded_assets:
-            remove_asset_confirmation_dialog = unreal.EditorDialog.show_message(
-                "The removal of the loaded assets",
-                "The layout will be removed. Do you want to delete all associated assets as well?",
-                unreal.AppMsgType.YES_NO)
-            if (remove_asset_confirmation_dialog == unreal.AppReturnType.YES):
-                remove_loaded_asset(container)
-
-        master_sequence = None
-        sequences = []
-
-        if create_sequences:
-            # Remove the Level Sequence from the parent.
-            # We need to traverse the hierarchy from the master sequence to
-            # find the level sequence.
-            master_directory = container.get("master_directory", "")
-            if not master_directory:
-                namespace = container.get('namespace').replace(f"{AYON_ROOT_DIR}/", "")
-                ms_asset = namespace.split('/')[0]
-                master_directory = f"{AYON_ROOT_DIR}/{ms_asset}"
-            ar = unreal.AssetRegistryHelpers.get_asset_registry()
-            _filter = unreal.ARFilter(
-                class_names=["LevelSequence"],
-                package_paths=[master_directory],
-                recursive_paths=False)
-            sequences = ar.get_assets(_filter)
-            master_sequence = sequences[0].get_asset()
-            sequences = [master_sequence]
-
-            parent = None
-            for s in sequences:
-                tracks = s.get_master_tracks()
-                subscene_track = None
-                visibility_track = None
-                for t in tracks:
-                    if t.get_class() == MovieSceneSubTrack.static_class():
-                        subscene_track = t
-                    if (t.get_class() ==
-                            MovieSceneLevelVisibilityTrack.static_class()):
-                        visibility_track = t
-                if subscene_track:
-                    sections = subscene_track.get_sections()
-                    for ss in sections:
-                        try:
-                            if (ss.get_sequence().get_name() ==
-                                    container.get('asset')):
-                                parent = s
-                                subscene_track.remove_section(ss)
-                                break
-                            sequences.append(ss.get_sequence())
-                        except AttributeError:
-                            unreal.log("Cannot get the level sequences")
-                    # Update subscenes indexes.
-                    i = 0
-                    for ss in sections:
-                        ss.set_row_index(i)
-                        i += 1
-
-                if visibility_track:
-                    sections = visibility_track.get_sections()
-                    for ss in sections:
-                        if (unreal.Name(f"{container.get('asset')}_map")
-                                in ss.get_level_names()):
-                            visibility_track.remove_section(ss)
-                    # Update visibility sections indexes.
-                    i = -1
-                    prev_name = []
-                    for ss in sections:
-                        if prev_name != ss.get_level_names():
-                            i += 1
-                        ss.set_row_index(i)
-                        prev_name = ss.get_level_names()
-                if parent:
-                    break
-
-            assert parent, "Could not find the parent sequence"
-
-        remove_map_and_sequence(container)
