@@ -2,22 +2,17 @@ import json
 from pathlib import Path
 
 import unreal
-import collections
 from unreal import EditorLevelLibrary
 import ayon_api
 
 from ayon_core.pipeline import (
-    discover_loader_plugins,
-    loaders_from_representation,
-    load_container,
     get_representation_path,
-    AYON_CONTAINER_ID,
 )
 from ayon_unreal.api import plugin
 from ayon_unreal.api import pipeline as upipeline
 
 
-class ExistingLayoutLoader(plugin.Loader):
+class ExistingLayoutLoader(plugin.LayoutLoader):
     """
     Load Layout for an existing scene, and match the existing assets.
     """
@@ -45,27 +40,6 @@ class ExistingLayoutLoader(plugin.Loader):
                 "loaded_layout_dir", cls.loaded_layout_dir)
         )
 
-    def _transform_from_basis(self, transform, basis):
-        """Transform a transform from a basis to a new basis."""
-        # Get the basis matrix
-        basis_matrix = unreal.Matrix(
-            basis[0],
-            basis[1],
-            basis[2],
-            basis[3]
-        )
-        transform_matrix = unreal.Matrix(
-            transform[0],
-            transform[1],
-            transform[2],
-            transform[3]
-        )
-
-        new_transform = (
-            basis_matrix.get_inverse() * transform_matrix * basis_matrix)
-
-        return new_transform.transform()
-
     def _spawn_actor(self, obj, lasset, sequence):
         actor = EditorLevelLibrary.spawn_actor_from_object(
             obj, unreal.Vector(0.0, 0.0, 0.0)
@@ -85,42 +59,6 @@ class ExistingLayoutLoader(plugin.Loader):
             actor.set_actor_rotation(actor_rotation, False)
         sequence.add_possessable(actor)
 
-    @staticmethod
-    def _get_fbx_loader(loaders, family):
-        name = ""
-        if family == 'rig':
-            name = "SkeletalMeshFBXLoader"
-        elif family == 'model' or family == 'staticMesh':
-            name = "StaticMeshFBXLoader"
-        elif family == 'camera':
-            name = "CameraLoader"
-
-        if name == "":
-            return None
-
-        for loader in loaders:
-            if loader.__name__ == name:
-                return loader
-
-        return None
-
-    @staticmethod
-    def _get_abc_loader(loaders, family):
-        name = ""
-        if family == 'rig':
-            name = "SkeletalMeshAlembicLoader"
-        elif family == 'model' or family == 'staticMesh':
-            name = "StaticMeshAlembicLoader"
-
-        if name == "":
-            return None
-
-        for loader in loaders:
-            if loader.__name__ == name:
-                return loader
-
-        return None
-
     def _load_asset(self, repr_data, instance_name, family, extension):
         repre_entity = next((repre_entity for repre_entity in repr_data
                              if repre_entity["name"] == extension), None)
@@ -129,84 +67,9 @@ class ExistingLayoutLoader(plugin.Loader):
 
         repr_format = repre_entity.get('name')
         representation = repre_entity.get('id')
-        all_loaders = discover_loader_plugins()
-        loaders = loaders_from_representation(
-            all_loaders, representation)
-
-        loader = None
-
-        if repr_format == 'fbx':
-            loader = self._get_fbx_loader(loaders, family)
-        elif repr_format == 'abc':
-            loader = self._get_abc_loader(loaders, family)
-
-        if not loader:
-            if repr_format == "ma":
-                msg = (
-                    f"No valid {family} loader found for {representation} ({repr_format}), "
-                    f"consider using {family} loader (fbx/abc) instead."
-                )
-                self.log.warning(msg)
-            else:
-                self.log.error(
-                    f"No valid loader found for {representation} "
-                    f"({repr_format}) "
-                    f"{family}")
-            return []
-
-        # This option is necessary to avoid importing the assets with a
-        # different conversion compared to the other assets. For ABC files,
-        # it is in fact impossible to access the conversion settings. So,
-        # we must assume that the Maya conversion settings have been applied.
-        options = {
-            "default_conversion": True
-        }
-
-        assets = load_container(
-            loader,
-            representation,
-            namespace=instance_name,
-            options=options
-        )
-
+        assets = self._load_assets(
+            instance_name, representation, family, repr_format)
         return assets
-
-    def _get_repre_entities_by_version_id(self, project_name, data):
-        version_ids = {
-            element.get("version")
-            for element in data
-            if element.get("representation")
-        }
-        version_ids.discard(None)
-        output = collections.defaultdict(list)
-        if not version_ids:
-            return output
-        # Extract extensions from data with backward compatibility for "ma"
-        extensions = {
-            element["extension"]
-            for element in data
-            if element.get("representation")
-        }
-
-        # Update extensions based on the force_loaded flag
-        updated_extensions = set()
-
-        for ext in extensions:
-            if ext == "ma":
-                updated_extensions.update({"fbx", "abc"})
-            else:
-                updated_extensions.add(ext)
-
-        repre_entities = ayon_api.get_representations(
-            project_name,
-            representation_names=updated_extensions,
-            version_ids=version_ids,
-            fields={"id", "versionId", "name"}
-        )
-        for repre_entity in repre_entities:
-            version_id = repre_entity["versionId"]
-            output[version_id].append(repre_entity)
-        return output
 
     def _process(self, lib_path, project_name, sequence):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
@@ -257,7 +120,7 @@ class ExistingLayoutLoader(plugin.Loader):
             version_ids.add(repre_entity["versionId"])
 
         repre_entities_by_version_id = self._get_repre_entities_by_version_id(
-            project_name, data
+            project_name, data, "json"
         )
         containers = []
         actors_matched = []
@@ -388,37 +251,6 @@ class ExistingLayoutLoader(plugin.Loader):
 
         return containers
 
-    def imprint(
-        self,
-        context,
-        folder_path,
-        folder_name,
-        loaded_assets,
-        asset_dir,
-        asset_name,
-        container_name,
-        hierarchy_dir=None
-    ):
-        data = {
-            "schema": "ayon:container-2.0",
-            "id": AYON_CONTAINER_ID,
-            "folder_path": folder_path,
-            "namespace": asset_dir,
-            "container_name": container_name,
-            "asset_name": asset_name,
-            "loader": str(self.__class__.__name__),
-            "representation": context["representation"]["id"],
-            "parent": context["representation"]["versionId"],
-            "product_type": context["product"]["productType"],
-            "loaded_assets": loaded_assets,
-            # TODO these shold be probably removed
-            "asset": folder_name,
-            "family": context["product"]["productType"],
-        }
-        if hierarchy_dir is not None:
-            data["master_directory"] = hierarchy_dir
-        upipeline.imprint(f"{asset_dir}/{container_name}", data)
-
     def load(self, context, name, namespace, options):
         print("Loading Layout and Match Assets")
 
@@ -458,6 +290,7 @@ class ExistingLayoutLoader(plugin.Loader):
         project_name = context["project"]["name"]
         path = self.filepath_from_context(context)
         loaded_assets = self._process(path, project_name, sequence)
+
         container_name += suffix
         if not unreal.EditorAssetLibrary.does_asset_exist(
             f"{curr_asset_dir}/{container_name}"

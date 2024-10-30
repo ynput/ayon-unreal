@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Loader for layouts."""
 import json
-import collections
 from pathlib import Path
 import unreal
 from unreal import (
@@ -14,11 +13,7 @@ from unreal import (
 import ayon_api
 
 from ayon_core.pipeline import (
-    discover_loader_plugins,
-    loaders_from_representation,
-    load_container,
     get_representation_path,
-    AYON_CONTAINER_ID,
     get_current_project_name,
 )
 from ayon_core.settings import get_current_project_settings
@@ -27,7 +22,6 @@ from ayon_unreal.api.pipeline import (
     generate_master_level_sequence,
     set_sequence_hierarchy,
     create_container,
-    imprint,
     AYON_ROOT_DIR,
     format_asset_directory,
     get_top_hierarchy_folder,
@@ -42,7 +36,7 @@ from ayon_unreal.api.lib import (
 from ayon_core.lib import EnumDef
 
 
-class LayoutLoader(plugin.Loader):
+class LayoutLoader(plugin.LayoutLoader):
     """Load Layout from a JSON file"""
 
     product_types = {"layout"}
@@ -92,64 +86,6 @@ class LayoutLoader(plugin.Loader):
             )
         return defs
 
-    @staticmethod
-    def _get_fbx_loader(loaders, family):
-        name = ""
-        if family in ['rig', 'skeletalMesh']:
-            name = "SkeletalMeshFBXLoader"
-        elif family in ['model', 'staticMesh']:
-            name = "StaticMeshFBXLoader"
-        elif family == 'camera':
-            name = "CameraLoader"
-
-        if name == "":
-
-            return None
-
-        for loader in loaders:
-            if loader.__name__ == name:
-                return loader
-
-        return None
-
-    @staticmethod
-    def _get_abc_loader(loaders, family):
-        name = ""
-        if family in ['rig', 'skeletalMesh']:
-            name = "SkeletalMeshAlembicLoader"
-        elif family in ['model', 'staticMesh']:
-            name = "StaticMeshAlembicLoader"
-
-        if name == "":
-            return None
-
-        for loader in loaders:
-            if loader.__name__ == name:
-                return loader
-
-        return None
-
-    def _transform_from_basis(self, transform, basis):
-        """Transform a transform from a basis to a new basis."""
-        # Get the basis matrix
-        basis_matrix = unreal.Matrix(
-            basis[0],
-            basis[1],
-            basis[2],
-            basis[3]
-        )
-        transform_matrix = unreal.Matrix(
-            transform[0],
-            transform[1],
-            transform[2],
-            transform[3]
-        )
-
-        new_transform = (
-            basis_matrix.get_inverse() * transform_matrix * basis_matrix)
-
-        return new_transform.transform()
-
     def _process_family(
         self, assets, class_name, transform, basis, sequence, inst_name=None,
         rotation=None
@@ -195,48 +131,7 @@ class LayoutLoader(plugin.Loader):
 
         return actors, bindings
 
-    def _get_repre_entities_by_version_id(self, data, repre_extension, force_loaded=False):
-        version_ids = {
-            element.get("version")
-            for element in data
-            if element.get("representation")
-        }
-        version_ids.discard(None)
-        output = collections.defaultdict(list)
-        if not version_ids:
-            return output
-        # Extract extensions from data with backward compatibility for "ma"
-        extensions = {
-            element["extension"]
-            for element in data
-            if element.get("representation")
-        }
-
-        # Update extensions based on the force_loaded flag
-        updated_extensions = set()
-
-        for ext in extensions:
-            if not force_loaded or repre_extension == "json":
-                if ext == "ma":
-                    updated_extensions.update({"fbx", "abc"})
-                else:
-                    updated_extensions.add(ext)
-            else:
-                updated_extensions.update({repre_extension})
-
-        project_name = get_current_project_name()
-        repre_entities = ayon_api.get_representations(
-            project_name,
-            representation_names=updated_extensions,
-            version_ids=version_ids,
-            fields={"id", "versionId", "name"}
-        )
-        for repre_entity in repre_entities:
-            version_id = repre_entity["versionId"]
-            output[version_id].append(repre_entity)
-        return output
-
-    def _process(self, lib_path, asset_dir, sequence,
+    def _process(self, lib_path, project_name, asset_dir, sequence,
                  repr_loaded=None, loaded_extension=None,
                  force_loaded=False):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
@@ -244,7 +139,6 @@ class LayoutLoader(plugin.Loader):
         with open(lib_path, "r") as fp:
             data = json.load(fp)
 
-        all_loaders = discover_loader_plugins()
 
         if not repr_loaded:
             repr_loaded = []
@@ -258,7 +152,7 @@ class LayoutLoader(plugin.Loader):
         loaded_assets = []
 
         repre_entities_by_version_id = self._get_repre_entities_by_version_id(
-            data, loaded_extension, force_loaded=force_loaded
+            project_name, data, loaded_extension, force_loaded=force_loaded
         )
         for element in data:
             repre_id = None
@@ -301,40 +195,10 @@ class LayoutLoader(plugin.Loader):
                 product_type = element.get("product_type")
                 if product_type is None:
                     product_type = element.get("family")
-                loaders = loaders_from_representation(
-                    all_loaders, repre_id)
 
-                loader = None
-
-                if repr_format == 'fbx':
-                    loader = self._get_fbx_loader(loaders, product_type)
-                elif repr_format == 'abc':
-                    loader = self._get_abc_loader(loaders, product_type)
-
-                if not loader:
-                    if repr_format == "ma":
-                        msg = (
-                            f"No valid {product_type} loader found for {repre_id} ({repr_format}), "
-                            f"consider using {product_type} loader (fbx/abc) instead."
-                        )
-                        self.log.warning(msg)
-                    else:
-                        self.log.error(
-                            f"No valid loader found for {repre_id} "
-                            f"({repr_format}) "
-                            f"{product_type}")
-                    continue
-
-                options = {
-                    # "asset_dir": asset_dir
-                }
-
-                assets = load_container(
-                    loader,
-                    repre_id,
-                    namespace=instance_name,
-                    options=options
-                )
+                assets = self._load_assets(
+                    instance_name, repre_id,
+                    product_type, repr_format)
 
                 container = None
 
@@ -388,36 +252,6 @@ class LayoutLoader(plugin.Loader):
                 )
 
         return loaded_assets
-
-    def imprint(
-        self,
-        context,
-        folder_path,
-        folder_name,
-        loaded_assets,
-        asset_dir,
-        asset_name,
-        container_name,
-        hierarchy_dir=None
-    ):
-        data = {
-            "schema": "ayon:container-2.0",
-            "id": AYON_CONTAINER_ID,
-            "asset": folder_name,
-            "folder_path": folder_path,
-            "namespace": asset_dir,
-            "container_name": container_name,
-            "asset_name": asset_name,
-            "loader": str(self.__class__.__name__),
-            "representation": context["representation"]["id"],
-            "parent": context["representation"]["versionId"],
-            "family": context["product"]["productType"],
-            "loaded_assets": loaded_assets,
-        }
-        if hierarchy_dir is not None:
-            data["master_directory"] = hierarchy_dir
-        imprint(
-            "{}/{}".format(asset_dir, container_name), data)
 
     def load(self, context, name, namespace, options):
         """Load and containerise representation into Content Browser.
@@ -493,11 +327,13 @@ class LayoutLoader(plugin.Loader):
                     [asset_level])
 
             EditorLevelLibrary.load_level(asset_level)
+        project_name = get_current_project_name()
         extension = options.get(
             "folder_representation_type", self.folder_representation_type)
         path = self.filepath_from_context(context)
         loaded_assets = self._process(
-            path, asset_dir, shot, loaded_extension=extension,
+            path, project_name, asset_dir, shot,
+            loaded_extension=extension,
             force_loaded=self.force_loaded)
 
         for s in sequences:
@@ -588,11 +424,11 @@ class LayoutLoader(plugin.Loader):
 
         if create_sequences:
             EditorLevelLibrary.save_current_level()
-
+        project_name = get_current_project_name()
         source_path = get_representation_path(repre_entity)
 
         loaded_assets = self._process(
-            source_path, asset_dir, sequence,
+            source_path, project_name, asset_dir, sequence,
             loaded_extension=self.folder_representation_type,
             force_loaded=self.force_loaded)
 
