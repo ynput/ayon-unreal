@@ -1071,11 +1071,11 @@ def get_top_hierarchy_folder(path):
 
 
 def generate_hierarchy_path(name, folder_name, asset_root, master_dir_name, suffix=""):
-    suffix = "_CON"
     asset_name = f"{folder_name}_{name}" if folder_name else name
     hierarchy_dir = f"{AYON_ROOT_DIR}/{master_dir_name}"
     tools = unreal.AssetToolsHelpers().get_asset_tools()
     asset_dir, container_name = tools.create_unique_asset_name(asset_root, suffix=suffix)
+    suffix = "_CON"
     container_name += suffix
     if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
         unreal.EditorAssetLibrary.make_directory(asset_dir)

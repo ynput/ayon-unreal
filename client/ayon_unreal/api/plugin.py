@@ -30,8 +30,7 @@ from ayon_core.pipeline import (
     discover_loader_plugins,
     loaders_from_representation,
     load_container,
-    AYON_CONTAINER_ID,
-    get_current_project_name
+    AYON_CONTAINER_ID
 )
 
 
