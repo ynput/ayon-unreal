@@ -297,6 +297,7 @@ class LayoutLoader(Loader):
     label = "Load Layout"
     icon = "code-fork"
     color = "orange"
+    loaded_layout_dir = "{folder[path]}/{product[name]}"
 
     @staticmethod
     def _get_fbx_loader(loaders, family):

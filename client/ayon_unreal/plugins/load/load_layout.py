@@ -39,15 +39,9 @@ from ayon_core.lib import EnumDef
 class LayoutLoader(plugin.LayoutLoader):
     """Load Layout from a JSON file"""
 
-    product_types = {"layout"}
-    representations = {"json"}
-
     label = "Load Layout"
-    icon = "code-fork"
-    color = "orange"
     folder_representation_type = "json"
     force_loaded = False
-    loaded_layout_dir = "{folder[path]}/{product[name]}"
 
     @classmethod
     def apply_settings(cls, project_settings):

@@ -17,12 +17,7 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
     Load Layout for an existing scene, and match the existing assets.
     """
 
-    product_types = {"layout"}
-    representations = {"json"}
-
     label = "Load Layout on Existing Scene"
-    icon = "code-fork"
-    color = "orange"
 
     delete_unmatched_assets = True
     loaded_layout_dir = "{folder[path]}/{product[name]}"
