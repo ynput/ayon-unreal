@@ -45,8 +45,12 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
         transform = lasset.get('transform_matrix')
         basis = lasset.get('basis')
         rotation = lasset.get("rotation", {})
+        unreal_import = (
+            True if "unreal" in lasset.get("host", []) else False
+        )
 
-        computed_transform = self._transform_from_basis(transform, basis)
+        computed_transform = self._transform_from_basis(
+            transform, basis, unreal_import=unreal_import)
 
         actor.set_actor_transform(computed_transform, False, True)
         if rotation:
@@ -160,8 +164,12 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
                 transform = lasset.get('transform_matrix')
                 basis = lasset.get('basis')
                 rotation = lasset.get("rotation", {})
+                unreal_import = (
+                    True if "unreal" in lasset.get("host", []) else False
+                )
+
                 computed_transform = self._transform_from_basis(
-                    transform, basis)
+                    transform, basis, unreal_import=unreal_import)
                 actor.set_actor_transform(computed_transform, False, True)
                 if rotation:
                     actor_rotation = unreal.Rotator(

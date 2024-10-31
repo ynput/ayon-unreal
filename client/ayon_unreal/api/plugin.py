@@ -338,7 +338,7 @@ class LayoutLoader(Loader):
 
         return None
 
-    def _transform_from_basis(self, transform, basis):
+    def _transform_from_basis(self, transform, basis, unreal_import=False):
         """Transform a transform from a basis to a new basis."""
         # Get the basis matrix
         basis_matrix = unreal.Matrix(
@@ -354,8 +354,12 @@ class LayoutLoader(Loader):
             transform[3]
         )
 
-        new_transform = (
-            basis_matrix.get_inverse() * transform_matrix * basis_matrix)
+        new_transform = None
+        if unreal_import:
+            new_transform = transform_matrix * basis_matrix
+        else:
+            new_transform = (
+                basis_matrix.get_inverse() * transform_matrix * basis_matrix)
 
         return new_transform.transform()
 
