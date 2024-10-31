@@ -4,9 +4,9 @@ from pathlib import Path
 import unreal
 from unreal import EditorLevelLibrary
 import ayon_api
-
+from ayon_core.pipeline.load import LoadError
 from ayon_core.pipeline import (
-    get_representation_path,
+    get_representation_path
 )
 from ayon_unreal.api import plugin
 from ayon_unreal.api import pipeline as upipeline
@@ -275,7 +275,8 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
             suffix="_existing"
         )
 
-        curr_level = unreal.LevelEditorSubsystem().get_current_level()
+        sub_sys = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
+        curr_level = sub_sys.get_current_level()
         curr_asset_dir = Path(
             curr_level.get_outer().get_path_name()).parent.as_posix()
         if curr_asset_dir == "/Temp":
@@ -289,8 +290,10 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
 
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
         sequence = next((asset.get_asset() for asset in ar.get_assets(level_seq_filter)), None)
+        if not sequence:
+            raise LoadError("No Level Sequence found for current level")
         if not curr_level:
-            raise AssertionError("Current level not saved")
+            raise LoadError("Current level not saved")
 
         project_name = context["project"]["name"]
         path = self.filepath_from_context(context)
@@ -307,7 +310,7 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
             folder_path,
             folder_name,
             loaded_assets,
-            asset_dir,
+            curr_asset_dir,
             asset_name,
             container_name
         )
