@@ -16,7 +16,6 @@ from .pipeline import (
     imprint,
     ls_inst,
     UNREAL_VERSION,
-    remove_map_and_sequence,
     remove_assets_in_master_sequence
 )
 from .lib import remove_loaded_asset
