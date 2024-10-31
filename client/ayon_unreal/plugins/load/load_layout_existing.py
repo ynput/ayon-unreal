@@ -326,7 +326,7 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
 
     def remove(self, container):
         parent_path = Path(container["namespace"])
-        self._remove(container)
+        self._remove_Loaded_asset(container)
         container_name = container["container_name"]
         if unreal.EditorAssetLibrary.does_asset_exist(
             f"{parent_path}/{container_name}"):

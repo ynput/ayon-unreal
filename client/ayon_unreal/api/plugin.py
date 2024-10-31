@@ -15,8 +15,7 @@ from .pipeline import (
     create_publish_instance,
     imprint,
     ls_inst,
-    UNREAL_VERSION,
-    remove_assets_in_master_sequence
+    UNREAL_VERSION
 )
 from .lib import remove_loaded_asset
 from ayon_core.lib import (
@@ -300,7 +299,6 @@ class LayoutLoader(Loader):
     icon = "code-fork"
     color = "orange"
     loaded_layout_dir = "{folder[path]}/{product[name]}"
-    level_sequences_for_layouts = True
     remove_loaded_assets = False
 
     @staticmethod
@@ -469,8 +467,7 @@ class LayoutLoader(Loader):
         )
         return assets
 
-
-    def _remove(self, container):
+    def _remove_Loaded_asset(self, container):
         """
         Delete the layout. First, check if the assets loaded with the layout
         are used by other layouts. If not, delete the assets.
@@ -482,4 +479,3 @@ class LayoutLoader(Loader):
                 unreal.AppMsgType.YES_NO)
             if (remove_asset_confirmation_dialog == unreal.AppReturnType.YES):
                 remove_loaded_asset(container)
-        remove_assets_in_master_sequence(container, self.level_sequences_for_layouts)
