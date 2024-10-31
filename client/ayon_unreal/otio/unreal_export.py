@@ -149,7 +149,6 @@ def create_otio_reference(clip):
 
     # add resolution metadata
     metadata.update({
-        "ayon.source.colourtransform": clip.sourceMediaColourTransform(),
         "ayon.source.width": int(media_source.width()),
         "ayon.source.height": int(media_source.height()),
         "ayon.source.pixelAspect": float(media_source.pixelAspect())
@@ -368,7 +367,7 @@ def add_otio_metadata(otio_item, media_source, **kwargs):
         otio_item.metadata.update({key: value})
 
 
-def create_otio_timeline():
+def create_otio_timeline(sequence):
 
     def set_prev_item(itemindex, track_item):
         # Add Gap if needed
@@ -382,8 +381,8 @@ def create_otio_timeline():
             return track_item.parent().items()[itemindex - 1]
 
     # get current timeline
-    CTX.timeline = "get your unreal timeline"
-    CTX.project_fps = CTX.timeline.framerate().toFloat()
+    CTX.timeline = "total sections lives in Shot tracks in level sequence"
+    CTX.project_fps = sequence.get_display_rate()
 
     # convert timeline to otio
     otio_timeline = _create_otio_timeline()
