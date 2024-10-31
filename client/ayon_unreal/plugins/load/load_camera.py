@@ -101,7 +101,7 @@ class CameraLoader(plugin.Loader):
 
     def _create_map_camera(self, context, path, tools, hierarchy_dir,
                            master_dir_name, asset_dir, asset_name):
-        cam_seq, master_level, level, sequences,frame_ranges = (
+        cam_seq, master_level, level, sequences, frame_ranges = (
             generate_master_level_sequence(
                 tools, asset_dir, asset_name,
                 hierarchy_dir, master_dir_name,

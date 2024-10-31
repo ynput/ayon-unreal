@@ -1128,17 +1128,15 @@ def generate_master_level_sequence(tools, asset_dir, asset_name,
     if not unreal.EditorAssetLibrary.does_asset_exist(master_level):
         unreal.EditorLevelLibrary.new_level(f"{hierarchy_dir}/{master_dir_name}_map")
 
-    asset_level = (
-        f"{asset_dir}/{asset_name}_map.{asset_name}_map"
-    )if not suffix else (
-        f"{asset_dir}/{asset_name}_map_{suffix}.{asset_name}_map_{suffix}"
-    )
-    unreal.log(f"asset_level: {asset_level}")
-    if not unreal.EditorAssetLibrary.does_asset_exist(asset_level):
-        unreal.EditorLevelLibrary.new_level(
-            f"{asset_dir}/{asset_name}"
+    asset_level = f"{asset_dir}/{asset_name}_map.{asset_name}_map"
+    if suffix:
+        asset_level = (
+            f"{asset_dir}/{asset_name}_map_{suffix}.{asset_name}_map_{suffix}"
         )
 
+    unreal.log(f"asset_level: {asset_level}")
+    if not unreal.EditorAssetLibrary.does_asset_exist(asset_level):
+        unreal.EditorLevelLibrary.new_level(asset_level)
         unreal.EditorLevelLibrary.load_level(master_level)
         unreal.EditorLevelUtils.add_level_to_world(
             unreal.EditorLevelLibrary.get_editor_world(),
@@ -1169,11 +1167,12 @@ def generate_master_level_sequence(tools, asset_dir, asset_name,
                 e.get_asset().get_playback_start(),
                 e.get_asset().get_playback_end()))
 
-    shot_name = (
-        f"{asset_dir}/{asset_name}.{asset_name}"
-    ) if not suffix else (
-        f"{asset_dir}/{asset_name}_{suffix}.{asset_name}_{suffix}"
-    )
+    shot_name = f"{asset_dir}/{asset_name}.{asset_name}"
+    if suffix:
+        shot_name = (
+            f"{asset_dir}/{asset_name}_{suffix}.{asset_name}_{suffix}"
+        )
+
     shot = None
     if not unreal.EditorAssetLibrary.does_asset_exist(shot_name):
         shot = tools.create_asset(
