@@ -24,7 +24,8 @@ from ayon_unreal.api.pipeline import (
     format_asset_directory,
     get_top_hierarchy_folder,
     generate_hierarchy_path,
-    update_container
+    update_container,
+    remove_map_and_sequence
 )
 from ayon_unreal.api.lib import (
     import_animation
@@ -454,3 +455,7 @@ class LayoutLoader(plugin.LayoutLoader):
             LevelSequenceLib.set_lock_camera_cut_to_viewport(is_cam_lock)
 
         editor_subsystem.set_level_viewport_camera_info(vp_loc, vp_rot)
+
+    def remove(self, container):
+        self._remove(container)
+        remove_map_and_sequence(container)

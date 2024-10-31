@@ -471,7 +471,7 @@ class LayoutLoader(Loader):
         return assets
 
 
-    def remove(self, container):
+    def _remove(self, container):
         """
         Delete the layout. First, check if the assets loaded with the layout
         are used by other layouts. If not, delete the assets.
@@ -484,4 +484,3 @@ class LayoutLoader(Loader):
             if (remove_asset_confirmation_dialog == unreal.AppReturnType.YES):
                 remove_loaded_asset(container)
         remove_assets_in_master_sequence(container, self.level_sequences_for_layouts)
-        remove_map_and_sequence(container)

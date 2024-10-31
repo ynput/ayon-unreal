@@ -323,3 +323,12 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
             container, repre_entity, loaded_assets=loaded_assets)
 
         unreal.EditorLevelLibrary.save_current_level()
+
+    def remove(self, container):
+        parent_path = Path(container["namespace"])
+        self._remove(container)
+        container_name = container["container_name"]
+        if unreal.EditorAssetLibrary.does_asset_exist(
+            f"{parent_path}/{container_name}"):
+                unreal.EditorAssetLibrary.delete_asset(
+                    f"{parent_path}/{container_name}")
