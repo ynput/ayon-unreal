@@ -30,6 +30,7 @@ class PointCacheAlembicLoader(plugin.Loader):
 
     abc_conversion_preset = "maya"
     loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
+    show_dialog = False
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -42,6 +43,9 @@ class PointCacheAlembicLoader(plugin.Loader):
         if unreal_settings.get("loaded_asset_dir", cls.loaded_asset_dir):
             cls.loaded_asset_dir = unreal_settings.get(
                     "loaded_asset_dir", cls.loaded_asset_dir)
+        if unreal_settings.get("show_dialog", cls.show_dialog):
+            cls.show_dialog = unreal_settings.get(
+                "show_dialog", cls.show_dialog)
 
     @classmethod
     def get_options(cls, contexts):
@@ -89,7 +93,8 @@ class PointCacheAlembicLoader(plugin.Loader):
         task.set_editor_property('destination_path', asset_dir)
         task.set_editor_property('destination_name', asset_name)
         task.set_editor_property('replace_existing', replace)
-        task.set_editor_property('automated', True)
+        task.set_editor_property(
+            'automated', not loaded_options.get("show_dialog"))
         task.set_editor_property('save', True)
 
         options.set_editor_property(
@@ -210,13 +215,15 @@ class PointCacheAlembicLoader(plugin.Loader):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
         loaded_options = {
             "abc_conversion_preset": options.get(
-                "abc_conversion_preset", self.abc_conversion_preset)
+                "abc_conversion_preset", self.abc_conversion_preset),
+            "show_dialog": options.get("show_dialog", self.show_dialog),
         }
         self.import_and_containerize(
             path, asset_dir, asset_name, container_name,
             frame_start, frame_end,
             loaded_options, asset_path=asset_path
         )
+
 
         if asset_path:
             unreal.EditorAssetLibrary.rename_asset(
@@ -263,11 +270,13 @@ class PointCacheAlembicLoader(plugin.Loader):
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
         loaded_options = {
-            "abc_conversion_preset": self.abc_conversion_preset
+            "abc_conversion_preset": self.abc_conversion_preset,
+            "show_dialog": self.show_dialog,
         }
         self.import_and_containerize(
             path, asset_dir, asset_name, container_name,
             frame_start, frame_end, loaded_options)
+
 
         self.imprint(
             folder_path,

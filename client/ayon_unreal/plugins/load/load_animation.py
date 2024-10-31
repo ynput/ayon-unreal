@@ -27,6 +27,7 @@ class AnimationFBXLoader(plugin.Loader):
 
     root = unreal_pipeline.AYON_ROOT_DIR
     loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
+    show_dialog = False
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -36,6 +37,12 @@ class AnimationFBXLoader(plugin.Loader):
         if unreal_settings.get("loaded_asset_dir", cls.loaded_asset_dir):
             cls.loaded_asset_dir = unreal_settings.get(
                     "loaded_asset_dir", cls.loaded_asset_dir)
+        # Apply import settings
+        import_settings = (
+            project_settings.get("unreal", {}).get("import_settings", {})
+        )
+
+        cls.show_dialog = import_settings.get("show_dialog", cls.show_dialog)
 
     def _import_latest_skeleton(self, version_ids):
         version_ids = set(version_ids)
@@ -69,8 +76,10 @@ class AnimationFBXLoader(plugin.Loader):
         )
         return assets
 
+
+    @classmethod
     def _import_animation(
-        self, path, asset_dir, asset_name,
+        cls, path, asset_dir, asset_name,
         skeleton, automated, replace=False,
         loaded_options=None
     ):
@@ -83,7 +92,7 @@ class AnimationFBXLoader(plugin.Loader):
         task.set_editor_property('destination_path', asset_dir)
         task.set_editor_property('destination_name', asset_name)
         task.set_editor_property('replace_existing', replace)
-        task.set_editor_property('automated', automated)
+        task.set_editor_property('automated', not cls.show_dialog)
         task.set_editor_property('save', False)
 
         # set import options here
