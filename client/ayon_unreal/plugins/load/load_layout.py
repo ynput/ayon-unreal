@@ -1,99 +1,73 @@
 # -*- coding: utf-8 -*-
 """Loader for layouts."""
 import json
-import collections
 from pathlib import Path
 import unreal
 from unreal import (
     EditorAssetLibrary,
     EditorLevelLibrary,
-    EditorLevelUtils,
-    AssetToolsHelpers,
-    FBXImportType,
-    MovieSceneLevelVisibilityTrack,
-    MovieSceneSubTrack,
     LevelSequenceEditorBlueprintLibrary as LevelSequenceLib,
 )
 import ayon_api
 
 from ayon_core.pipeline import (
-    discover_loader_plugins,
-    loaders_from_representation,
-    load_container,
     get_representation_path,
-    AYON_CONTAINER_ID,
     get_current_project_name,
 )
-from ayon_core.pipeline.context_tools import get_current_folder_entity
 from ayon_core.settings import get_current_project_settings
 from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
-    generate_sequence,
+    generate_master_level_sequence,
     set_sequence_hierarchy,
     create_container,
-    imprint,
-    ls,
+    AYON_ROOT_DIR,
+    format_asset_directory,
+    get_top_hierarchy_folder,
+    generate_hierarchy_path,
+    update_container,
+    remove_map_and_sequence
+)
+from ayon_unreal.api.lib import (
+    import_animation
 )
 from ayon_core.lib import EnumDef
 
 
-def _remove_loaded_asset(container):
-    # Check if the assets have been loaded by other layouts, and deletes
-    # them if they haven't.
-    containers = ls()
-    layout_containers = [
-        c for c in containers
-        if (c.get('asset_name') != container.get('asset_name') and
-            c.get('family') == "layout")]
-
-    for asset in eval(container.get('loaded_assets')):
-        layouts = [
-            lc for lc in layout_containers
-            if asset in lc.get('loaded_assets')]
-
-        if not layouts:
-            EditorAssetLibrary.delete_directory(str(Path(asset).parent))
-
-            # Delete the parent folder if there aren't any more
-            # layouts in it.
-            asset_content = EditorAssetLibrary.list_assets(
-                str(Path(asset).parent.parent), recursive=False,
-                include_folder=True
-            )
-
-            if len(asset_content) == 0:
-                EditorAssetLibrary.delete_directory(
-                    str(Path(asset).parent.parent))
-
-
-class LayoutLoader(plugin.Loader):
+class LayoutLoader(plugin.LayoutLoader):
     """Load Layout from a JSON file"""
 
-    product_types = {"layout"}
-    representations = {"json"}
-
     label = "Load Layout"
-    icon = "code-fork"
-    color = "orange"
-    ASSET_ROOT = "/Game/Ayon"
     folder_representation_type = "json"
     force_loaded = False
+    level_sequences_for_layouts = True
 
     @classmethod
     def apply_settings(cls, project_settings):
         super(LayoutLoader, cls).apply_settings(project_settings)
-
         # Apply import settings
-        folder_representation_type = (
-            project_settings.get("unreal", {}).get("folder_representation_type", {})
+        cls.folder_representation_type = (
+            project_settings["unreal"].get(
+                "folder_representation_type",
+                cls.folder_representation_type)
         )
-        use_force_loaded = (
-            project_settings.get("unreal", {}).get("force_loaded", {})
+        cls.use_force_loaded = (
+            project_settings["unreal"].get(
+                "force_loaded", cls.force_loaded)
         )
-        if folder_representation_type:
-            cls.folder_representation_type = folder_representation_type
-        if use_force_loaded:
-            cls.force_loaded = use_force_loaded
+        cls.level_sequences_for_layouts = (
+            project_settings["unreal"].get(
+                "level_sequences_for_layouts",
+                cls.level_sequences_for_layouts)
+        )
+        cls.loaded_layout_dir = (
+            project_settings["unreal"].get(
+                "loaded_layout_dir", cls.loaded_layout_dir)
+        )
+        cls.remove_loaded_assets = (
+            project_settings["unreal"].get(
+                "remove_loaded_assets",
+                cls.remove_loaded_assets)
+        )
 
     @classmethod
     def get_options(cls, contexts):
@@ -113,83 +87,9 @@ class LayoutLoader(plugin.Loader):
             )
         return defs
 
-    def _get_asset_containers(self, path):
-        ar = unreal.AssetRegistryHelpers.get_asset_registry()
-
-        asset_content = EditorAssetLibrary.list_assets(
-            path, recursive=True)
-
-        asset_containers = []
-
-        # Get all the asset containers
-        for a in asset_content:
-            obj = ar.get_asset_by_object_path(a)
-            if obj.get_asset().get_class().get_name() == 'AyonAssetContainer':
-                asset_containers.append(obj)
-
-        return asset_containers
-
-    @staticmethod
-    def _get_fbx_loader(loaders, family):
-        name = ""
-        if family in ['rig', 'skeletalMesh']:
-            name = "SkeletalMeshFBXLoader"
-        elif family in ['model', 'staticMesh']:
-            name = "StaticMeshFBXLoader"
-        elif family == 'camera':
-            name = "CameraLoader"
-
-        if name == "":
-
-            return None
-
-        for loader in loaders:
-            if loader.__name__ == name:
-                return loader
-
-        return None
-
-    @staticmethod
-    def _get_abc_loader(loaders, family):
-        name = ""
-        if family in ['rig', 'skeletalMesh']:
-            name = "SkeletalMeshAlembicLoader"
-        elif family in ['model', 'staticMesh']:
-            name = "StaticMeshAlembicLoader"
-
-        if name == "":
-            return None
-
-        for loader in loaders:
-            if loader.__name__ == name:
-                return loader
-
-        return None
-
-    def _transform_from_basis(self, transform, basis):
-        """Transform a transform from a basis to a new basis."""
-        # Get the basis matrix
-        basis_matrix = unreal.Matrix(
-            basis[0],
-            basis[1],
-            basis[2],
-            basis[3]
-        )
-        transform_matrix = unreal.Matrix(
-            transform[0],
-            transform[1],
-            transform[2],
-            transform[3]
-        )
-
-        new_transform = (
-            basis_matrix.get_inverse() * transform_matrix * basis_matrix)
-
-        return new_transform.transform()
-
     def _process_family(
         self, assets, class_name, transform, basis, sequence, inst_name=None,
-        rotation=None
+        rotation=None, unreal_import=False
     ):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
@@ -199,7 +99,8 @@ class LayoutLoader(plugin.Loader):
         for asset in assets:
             obj = ar.get_asset_by_object_path(asset).get_asset()
             if obj.get_class().get_name() == class_name:
-                t = self._transform_from_basis(transform, basis)
+                t = self._transform_from_basis(
+                    transform, basis, unreal_import=unreal_import)
                 actor = EditorLevelLibrary.spawn_actor_from_object(
                     obj, t.translation
                 )
@@ -232,178 +133,7 @@ class LayoutLoader(plugin.Loader):
 
         return actors, bindings
 
-    def _import_animation(
-        self, asset_dir, path, instance_name, skeleton, actors_dict,
-        animation_file, bindings_dict, sequence
-    ):
-        anim_file = Path(animation_file)
-        anim_file_name = anim_file.with_suffix('')
-
-        anim_path = f"{asset_dir}/Animations/{anim_file_name}"
-
-        folder_entity = get_current_folder_entity()
-        # Import animation
-        task = unreal.AssetImportTask()
-        task.options = unreal.FbxImportUI()
-
-        task.set_editor_property(
-            'filename', str(path.with_suffix(f".{animation_file}")))
-        task.set_editor_property('destination_path', anim_path)
-        task.set_editor_property(
-            'destination_name', f"{instance_name}_animation")
-        task.set_editor_property('replace_existing', False)
-        task.set_editor_property('automated', True)
-        task.set_editor_property('save', False)
-
-        # set import options here
-        task.options.set_editor_property(
-            'automated_import_should_detect_type', False)
-        task.options.set_editor_property(
-            'original_import_type', FBXImportType.FBXIT_SKELETAL_MESH)
-        task.options.set_editor_property(
-            'mesh_type_to_import', FBXImportType.FBXIT_ANIMATION)
-        task.options.set_editor_property('import_mesh', False)
-        task.options.set_editor_property('import_animations', True)
-        task.options.set_editor_property('override_full_name', True)
-        task.options.set_editor_property('skeleton', skeleton)
-
-        task.options.anim_sequence_import_data.set_editor_property(
-            'animation_length',
-            unreal.FBXAnimationLengthImportType.FBXALIT_EXPORTED_TIME
-        )
-        task.options.anim_sequence_import_data.set_editor_property(
-            'import_meshes_in_bone_hierarchy', False)
-        task.options.anim_sequence_import_data.set_editor_property(
-            'use_default_sample_rate', False)
-        task.options.anim_sequence_import_data.set_editor_property(
-            'custom_sample_rate', folder_entity.get("attrib", {}).get("fps"))
-        task.options.anim_sequence_import_data.set_editor_property(
-            'import_custom_attribute', True)
-        task.options.anim_sequence_import_data.set_editor_property(
-            'import_bone_tracks', True)
-        task.options.anim_sequence_import_data.set_editor_property(
-            'remove_redundant_keys', False)
-        task.options.anim_sequence_import_data.set_editor_property(
-            'convert_scene', True)
-
-        AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
-
-        asset_content = unreal.EditorAssetLibrary.list_assets(
-            anim_path, recursive=False, include_folder=False
-        )
-
-        animation = None
-
-        for a in asset_content:
-            unreal.EditorAssetLibrary.save_asset(a)
-            imported_asset_data = unreal.EditorAssetLibrary.find_asset_data(a)
-            imported_asset = unreal.AssetRegistryHelpers.get_asset(
-                imported_asset_data)
-            if imported_asset.__class__ == unreal.AnimSequence:
-                animation = imported_asset
-                break
-
-        if animation:
-            actor = None
-            if actors_dict.get(instance_name):
-                for a in actors_dict.get(instance_name):
-                    if a.get_class().get_name() == 'SkeletalMeshActor':
-                        actor = a
-                        break
-
-            animation.set_editor_property('enable_root_motion', True)
-            actor.skeletal_mesh_component.set_editor_property(
-                'animation_mode', unreal.AnimationMode.ANIMATION_SINGLE_NODE)
-            actor.skeletal_mesh_component.animation_data.set_editor_property(
-                'anim_to_play', animation)
-
-            if sequence:
-                # Add animation to the sequencer
-                bindings = bindings_dict.get(instance_name)
-
-                ar = unreal.AssetRegistryHelpers.get_asset_registry()
-
-                for binding in bindings:
-                    tracks = binding.get_tracks()
-                    track = None
-                    track = tracks[0] if tracks else binding.add_track(
-                        unreal.MovieSceneSkeletalAnimationTrack)
-
-                    sections = track.get_sections()
-                    section = None
-                    if not sections:
-                        section = track.add_section()
-                    else:
-                        section = sections[0]
-
-                        sec_params = section.get_editor_property('params')
-                        curr_anim = sec_params.get_editor_property('animation')
-
-                        if curr_anim:
-                            # Checks if the animation path has a container.
-                            # If it does, it means that the animation is
-                            # already in the sequencer.
-                            anim_path = str(Path(
-                                curr_anim.get_path_name()).parent
-                            ).replace('\\', '/')
-
-                            _filter = unreal.ARFilter(
-                                class_names=["AyonAssetContainer"],
-                                package_paths=[anim_path],
-                                recursive_paths=False)
-                            containers = ar.get_assets(_filter)
-
-                            if len(containers) > 0:
-                                return
-
-                    section.set_range(
-                        sequence.get_playback_start(),
-                        sequence.get_playback_end())
-                    sec_params = section.get_editor_property('params')
-                    sec_params.set_editor_property('animation', animation)
-
-    def _get_repre_entities_by_version_id(self, data, repre_extension, force_loaded=False):
-        version_ids = {
-            element.get("version")
-            for element in data
-            if element.get("representation")
-        }
-        version_ids.discard(None)
-        output = collections.defaultdict(list)
-        if not version_ids:
-            return output
-        # Extract extensions from data with backward compatibility for "ma"
-        extensions = {
-            element["extension"]
-            for element in data
-            if element.get("representation")
-        }
-
-        # Update extensions based on the force_loaded flag
-        updated_extensions = set()
-
-        for ext in extensions:
-            if not force_loaded or repre_extension == "json":
-                if ext == "ma":
-                    updated_extensions.update({"fbx", "abc"})
-                else:
-                    updated_extensions.add(ext)
-            else:
-                updated_extensions.update({repre_extension})
-
-        project_name = get_current_project_name()
-        repre_entities = ayon_api.get_representations(
-            project_name,
-            representation_names=updated_extensions,
-            version_ids=version_ids,
-            fields={"id", "versionId", "name"}
-        )
-        for repre_entity in repre_entities:
-            version_id = repre_entity["versionId"]
-            output[version_id].append(repre_entity)
-        return output
-
-    def _process(self, lib_path, asset_dir, sequence,
+    def _process(self, lib_path, project_name, asset_dir, sequence,
                  repr_loaded=None, loaded_extension=None,
                  force_loaded=False):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
@@ -411,7 +141,6 @@ class LayoutLoader(plugin.Loader):
         with open(lib_path, "r") as fp:
             data = json.load(fp)
 
-        all_loaders = discover_loader_plugins()
 
         if not repr_loaded:
             repr_loaded = []
@@ -425,7 +154,7 @@ class LayoutLoader(plugin.Loader):
         loaded_assets = []
 
         repre_entities_by_version_id = self._get_repre_entities_by_version_id(
-            data, loaded_extension, force_loaded=force_loaded
+            project_name, data, loaded_extension, force_loaded=force_loaded
         )
         for element in data:
             repre_id = None
@@ -452,15 +181,6 @@ class LayoutLoader(plugin.Loader):
                 repre_id = repre_entity["id"]
                 repr_format = repre_entity["name"]
 
-            # This is to keep compatibility with old versions of the
-            # json format.
-            elif element.get('reference_fbx'):
-                repre_id = element.get('reference_fbx')
-                repr_format = 'fbx'
-            elif element.get('reference_abc'):
-                repre_id = element.get('reference_abc')
-                repr_format = 'abc'
-
             # If reference is None, this element is skipped, as it cannot be
             # imported in Unreal
             if not repr_format:
@@ -477,40 +197,10 @@ class LayoutLoader(plugin.Loader):
                 product_type = element.get("product_type")
                 if product_type is None:
                     product_type = element.get("family")
-                loaders = loaders_from_representation(
-                    all_loaders, repre_id)
 
-                loader = None
-
-                if repr_format == 'fbx':
-                    loader = self._get_fbx_loader(loaders, product_type)
-                elif repr_format == 'abc':
-                    loader = self._get_abc_loader(loaders, product_type)
-
-                if not loader:
-                    if repr_format == "ma":
-                        msg = (
-                            f"No valid {product_type} loader found for {repre_id} ({repr_format}), "
-                            f"consider using {product_type} loader (fbx/abc) instead."
-                        )
-                        self.log.warning(msg)
-                    else:
-                        self.log.error(
-                            f"No valid loader found for {repre_id} "
-                            f"({repr_format}) "
-                            f"{product_type}")
-                    continue
-
-                options = {
-                    # "asset_dir": asset_dir
-                }
-
-                assets = load_container(
-                    loader,
-                    repre_id,
-                    namespace=instance_name,
-                    options=options
-                )
+                assets = self._load_assets(
+                    instance_name, repre_id,
+                    product_type, repr_format)
 
                 container = None
 
@@ -526,27 +216,29 @@ class LayoutLoader(plugin.Loader):
                 instances = [
                     item for item in data
                     if ((item.get('version') and
-                        item.get('version') == element.get('version')) or
-                        item.get('reference_fbx') == repre_id or
-                        item.get('reference_abc') == repre_id)]
+                        item.get('version') == element.get('version'))
+                        )]
 
                 for instance in instances:
                     transform = instance.get('transform_matrix')
                     rotation = instance.get('rotation', {})
                     basis = instance.get('basis')
                     inst = instance.get('instance_name')
+                    unreal_import = (
+                        True if "unreal" in instance.get("host", []) else False
+                    )
 
                     actors = []
 
                     if product_type in ['model', 'staticMesh']:
                         actors, _ = self._process_family(
                             assets, 'StaticMesh', transform, basis,
-                            sequence, inst, rotation
+                            sequence, inst, rotation, unreal_import=unreal_import
                         )
                     elif product_type in ['rig', 'skeletalMesh']:
                         actors, bindings = self._process_family(
                             assets, 'SkeletalMesh', transform, basis,
-                            sequence, inst, rotation
+                            sequence, inst, rotation, unreal_import=unreal_import
                         )
                         actors_dict[inst] = actors
                         bindings_dict[inst] = bindings
@@ -559,53 +251,12 @@ class LayoutLoader(plugin.Loader):
             animation_file = element.get('animation')
 
             if animation_file and skeleton:
-                self._import_animation(
+                import_animation(
                     asset_dir, path, instance_name, skeleton, actors_dict,
-                    animation_file, bindings_dict, sequence)
+                    animation_file, bindings_dict, sequence
+                )
 
         return loaded_assets
-
-    @staticmethod
-    def _remove_family(assets, components, class_name, prop_name):
-        ar = unreal.AssetRegistryHelpers.get_asset_registry()
-
-        objects = []
-        for a in assets:
-            obj = ar.get_asset_by_object_path(a)
-            if obj.get_asset().get_class().get_name() == class_name:
-                objects.append(obj)
-        for obj in objects:
-            for comp in components:
-                if comp.get_editor_property(prop_name) == obj.get_asset():
-                    comp.get_owner().destroy_actor()
-
-    def _remove_actors(self, path):
-        asset_containers = self._get_asset_containers(path)
-
-        # Get all the static and skeletal meshes components in the level
-        components = EditorLevelLibrary.get_all_level_actors_components()
-        static_meshes_comp = [
-            c for c in components
-            if c.get_class().get_name() == 'StaticMeshComponent']
-        skel_meshes_comp = [
-            c for c in components
-            if c.get_class().get_name() == 'SkeletalMeshComponent']
-
-        # For all the asset containers, get the static and skeletal meshes.
-        # Then, check the components in the level and destroy the matching
-        # actors.
-        for asset_container in asset_containers:
-            package_path = asset_container.get_editor_property('package_path')
-            family = EditorAssetLibrary.get_metadata_tag(
-                asset_container.get_asset(), "family")
-            assets = EditorAssetLibrary.list_assets(
-                str(package_path), recursive=False)
-            if family in ['model', 'staticMesh']:
-                self._remove_family(
-                    assets, static_meshes_comp, 'StaticMesh', 'static_mesh')
-            elif family in ['rig', 'skeletalMesh']:
-                self._remove_family(
-                    assets, skel_meshes_comp, 'SkeletalMesh', 'skeletal_mesh')
 
     def load(self, context, name, namespace, options):
         """Load and containerise representation into Content Browser.
@@ -634,101 +285,27 @@ class LayoutLoader(plugin.Loader):
         # Create directory for asset and Ayon container
         folder_entity = context["folder"]
         folder_path = folder_entity["path"]
-        hierarchy = folder_path.lstrip("/").split("/")
-        # Remove folder name
-        folder_name = hierarchy.pop(-1)
-        root = self.ASSET_ROOT
-        hierarchy_dir = root
-        hierarchy_dir_list = []
-        for h in hierarchy:
-            hierarchy_dir = f"{hierarchy_dir}/{h}"
-            hierarchy_dir_list.append(hierarchy_dir)
-        suffix = "_CON"
-        asset_name = f"{folder_name}_{name}" if folder_name else name
-
-        tools = unreal.AssetToolsHelpers().get_asset_tools()
-        asset_dir, container_name = tools.create_unique_asset_name(
-            "{}/{}/{}".format(hierarchy_dir, folder_name, name),
-            suffix=""
+        folder_name = folder_entity["name"]
+        asset_root, _ = format_asset_directory(context, self.loaded_layout_dir)
+        master_dir_name = get_top_hierarchy_folder(asset_root)
+        asset_dir, hierarchy_dir, container_name, asset_name = (
+            generate_hierarchy_path(
+                name, folder_name, asset_root, master_dir_name
+            )
         )
 
-        container_name += suffix
-        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            EditorAssetLibrary.make_directory(asset_dir)
-
-        master_level = None
-        shot = None
-        sequences = []
+        tools = unreal.AssetToolsHelpers().get_asset_tools()
 
         asset_level = f"{asset_dir}/{folder_name}_map.{folder_name}_map"
         if not EditorAssetLibrary.does_asset_exist(asset_level):
             EditorLevelLibrary.new_level(f"{asset_dir}/{folder_name}_map")
-
         if create_sequences:
-            # Create map for the shot, and create hierarchy of map. If the
-            # maps already exist, we will use them.
-            if hierarchy:
-                h_dir = hierarchy_dir_list[0]
-                h_asset = hierarchy[0]
-                master_level = f"{h_dir}/{h_asset}_map.{h_asset}_map"
-                if not EditorAssetLibrary.does_asset_exist(master_level):
-                    EditorLevelLibrary.new_level(f"{h_dir}/{h_asset}_map")
-
-            if master_level:
-                EditorLevelLibrary.load_level(master_level)
-                EditorLevelUtils.add_level_to_world(
-                    EditorLevelLibrary.get_editor_world(),
-                    asset_level,
-                    unreal.LevelStreamingDynamic
+            shot, _, asset_level, sequences, frame_ranges = (
+                generate_master_level_sequence(
+                    tools, asset_dir, folder_name,
+                    hierarchy_dir, master_dir_name
                 )
-                EditorLevelLibrary.save_all_dirty_levels()
-                EditorLevelLibrary.load_level(asset_level)
-
-            # Get all the sequences in the hierarchy. It will create them, if
-            # they don't exist.
-            frame_ranges = []
-            for (h_dir, h) in zip(hierarchy_dir_list, hierarchy):
-                root_content = EditorAssetLibrary.list_assets(
-                    h_dir, recursive=False, include_folder=False)
-
-                existing_sequences = [
-                    EditorAssetLibrary.find_asset_data(asset)
-                    for asset in root_content
-                    if EditorAssetLibrary.find_asset_data(
-                        asset).get_class().get_name() == 'LevelSequence'
-                ]
-
-                if not existing_sequences:
-                    sequence, frame_range = generate_sequence(h, h_dir)
-
-                    sequences.append(sequence)
-                    frame_ranges.append(frame_range)
-                else:
-                    for e in existing_sequences:
-                        sequences.append(e.get_asset())
-                        frame_ranges.append((
-                            e.get_asset().get_playback_start(),
-                            e.get_asset().get_playback_end()))
-
-            shot_name = f"{asset_dir}/{folder_name}.{folder_name}"
-            shot = None
-            if not EditorAssetLibrary.does_asset_exist(shot_name):
-                shot = tools.create_asset(
-                    asset_name=folder_name,
-                    package_path=asset_dir,
-                    asset_class=unreal.LevelSequence,
-                    factory=unreal.LevelSequenceFactoryNew()
-                )
-            else:
-                shot = unreal.load_asset(shot_name)
-
-            # sequences and frame_ranges have the same length
-            for i in range(0, len(sequences) - 1):
-                set_sequence_hierarchy(
-                    sequences[i], sequences[i + 1],
-                    frame_ranges[i][1],
-                    frame_ranges[i + 1][0], frame_ranges[i + 1][1],
-                    [asset_level])
+            )
 
             project_name = get_current_project_name()
             folder_attributes = (
@@ -755,11 +332,13 @@ class LayoutLoader(plugin.Loader):
                     [asset_level])
 
             EditorLevelLibrary.load_level(asset_level)
+        project_name = get_current_project_name()
         extension = options.get(
             "folder_representation_type", self.folder_representation_type)
         path = self.filepath_from_context(context)
         loaded_assets = self._process(
-            path, asset_dir, shot, loaded_extension=extension,
+            path, project_name, asset_dir, shot,
+            loaded_extension=extension,
             force_loaded=self.force_loaded)
 
         for s in sequences:
@@ -770,27 +349,18 @@ class LayoutLoader(plugin.Loader):
             f"{asset_dir}/{container_name}"
         ):
             # Create Asset Container
-            create_container(
-                container=container_name, path=asset_dir)
-
-            data = {
-                "schema": "ayon:container-2.0",
-                "id": AYON_CONTAINER_ID,
-                "asset": folder_name,
-                "folder_path": folder_path,
-                "namespace": asset_dir,
-                "container_name": container_name,
-                "asset_name": asset_name,
-                "loader": str(self.__class__.__name__),
-                "representation": context["representation"]["id"],
-                "parent": context["representation"]["versionId"],
-                "family": context["product"]["productType"],
-                "loaded_assets": loaded_assets
-            }
-            imprint(
-                "{}/{}".format(asset_dir, container_name), data)
-
-        save_dir = hierarchy_dir_list[0] if create_sequences else asset_dir
+            create_container(container=container_name, path=asset_dir)
+        self.imprint(
+            context,
+            folder_path,
+            folder_name,
+            loaded_assets,
+            asset_dir,
+            asset_name,
+            container_name,
+            hierarchy_dir=hierarchy_dir
+        )
+        save_dir = hierarchy_dir if create_sequences else asset_dir
 
         asset_content = EditorAssetLibrary.list_assets(
             save_dir, recursive=True, include_folder=False)
@@ -813,24 +383,16 @@ class LayoutLoader(plugin.Loader):
         editor_subsystem = unreal.UnrealEditorSubsystem()
         vp_loc, vp_rot = editor_subsystem.get_level_viewport_camera_info()
 
-        root = "/Game/Ayon"
-
         asset_dir = container.get('namespace')
-
-        folder_entity = context["folder"]
         repre_entity = context["representation"]
-
-        hierarchy = folder_entity["path"].lstrip("/").split("/")
-        first_parent_name = hierarchy[0]
-
         sequence = None
         master_level = None
-
+        hierarchy_dir = container.get("master_directory", "")
+        if not hierarchy_dir:
+            master_dir_name = get_top_hierarchy_folder(asset_dir)
+            hierarchy_dir = f"{AYON_ROOT_DIR}/{master_dir_name}"
         if create_sequences:
-            h_dir = f"{root}/{first_parent_name}"
-            h_asset = first_parent_name
-            master_level = f"{h_dir}/{h_asset}_map.{h_asset}_map"
-
+            master_level = f"{hierarchy_dir}/{master_dir_name}_map.{master_dir_name}_map"
             filter = unreal.ARFilter(
                 class_names=["LevelSequence"],
                 package_paths=[asset_dir],
@@ -867,27 +429,19 @@ class LayoutLoader(plugin.Loader):
 
         if create_sequences:
             EditorLevelLibrary.save_current_level()
-
-        EditorAssetLibrary.delete_directory(f"{asset_dir}/animations/")
-
+        project_name = get_current_project_name()
         source_path = get_representation_path(repre_entity)
 
         loaded_assets = self._process(
-            source_path, asset_dir, sequence,
+            source_path, project_name, asset_dir, sequence,
             loaded_extension=self.folder_representation_type,
             force_loaded=self.force_loaded)
 
-        data = {
-            "representation": repre_entity["id"],
-            "parent": repre_entity["versionId"],
-            "loaded_assets": loaded_assets,
-        }
-        imprint(
-            "{}/{}".format(asset_dir, container.get('container_name')), data)
+        update_container(container, repre_entity, loaded_assets=loaded_assets)
 
         EditorLevelLibrary.save_current_level()
 
-        save_dir = f"{root}/{first_parent_name}" if create_sequences else asset_dir
+        save_dir = hierarchy_dir if create_sequences else asset_dir
 
         asset_content = EditorAssetLibrary.list_assets(
             save_dir, recursive=True, include_folder=False)
@@ -908,49 +462,25 @@ class LayoutLoader(plugin.Loader):
         editor_subsystem.set_level_viewport_camera_info(vp_loc, vp_rot)
 
     def remove(self, container):
-        """
-        Delete the layout. First, check if the assets loaded with the layout
-        are used by other layouts. If not, delete the assets.
-        """
-        data = get_current_project_settings()
-        create_sequences = data["unreal"]["level_sequences_for_layouts"]
-        remove_loaded_assets = data["unreal"].get("remove_loaded_assets", False)
-
-        root = "/Game/Ayon"
-        path = Path(container["namespace"])
-
-        if remove_loaded_assets:
-            remove_asset_confirmation_dialog = unreal.EditorDialog.show_message(
-                "The removal of the loaded assets",
-                "The layout will be removed. Do you want to delete all associated assets as well?",
-                unreal.AppMsgType.YES_NO)
-            if (remove_asset_confirmation_dialog == unreal.AppReturnType.YES):
-                _remove_loaded_asset(container)
-
+        self._remove_Loaded_asset(container)
         master_sequence = None
-        master_level = None
         sequences = []
-
-        if create_sequences:
+        if self.level_sequences_for_layouts:
             # Remove the Level Sequence from the parent.
             # We need to traverse the hierarchy from the master sequence to
             # find the level sequence.
-            namespace = container.get('namespace').replace(f"{root}/", "")
-            ms_asset = namespace.split('/')[0]
+            master_directory = container.get("master_directory", "")
+            if not master_directory:
+                namespace = container.get('namespace').replace(f"{AYON_ROOT_DIR}/", "")
+                ms_asset = namespace.split('/')[0]
+                master_directory = f"{AYON_ROOT_DIR}/{ms_asset}"
             ar = unreal.AssetRegistryHelpers.get_asset_registry()
             _filter = unreal.ARFilter(
                 class_names=["LevelSequence"],
-                package_paths=[f"{root}/{ms_asset}"],
+                package_paths=[master_directory],
                 recursive_paths=False)
             sequences = ar.get_assets(_filter)
             master_sequence = sequences[0].get_asset()
-            _filter = unreal.ARFilter(
-                class_names=["World"],
-                package_paths=[f"{root}/{ms_asset}"],
-                recursive_paths=False)
-            levels = ar.get_assets(_filter)
-            master_level = levels[0].get_asset().get_path_name()
-
             sequences = [master_sequence]
 
             parent = None
@@ -959,10 +489,10 @@ class LayoutLoader(plugin.Loader):
                 subscene_track = None
                 visibility_track = None
                 for t in tracks:
-                    if t.get_class() == MovieSceneSubTrack.static_class():
+                    if t.get_class() == unreal.MovieSceneSubTrack.static_class():
                         subscene_track = t
                     if (t.get_class() ==
-                            MovieSceneLevelVisibilityTrack.static_class()):
+                            unreal.MovieSceneLevelVisibilityTrack.static_class()):
                         visibility_track = t
                 if subscene_track:
                     sections = subscene_track.get_sections()
@@ -1001,22 +531,4 @@ class LayoutLoader(plugin.Loader):
 
             assert parent, "Could not find the parent sequence"
 
-        # Create a temporary level to delete the layout level.
-        EditorLevelLibrary.save_all_dirty_levels()
-        EditorAssetLibrary.make_directory(f"{root}/tmp")
-        tmp_level = f"{root}/tmp/temp_map"
-        if not EditorAssetLibrary.does_asset_exist(f"{tmp_level}.temp_map"):
-            EditorLevelLibrary.new_level(tmp_level)
-        else:
-            EditorLevelLibrary.load_level(tmp_level)
-
-        # Delete the layout directory.
-        if EditorAssetLibrary.does_directory_exist(str(path)):
-            EditorAssetLibrary.delete_directory(str(path))
-
-        if create_sequences:
-            EditorLevelLibrary.load_level(master_level)
-            # Load the default level
-            default_level_path = "/Engine/Maps/Templates/OpenWorld"
-            EditorLevelLibrary.load_level(default_level_path)
-            EditorAssetLibrary.delete_directory(f"{root}/tmp")
+        remove_map_and_sequence(container)
