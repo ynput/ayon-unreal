@@ -3,6 +3,7 @@ import os
 import re
 import json
 import clique
+import copy
 import logging
 from typing import List, Any
 from contextlib import contextmanager
@@ -656,6 +657,15 @@ def generate_sequence(h, h_dir):
     return sequence, (min_frame, max_frame)
 
 
+def find_common_name(asset_name):
+    # Find the common prefix
+    prefix_match = re.match(r"^(.*?)(\d+)(.*?)$", asset_name)
+    if not prefix_match:
+        return
+    name, _, ext = prefix_match.groups()
+    return f"{name}_{ext}"
+
+
 def _get_comps_and_assets(
     component_class, asset_class, old_assets, new_assets, selected
 ):
@@ -679,7 +689,8 @@ def _get_comps_and_assets(
     for a in old_assets:
         asset = unreal.EditorAssetLibrary.load_asset(a)
         if isinstance(asset, asset_class):
-            selected_old_assets[asset.get_name()] = asset
+            asset_name = find_common_name(asset.get_name())
+            selected_old_assets[asset_name] = asset
 
     # Get all the static meshes among the new assets in a dictionary with
     # the name as key
@@ -687,7 +698,8 @@ def _get_comps_and_assets(
     for a in new_assets:
         asset = unreal.EditorAssetLibrary.load_asset(a)
         if isinstance(asset, asset_class):
-            selected_new_assets[asset.get_name()] = asset
+            asset_name = find_common_name(asset.get_name())
+            selected_new_assets[asset_name] = asset
 
     return components, selected_old_assets, selected_new_assets
 
@@ -702,6 +714,15 @@ def replace_static_mesh_actors(old_assets, new_assets, selected):
         new_assets,
         selected
     )
+    unreal.log("static_mesh_comps")
+    unreal.log(static_mesh_comps)
+
+    unreal.log("old_meshes")
+    unreal.log(old_meshes)
+
+    unreal.log("new_meshes")
+    unreal.log(old_meshes)
+
 
     for old_name, old_mesh in old_meshes.items():
         new_mesh = new_meshes.get(old_name)
@@ -826,44 +847,32 @@ def select_camera(sequence):
                 actor_subsys.set_actor_selection_state(actor, False)
 
 
-def format_asset_directory(name, context, directory_template,
-                           extension="",
-                           use_version=True):
+def format_asset_directory(context, directory_template):
     """Setting up the asset directory path and name.
     Args:
         name (str): Instance name
         context (dict): context
         directory_template (str): directory template path
         extension (str, optional): file extension. Defaults to "abc".
-        use_version (bool, optional): use context version for asset
-            directory. Defaults to True.
     Returns:
         tuple[str, str]: asset directory, asset name
     """
 
-    data = {}
-    name_version = None
-    data["folder"] = context["folder"]
-    folder_name = context["folder"]["name"]
-    asset_name = set_asset_name(folder_name, name, extension)
-
-    if use_version:
-        version = context["version"]["version"]
-        # Check if version is hero version and use different name
-        if version < 0:
-            name_version = f"{name}_hero"
-        else:
-            name_version = f"{name}_v{version:03d}"
+    data = copy.deepcopy(context)
+    version = data["version"]["version"]
+    # if user set {version[version]},
+    # the copied data from data["version"]["version"] convert
+    # to set the version of the exclusive version folder
+    if version < 0:
+        data["version"]["version"] = "hero"
     else:
-        name_version = asset_name
-
-    asset_name_with_version = set_asset_name(folder_name, name_version, extension)
-    data["product"] = {"name": name_version}
+        data["version"]["version"] = f"v{version:03d}"
+    asset_name_with_version = set_asset_name(data)
     asset_dir = StringTemplate(directory_template).format_strict(data)
     return f"{AYON_ROOT_DIR}/{asset_dir}", asset_name_with_version
 
 
-def set_asset_name(folder_name, name, extension):
+def set_asset_name(data):
     """Set the name of the asset during loading
 
     Args:
@@ -874,13 +883,18 @@ def set_asset_name(folder_name, name, extension):
     Returns:
         str: asset name
     """
-    asset_name = None
+    asset_name = None,
+    name = data["product"]["name"]
+    version = data["version"]["version"]
+    folder_name = data["folder"]["name"]
+    extension = data["representation"]["name"]
     if not extension:
         asset_name = name
     elif folder_name:
-        asset_name = "{}_{}_{}".format(folder_name, name, extension)
+        asset_name = "{}_{}_{}_{}".format(
+            folder_name, name, version, extension)
     else:
-        asset_name = "{}_{}".format(name, extension)
+        asset_name = "{}_{}_{}".format(name, version, extension)
     return asset_name
 
 
@@ -1038,3 +1052,144 @@ def has_asset_directory_pattern_matched(asset_name, asset_dir, name, extension=N
         return asset_path
 
     return None
+
+
+def get_top_hierarchy_folder(path):
+    """Get top hierarchy of the path
+
+    Args:
+        path (str): path
+
+    Returns:
+        str: top hierarchy directory
+    """
+    # Split the path by the directory separator '/'
+    path = path.replace(f"{AYON_ROOT_DIR}/", "")
+    # Return the first part
+    parts = [part for part in path.split('/') if part]
+    return parts[0]
+
+
+def generate_hierarchy_path(name, folder_name, asset_root, master_dir_name, suffix=""):
+    asset_name = f"{folder_name}_{name}" if folder_name else name
+    hierarchy_dir = f"{AYON_ROOT_DIR}/{master_dir_name}"
+    tools = unreal.AssetToolsHelpers().get_asset_tools()
+    asset_dir, container_name = tools.create_unique_asset_name(asset_root, suffix=suffix)
+    suffix = "_CON"
+    container_name += suffix
+    if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+        unreal.EditorAssetLibrary.make_directory(asset_dir)
+
+    return asset_dir, hierarchy_dir, container_name, asset_name
+
+
+def remove_map_and_sequence(container):
+    asset_dir = container.get('namespace')
+    # Create a temporary level to delete the layout level.
+    unreal.EditorLevelLibrary.save_all_dirty_levels()
+    unreal.EditorAssetLibrary.make_directory(f"{AYON_ROOT_DIR}/tmp")
+    tmp_level = f"{AYON_ROOT_DIR}/tmp/temp_map"
+    if not unreal.EditorAssetLibrary.does_asset_exist(f"{tmp_level}.temp_map"):
+        unreal.EditorLevelLibrary.new_level(tmp_level)
+    else:
+        unreal.EditorLevelLibrary.load_level(tmp_level)
+    unreal.EditorLevelLibrary.save_all_dirty_levels()
+    # Delete the camera directory.
+    if unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+        unreal.EditorAssetLibrary.delete_directory(asset_dir)
+    # Load the default level
+    default_level_path = "/Engine/Maps/Templates/OpenWorld"
+    unreal.EditorLevelLibrary.load_level(default_level_path)
+    unreal.EditorAssetLibrary.delete_directory(f"{AYON_ROOT_DIR}/tmp")
+
+
+def update_container(container, repre_entity, loaded_assets=None):
+    asset_dir = container.get('namespace')
+    data = {
+        "representation": repre_entity["id"],
+        "parent": repre_entity["versionId"],
+    }
+    if loaded_assets is not None:
+        data["loaded_assets"] = loaded_assets
+    imprint(
+        "{}/{}".format(
+            asset_dir,
+            container.get('container_name')),
+            data
+    )
+
+
+def generate_master_level_sequence(tools, asset_dir, asset_name,
+                                   hierarchy_dir, master_dir_name,
+                                   suffix=""):
+    # Create map for the shot, and create hierarchy of map. If the maps
+    # already exist, we will use them.
+    master_level = f"{hierarchy_dir}/{master_dir_name}_map.{master_dir_name}_map"
+    if not unreal.EditorAssetLibrary.does_asset_exist(master_level):
+        unreal.EditorLevelLibrary.new_level(f"{hierarchy_dir}/{master_dir_name}_map")
+
+    asset_level = f"{asset_dir}/{asset_name}_map.{asset_name}_map"
+    if suffix:
+        asset_level = (
+            f"{asset_dir}/{asset_name}_map_{suffix}.{asset_name}_map_{suffix}"
+        )
+
+    unreal.log(f"asset_level: {asset_level}")
+    if not unreal.EditorAssetLibrary.does_asset_exist(asset_level):
+        unreal.EditorLevelLibrary.new_level(asset_level)
+        unreal.EditorLevelLibrary.load_level(master_level)
+        unreal.EditorLevelUtils.add_level_to_world(
+            unreal.EditorLevelLibrary.get_editor_world(),
+            asset_level,
+            unreal.LevelStreamingDynamic
+        )
+    sequences = []
+    frame_ranges = []
+    root_content = unreal.EditorAssetLibrary.list_assets(
+        hierarchy_dir, recursive=False, include_folder=False)
+
+    existing_sequences = [
+        unreal.EditorAssetLibrary.find_asset_data(asset)
+        for asset in root_content
+        if unreal.EditorAssetLibrary.find_asset_data(
+            asset).get_class().get_name() == 'LevelSequence'
+    ]
+
+    if not existing_sequences:
+        sequence, frame_range = generate_sequence(master_dir_name, hierarchy_dir)
+
+        sequences.append(sequence)
+        frame_ranges.append(frame_range)
+    else:
+        for e in existing_sequences:
+            sequences.append(e.get_asset())
+            frame_ranges.append((
+                e.get_asset().get_playback_start(),
+                e.get_asset().get_playback_end()))
+
+    shot_name = f"{asset_dir}/{asset_name}.{asset_name}"
+    if suffix:
+        shot_name = (
+            f"{asset_dir}/{asset_name}_{suffix}.{asset_name}_{suffix}"
+        )
+
+    shot = None
+    if not unreal.EditorAssetLibrary.does_asset_exist(shot_name):
+        shot = tools.create_asset(
+            asset_name=asset_name if not suffix else f"{asset_name}_{suffix}",
+            package_path=asset_dir,
+            asset_class=unreal.LevelSequence,
+            factory=unreal.LevelSequenceFactoryNew()
+        )
+    else:
+        shot = unreal.load_asset(shot_name)
+
+    # sequences and frame_ranges have the same length
+    for i in range(0, len(sequences) - 1):
+        set_sequence_hierarchy(
+            sequences[i], sequences[i + 1],
+            frame_ranges[i][1],
+            frame_ranges[i + 1][0], frame_ranges[i + 1][1],
+            [asset_level])
+
+    return shot, master_level, asset_level, sequences, frame_ranges

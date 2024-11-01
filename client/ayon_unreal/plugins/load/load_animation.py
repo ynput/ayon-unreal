@@ -26,7 +26,8 @@ class AnimationFBXLoader(plugin.Loader):
     color = "orange"
 
     root = unreal_pipeline.AYON_ROOT_DIR
-    loaded_asset_dir = "{folder[path]}/{product[name]}"
+    loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
+    show_dialog = False
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -36,6 +37,12 @@ class AnimationFBXLoader(plugin.Loader):
         if unreal_settings.get("loaded_asset_dir", cls.loaded_asset_dir):
             cls.loaded_asset_dir = unreal_settings.get(
                     "loaded_asset_dir", cls.loaded_asset_dir)
+        # Apply import settings
+        import_settings = (
+            project_settings.get("unreal", {}).get("import_settings", {})
+        )
+
+        cls.show_dialog = import_settings.get("show_dialog", cls.show_dialog)
 
     def _import_latest_skeleton(self, version_ids):
         version_ids = set(version_ids)
@@ -69,8 +76,10 @@ class AnimationFBXLoader(plugin.Loader):
         )
         return assets
 
+
+    @classmethod
     def _import_animation(
-        self, path, asset_dir, asset_name,
+        cls, path, asset_dir, asset_name,
         skeleton, automated, replace=False,
         loaded_options=None
     ):
@@ -83,7 +92,7 @@ class AnimationFBXLoader(plugin.Loader):
         task.set_editor_property('destination_path', asset_dir)
         task.set_editor_property('destination_name', asset_name)
         task.set_editor_property('replace_existing', replace)
-        task.set_editor_property('automated', automated)
+        task.set_editor_property('automated', not cls.show_dialog)
         task.set_editor_property('save', False)
 
         # set import options here
@@ -404,9 +413,7 @@ class AnimationFBXLoader(plugin.Loader):
 
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        asset_root, asset_name = unreal_pipeline.format_asset_directory(
-            name, context, self.loaded_asset_dir, extension=ext
-        )
+        asset_root, asset_name = unreal_pipeline.format_asset_directory(context, self.loaded_asset_dir)
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
@@ -467,7 +474,6 @@ class AnimationFBXLoader(plugin.Loader):
         hierarchy = folder_path.lstrip("/").split("/")
         folder_name = hierarchy.pop(-1)
         folder_name = context["folder"]["name"]
-        product_name = context["product"]["name"]
         product_type = context["product"]["productType"]
         repre_entity = context["representation"]
         folder_entity = context["folder"]
@@ -475,9 +481,7 @@ class AnimationFBXLoader(plugin.Loader):
         suffix = "_CON"
         source_path = get_representation_path(repre_entity)
         ext = os.path.splitext(source_path)[-1].lstrip(".")
-        asset_root, asset_name = unreal_pipeline.format_asset_directory(
-            product_name, context, self.loaded_asset_dir, extension=ext
-        )
+        asset_root, asset_name = unreal_pipeline.format_asset_directory(context, self.loaded_asset_dir)
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")

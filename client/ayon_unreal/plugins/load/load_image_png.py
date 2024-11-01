@@ -22,7 +22,7 @@ class TexturePNGLoader(plugin.Loader):
     product_types = {"image", "texture", "render"}
     label = "Import image texture 2d"
     representations = {"*"}
-    extensions = {"png", "jpg", "tiff"}
+    extensions = {"png", "jpg", "tiff", "exr"}
     icon = "wallpaper"
     color = "orange"
 
@@ -30,7 +30,7 @@ class TexturePNGLoader(plugin.Loader):
     use_interchange = False
     show_dialog = False
     pipeline_path = ""
-    loaded_asset_dir = "{folder[path]}/{product[name]}"
+    loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -38,8 +38,9 @@ class TexturePNGLoader(plugin.Loader):
         unreal_settings = project_settings.get("unreal", {})
         # Apply import settings
         import_settings = unreal_settings.get("import_settings", {})
-        cls.use_interchange = import_settings.get("use_interchange",
-                                                  cls.use_interchange)
+        cls.use_interchange = import_settings.get("interchange", {}).get(
+            "enabled", cls.use_interchange
+        )
         cls.show_dialog = import_settings.get("show_dialog", cls.show_dialog)
         cls.pipeline_path = import_settings.get("interchange", {}).get(
             "pipeline_path_static_mesh", cls.pipeline_path
@@ -76,6 +77,8 @@ class TexturePNGLoader(plugin.Loader):
                 None, "Interchange.FeatureFlags.Import.JPG 1")
             unreal.SystemLibrary.execute_console_command(
                 None, "Interchange.FeatureFlags.Import.TIFF 1")
+            unreal.SystemLibrary.execute_console_command(
+                None, "Interchange.FeatureFlags.Import.EXR 1")
 
             import_assetparameters = unreal.ImportAssetParameters()
             editor_asset_subsystem = unreal.EditorAssetSubsystem()
@@ -166,8 +169,7 @@ class TexturePNGLoader(plugin.Loader):
         suffix = "_CON"
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        asset_root, asset_name = format_asset_directory(
-            name, context, self.loaded_asset_dir, extension=ext)
+        asset_root, asset_name = format_asset_directory(context, self.loaded_asset_dir)
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
@@ -210,7 +212,6 @@ class TexturePNGLoader(plugin.Loader):
 
     def update(self, container, context):
         folder_path = context["folder"]["path"]
-        product_name = context["product"]["name"]
         product_type = context["product"]["productType"]
         repre_entity = context["representation"]
         path = get_representation_path(repre_entity)
@@ -218,8 +219,7 @@ class TexturePNGLoader(plugin.Loader):
 
         # Create directory for asset and Ayon container
         suffix = "_CON"
-        asset_root, asset_name = format_asset_directory(
-            product_name, context, self.loaded_asset_dir, extension=ext)
+        asset_root, asset_name = format_asset_directory(context, self.loaded_asset_dir)
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(

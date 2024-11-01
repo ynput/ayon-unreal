@@ -45,9 +45,14 @@ class UnrealSettings(BaseSettingsModel):
         title="Color Management (ImageIO)"
     )
     loaded_asset_dir: str = SettingsField(
-        "{folder[path]}/{product[name]}",
+        "{folder[path]}/{product[name]}_{version[version]}",
         title="Asset directories for loaded assets",
         description="Asset directories to store the loaded assets"
+    )
+    loaded_layout_dir: str = SettingsField(
+        "{folder[path]}/{product[name]}",
+        title="Directories for loaded layouts",
+        description="Directories to store the loaded layouts"
     )
     import_settings: UnrealImportModel = SettingsField(
         default_factory=UnrealImportModel,
@@ -114,7 +119,8 @@ class UnrealSettings(BaseSettingsModel):
 
 
 DEFAULT_VALUES = {
-    "loaded_asset_dir": "{folder[path]}/{product[name]}",
+    "loaded_asset_dir": "{folder[path]}/{product[name]}_{version[version]}",
+    "loaded_layout_dir": "{folder[path]}/{product[name]}",
     "level_sequences_for_layouts": True,
     "remove_loaded_assets": False,
     "delete_unmatched_assets": False,

@@ -25,7 +25,8 @@ class SkeletalMeshFBXLoader(plugin.Loader):
     icon = "cube"
     color = "orange"
 
-    loaded_asset_dir = "{folder[path]}/{product[name]}"
+    loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
+    show_dialog = False
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -34,9 +35,14 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         if unreal_settings.get("loaded_asset_dir", cls.loaded_asset_dir):
             cls.loaded_asset_dir = unreal_settings.get(
                     "loaded_asset_dir", cls.loaded_asset_dir)
+        # Apply import settings
+        import_settings = (
+            project_settings.get("unreal", {}).get("import_settings", {})
+        )
+        cls.show_dialog = import_settings.get("show_dialog", cls.show_dialog)
 
-    @staticmethod
-    def get_task(filename, asset_dir, asset_name, replace):
+    @classmethod
+    def get_task(cls, filename, asset_dir, asset_name, replace):
         task = unreal.AssetImportTask()
         options = unreal.FbxImportUI()
 
@@ -44,7 +50,7 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         task.set_editor_property('destination_path', asset_dir)
         task.set_editor_property('destination_name', asset_name)
         task.set_editor_property('replace_existing', replace)
-        task.set_editor_property('automated', True)
+        task.set_editor_property('automated', not cls.show_dialog)
         task.set_editor_property('save', True)
 
         options.set_editor_property(
@@ -73,6 +79,7 @@ class SkeletalMeshFBXLoader(plugin.Loader):
 
         return task
 
+
     def import_and_containerize(
         self, filepath, asset_dir, asset_name, container_name,
         asset_path=None
@@ -80,7 +87,7 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         task = None
         if asset_path:
             loaded_asset_dir = unreal.Paths.split(asset_path)[0]
-            task = self.get_task(filepath, loaded_asset_dir, asset_name, True)
+            task = self.get_task(filepath, loaded_asset_dir, asset_name, False)
         else:
             if not unreal.EditorAssetLibrary.does_asset_exist(
                 f"{asset_dir}/{asset_name}"):
@@ -140,9 +147,7 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         suffix = "_CON"
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        asset_root, asset_name = format_asset_directory(
-            name, context, self.loaded_asset_dir, extension=ext
-        )
+        asset_root, asset_name = format_asset_directory(context, self.loaded_asset_dir)
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
@@ -184,7 +189,6 @@ class SkeletalMeshFBXLoader(plugin.Loader):
 
     def update(self, container, context):
         folder_path = context["folder"]["path"]
-        product_name = context["product"]["name"]
         product_type = context["product"]["productType"]
         repre_entity = context["representation"]
 
@@ -192,8 +196,7 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         suffix = "_CON"
         path = get_representation_path(repre_entity)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        asset_root, asset_name = format_asset_directory(
-            product_name, context, self.loaded_asset_dir, extension=ext)
+        asset_root, asset_name = format_asset_directory(context, self.loaded_asset_dir)
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
