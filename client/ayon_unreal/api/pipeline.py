@@ -526,6 +526,30 @@ def get_subsequences(sequence: unreal.LevelSequence):
     return []
 
 
+def get_movie_shot_tracks(sequence: unreal.LevelSequence):
+    """Get list of movie shot tracks from sequence.
+
+    Args:
+        sequence (unreal.LevelSequence): Sequence
+
+    Returns:
+        list(unreal.LevelSequence): List of movie shot tracks
+
+    """
+    tracks = sequence.find_master_tracks_by_type(unreal.MovieSceneSubTrack)
+    subscene_track = next(
+        (
+            t
+            for t in tracks
+            if t.get_class() == unreal.MovieSceneCinematicShotTrack.static_class()
+        ),
+        None,
+    )
+    if subscene_track is not None and subscene_track.get_sections():
+        return subscene_track.get_sections()
+    return []
+
+
 def set_sequence_hierarchy(
     seq_i, seq_j, max_frame_i, min_frame_j, max_frame_j, map_paths
 ):

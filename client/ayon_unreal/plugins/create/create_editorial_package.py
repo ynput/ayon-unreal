@@ -3,7 +3,7 @@ from pathlib import Path
 import unreal
 
 from ayon_core.pipeline import CreatorError
-from ayon_unreal.api.pipeline import get_subsequences
+from ayon_unreal.api.pipeline import get_subsequences, get_movie_shot_tracks
 from ayon_unreal.api.plugin import (
     UnrealAssetCreator
 )
@@ -20,15 +20,12 @@ class CreateEditorialPackage(UnrealAssetCreator):
 
     def create_instance(
             self, instance_data, product_name, pre_create_data,
-            selected_asset_path, master_seq, master_lvl, seq_data
+            selected_asset_path, master_seq, master_lvl
     ):
         instance_data["members"] = [selected_asset_path]
         instance_data["sequence"] = selected_asset_path
         instance_data["master_sequence"] = master_seq
         instance_data["master_level"] = master_lvl
-        instance_data["output"] = seq_data.get('output')
-        instance_data["frameStart"] = seq_data.get('frame_range')[0]
-        instance_data["frameEnd"] = seq_data.get('frame_range')[1]
 
         super(CreateEditorialPackage, self).create(
             product_name,
@@ -83,55 +80,9 @@ class CreateEditorialPackage(UnrealAssetCreator):
                 raise RuntimeError(
                     "Could not find the hierarchy for the selected sequence.")
 
-            master_seq_data = {
-                "sequence": master_seq_obj,
-                "output": f"{master_seq_obj.get_name()}",
-                "frame_range": (
-                    master_seq_obj.get_playback_start(),
-                    master_seq_obj.get_playback_end())}
-
-            seq_data_list = [master_seq_data]
-            unreal.log("data_list")
-            unreal.log(seq_data_list)
-            for seq in seq_data_list:
-                subscenes = get_subsequences(seq.get('sequence'))
-                unreal.log(subscenes)
-                unreal.log("subscenes")
-                for sub_seq in subscenes:
-                    sub_seq_obj = sub_seq.get_sequence()
-                    curr_data = {
-                        "sequence": sub_seq_obj,
-                        "output": (f"{seq.get('output')}/"
-                                    f"{sub_seq_obj.get_name()}"),
-                        "frame_range": (
-                            sub_seq.get_start_frame(),
-                            sub_seq.get_end_frame() - 1)}
-
-                    # If the selected asset is the current sub-sequence,
-                    # we get its data and we break the loop.
-                    # Otherwise, we add the current sub-sequence data to
-                    # the list of sequences to check.
-                    if sub_seq_obj.get_path_name() == selected_asset_path:
-                        seq_data = curr_data
-                        break
-
-                    seq_data_list.append(curr_data)
-
-                # If we found the selected asset, we break the loop.
-                if seq_data is not None:
-                    break
-
-            # If we didn't find the selected asset, we don't create the
-            # instance.
-            if not seq_data:
-                unreal.log_warning(
-                    f"Skipping {selected_asset.get_name()}. It isn't a "
-                    "sub-sequence of the master sequence.")
-                continue
-
-            self.create_instance(
-                instance_data, product_name, pre_create_data,
-                selected_asset_path, master_seq, master_lvl, seq_data)
+        self.create_instance(
+            instance_data, product_name, pre_create_data,
+            selected_asset_path, master_seq, master_lvl)
 
     def get_instance_attr_defs(self):
         def header_label(text):
