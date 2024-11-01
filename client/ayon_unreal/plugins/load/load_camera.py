@@ -3,8 +3,7 @@
 import unreal
 from unreal import (
     EditorAssetLibrary,
-    EditorLevelLibrary,
-    EditorLevelUtils
+    EditorLevelLibrary
 )
 from ayon_core.pipeline import (
     AYON_CONTAINER_ID,
@@ -12,10 +11,15 @@ from ayon_core.pipeline import (
 )
 from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
-    generate_sequence,
+    generate_master_level_sequence,
     set_sequence_hierarchy,
     create_container,
     imprint,
+    format_asset_directory,
+    AYON_ROOT_DIR,
+    get_top_hierarchy_folder,
+    generate_hierarchy_path,
+    remove_map_and_sequence
 )
 
 
@@ -27,7 +31,17 @@ class CameraLoader(plugin.Loader):
     representations = {"fbx"}
     icon = "cube"
     color = "orange"
-    root = "/Game/Ayon"
+    loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
+
+    @classmethod
+    def apply_settings(cls, project_settings):
+        super(CameraLoader, cls).apply_settings(
+            project_settings
+        )
+        cls.loaded_asset_dir = (
+            project_settings["unreal"].get(
+                "loaded_asset_dir", cls.loaded_asset_dir)
+        )
 
     def _import_camera(
         self, world, sequence, bindings, import_fbx_settings, import_filename
@@ -85,76 +99,14 @@ class CameraLoader(plugin.Loader):
         }
         imprint(f"{asset_dir}/{container_name}", data)
 
-    def _create_map_camera(self, context, path, tools, hierarchy_dir_list,
-                           hierarchy_dir, hierarchy_parts,
-                           asset_dir, asset_name):
-        # Create map for the shot, and create hierarchy of map. If the maps
-        # already exist, we will use them.
-        h_dir = hierarchy_dir_list[0]
-        h_asset = hierarchy_dir[0]
-        master_level = f"{h_dir}/{h_asset}_map.{h_asset}_map"
-        if not EditorAssetLibrary.does_asset_exist(master_level):
-            EditorLevelLibrary.new_level(f"{h_dir}/{h_asset}_map")
-
-        level = (
-            f"{asset_dir}/{asset_name}_map_camera.{asset_name}_map_camera"
+    def _create_map_camera(self, context, path, tools, hierarchy_dir,
+                           master_dir_name, asset_dir, asset_name):
+        cam_seq, master_level, level, sequences, frame_ranges = (
+            generate_master_level_sequence(
+                tools, asset_dir, asset_name,
+                hierarchy_dir, master_dir_name,
+                suffix="camera")
         )
-        if not EditorAssetLibrary.does_asset_exist(level):
-            EditorLevelLibrary.new_level(
-                f"{asset_dir}/{asset_name}_map_camera"
-            )
-
-            EditorLevelLibrary.load_level(master_level)
-            EditorLevelUtils.add_level_to_world(
-                EditorLevelLibrary.get_editor_world(),
-                level,
-                unreal.LevelStreamingDynamic
-            )
-        EditorLevelLibrary.save_all_dirty_levels()
-        EditorLevelLibrary.load_level(level)
-
-        # Get all the sequences in the hierarchy. It will create them, if
-        # they don't exist.
-        frame_ranges = []
-        sequences = []
-        for (h_dir, h) in zip(hierarchy_dir_list, hierarchy_parts):
-            root_content = EditorAssetLibrary.list_assets(
-                h_dir, recursive=False, include_folder=False)
-
-            existing_sequences = [
-                EditorAssetLibrary.find_asset_data(asset)
-                for asset in root_content
-                if EditorAssetLibrary.find_asset_data(
-                    asset).get_class().get_name() == 'LevelSequence'
-            ]
-
-            if existing_sequences:
-                for seq in existing_sequences:
-                    sequences.append(seq.get_asset())
-                    frame_ranges.append((
-                        seq.get_asset().get_playback_start(),
-                        seq.get_asset().get_playback_end()))
-            else:
-                sequence, frame_range = generate_sequence(h, h_dir)
-
-                sequences.append(sequence)
-                frame_ranges.append(frame_range)
-
-        cam_seq = tools.create_asset(
-            asset_name=f"{asset_name}_camera",
-            package_path=asset_dir,
-            asset_class=unreal.LevelSequence,
-            factory=unreal.LevelSequenceFactoryNew()
-        )
-
-        # Add sequences data to hierarchy
-        for i in range(len(sequences) - 1):
-            set_sequence_hierarchy(
-                sequences[i], sequences[i + 1],
-                frame_ranges[i][1],
-                frame_ranges[i + 1][0], frame_ranges[i + 1][1],
-                [level])
-
         folder_entity = context["folder"]
         folder_attributes = folder_entity["attrib"]
         clip_in = folder_attributes.get("clipIn")
@@ -181,6 +133,11 @@ class CameraLoader(plugin.Loader):
                 settings,
                 path
             )
+            camera_actors = unreal.GameplayStatics().get_all_actors_of_class(
+            EditorLevelLibrary.get_editor_world(), unreal.CameraActor)
+            unreal.log(f"Spawning camera: {asset_name}")
+            for actor in camera_actors:
+                actor.set_actor_label(asset_name)
 
         # Set range of all sections
         # Changing the range of the section is not enough. We need to change
@@ -201,7 +158,7 @@ class CameraLoader(plugin.Loader):
                             key.set_time(unreal.FrameNumber(value=new_time))
         return master_level
 
-    def load(self, context, name, namespace, data):
+    def load(self, context, name, namespace, options):
         """
         Load and containerise representation into Content Browser.
 
@@ -226,39 +183,21 @@ class CameraLoader(plugin.Loader):
         # Create directory for asset and Ayon container
         folder_entity = context["folder"]
         folder_path = folder_entity["path"]
-        hierarchy_parts = folder_path.split("/")
-        # Remove empty string
-        hierarchy_parts.pop(0)
-        # Pop folder name
-        folder_name = hierarchy_parts.pop(-1)
-
-        hierarchy_dir = self.root
-        hierarchy_dir_list = []
-        for h in hierarchy_parts:
-            hierarchy_dir = f"{hierarchy_dir}/{h}"
-            hierarchy_dir_list.append(hierarchy_dir)
-        suffix = "_CON"
-        asset_name = f"{folder_name}_{name}" if folder_name else name
+        folder_name = folder_entity["name"]
+        asset_root, asset_name = format_asset_directory(
+            context, self.loaded_asset_dir)
+        master_dir_name = get_top_hierarchy_folder(asset_root)
         tools = unreal.AssetToolsHelpers().get_asset_tools()
-        version = context["version"]["version"]
-        # Check if version is hero version and use different name
-        if version < 0:
-            name_version = f"{name}_hero"
-        else:
-            name_version = f"{name}_v{version:03d}"
-        asset_dir, container_name = tools.create_unique_asset_name(
-            f"{hierarchy_dir}/{folder_name}/{name_version}", suffix="")
-
-        container_name += suffix
-        master_level = None
-        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            EditorAssetLibrary.make_directory(asset_dir)
-            path = self.filepath_from_context(context)
-            master_level = self._create_map_camera(
-                context, path, tools, hierarchy_dir_list,
-                hierarchy_dir, hierarchy_parts,
-                asset_dir, asset_name
+        asset_dir, hierarchy_dir, container_name, _ = (
+            generate_hierarchy_path(
+                name, folder_name, asset_root, master_dir_name
             )
+        )
+        path = self.filepath_from_context(context)
+        master_level = self._create_map_camera(
+            context, path, tools, hierarchy_dir,
+            master_dir_name, asset_dir, asset_name
+        )
 
         # Create Asset Container
         if not unreal.EditorAssetLibrary.does_asset_exist(
@@ -283,7 +222,7 @@ class CameraLoader(plugin.Loader):
 
         # Save all assets in the hierarchy
         asset_content = EditorAssetLibrary.list_assets(
-            hierarchy_dir_list[0], recursive=True, include_folder=False
+            hierarchy_dir, recursive=True, include_folder=False
         )
 
         for a in asset_content:
@@ -296,29 +235,14 @@ class CameraLoader(plugin.Loader):
         repre_entity = context["representation"]
         folder_entity = context["folder"]
         folder_path = folder_entity["path"]
-        product_name = context["product"]["name"]
-        hierarchy_parts = folder_path.split("/")
-        # Remove empty string
-        hierarchy_parts.pop(0)
-        # Pop folder name
-        folder_name = hierarchy_parts.pop(-1)
-
-        hierarchy_dir = self.root
-        hierarchy_dir_list = []
-        for h in hierarchy_parts:
-            hierarchy_dir = f"{hierarchy_dir}/{h}"
-            hierarchy_dir_list.append(hierarchy_dir)
+        asset_root, asset_name = format_asset_directory(
+            context, self.loaded_asset_dir)
+        master_dir_name = get_top_hierarchy_folder(asset_root)
+        hierarchy_dir = f"{AYON_ROOT_DIR}/{master_dir_name}"
         suffix = "_CON"
-        asset_name = f"{folder_name}_{product_name}" if folder_name else product_name
         tools = unreal.AssetToolsHelpers().get_asset_tools()
-        version = context["version"]["version"]
-        # Check if version is hero version and use different name
-        if version < 0:
-            name_version = f"{product_name}_hero"
-        else:
-            name_version = f"{product_name}_v{version:03d}"
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{hierarchy_dir}/{folder_name}/{name_version}", suffix="")
+            asset_root, suffix="")
 
         container_name += suffix
         master_level = None
@@ -326,9 +250,8 @@ class CameraLoader(plugin.Loader):
             EditorAssetLibrary.make_directory(asset_dir)
             path = get_representation_path(repre_entity)
             master_level = self._create_map_camera(
-                context, path, tools, hierarchy_dir_list,
-                hierarchy_dir, hierarchy_parts,
-                asset_dir, asset_name
+                context, path, tools, hierarchy_dir,
+                master_dir_name, asset_dir, asset_name
             )
 
         # Create Asset Container
@@ -344,7 +267,7 @@ class CameraLoader(plugin.Loader):
             container_name,
             asset_name,
             context["representation"],
-            folder_name,
+            folder_entity["name"],
             context["product"]["productType"],
             folder_entity
         )
@@ -354,7 +277,7 @@ class CameraLoader(plugin.Loader):
 
         # Save all assets in the hierarchy
         asset_content = EditorAssetLibrary.list_assets(
-            hierarchy_dir_list[0], recursive=True, include_folder=False
+            hierarchy_dir, recursive=True, include_folder=False
         )
 
         for a in asset_content:
@@ -364,20 +287,4 @@ class CameraLoader(plugin.Loader):
         self.update(container, context)
 
     def remove(self, container):
-        asset_dir = container.get('namespace')
-        # Create a temporary level to delete the layout level.
-        EditorLevelLibrary.save_all_dirty_levels()
-        EditorAssetLibrary.make_directory(f"{self.root}/tmp")
-        tmp_level = f"{self.root}/tmp/temp_map"
-        if not EditorAssetLibrary.does_asset_exist(f"{tmp_level}.temp_map"):
-            EditorLevelLibrary.new_level(tmp_level)
-        else:
-            EditorLevelLibrary.load_level(tmp_level)
-        EditorLevelLibrary.save_all_dirty_levels()
-        # Delete the camera directory.
-        if EditorAssetLibrary.does_directory_exist(asset_dir):
-            EditorAssetLibrary.delete_directory(asset_dir)
-        # Load the default level
-        default_level_path = "/Engine/Maps/Templates/OpenWorld"
-        EditorLevelLibrary.load_level(default_level_path)
-        EditorAssetLibrary.delete_directory(f"{self.root}/tmp")
+        remove_map_and_sequence(container)
