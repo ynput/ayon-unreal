@@ -71,8 +71,8 @@ class CollectIntermediateRender(pyblish.api.InstancePlugin):
                 raise Exception((
                     "Could not find render root "
                     "in anatomy settings.")) from e
-
             render_dir = f"{root}/{project}/editorial_pkg/{data.get('output')}"
+            render_dir = f"{render_dir}/{track_name}_{i + 1}"
             render_path = Path(render_dir)
             if not os.path.exists(render_path):
                 msg = (
@@ -83,8 +83,6 @@ class CollectIntermediateRender(pyblish.api.InstancePlugin):
                 raise PublishError(msg, title="Render directory not found.")
             self.log.debug(f"Collecting render path: {render_path}")
             frames = [str(x) for x in render_path.iterdir() if x.is_file()]
-            frames = pipeline.get_shot_filename_by_frame_range(
-                frames, track.get_start_frame(), track.get_end_frame())
             frames = pipeline.get_sequence(frames)
             image_format = next((os.path.splitext(x)[-1].lstrip(".")
                                     for x in frames), "exr")
