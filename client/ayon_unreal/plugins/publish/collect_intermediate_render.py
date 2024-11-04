@@ -2,8 +2,8 @@ from pathlib import Path
 
 import unreal
 import os
-from ayon_core.pipeline import get_current_project_name
-from ayon_core.pipeline import Anatomy
+from ayon_core.pipeline import get_current_project_name, Anatomy
+from ayon_core.pipeline.publish import PublishError
 from ayon_unreal.api import pipeline
 from ayon_unreal.api.lib import get_shot_tracks
 import pyblish.api
@@ -31,11 +31,13 @@ class CollectIntermediateRender(pyblish.api.InstancePlugin):
         sequence = ar.get_asset_by_object_path(
             data.get('sequence')).get_asset()
         members = instance.data["members"]
-        for track in get_shot_tracks(members):
+        for i, track in enumerate(get_shot_tracks(members)):
             track_name = track.get_shot_display_name()
 
             product_type = "render"
-            new_product_name = f"{data.get('productName')}_{track_name}"
+            new_product_name = (
+                f"{data.get('productName')}_{track_name}_{i + 1}"
+            )
             new_instance = context.create_instance(
                 new_product_name
             )
@@ -72,6 +74,13 @@ class CollectIntermediateRender(pyblish.api.InstancePlugin):
 
             render_dir = f"{root}/{project}/editorial_pkg/{data.get('output')}"
             render_path = Path(render_dir)
+            if not os.path.exists(render_path):
+                msg = (
+                    f"Render directory {render_path} not found."
+                    " Please render with the render instance"
+                )
+                self.log.error(msg)
+                raise PublishError(msg, title="Render directory not found.")
             self.log.debug(f"Collecting render path: {render_path}")
             frames = [str(x) for x in render_path.iterdir() if x.is_file()]
             frames = pipeline.get_shot_filename_by_frame_range(
