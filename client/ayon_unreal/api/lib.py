@@ -319,14 +319,12 @@ def get_shot_track_names(sel_objects=None, get_name=True):
         sel.find_master_tracks_by_type(unreal.MovieSceneSubTrack)
     ]
 
-    movie_shot_tracks = [track for track in sub_sequence_tracks
-                         if isinstance(track, unreal.MovieSceneCinematicShotTrack)]
     if get_name:
         return [section.get_shot_display_name() for shot_tracks in
-                movie_shot_tracks for section in shot_tracks.get_sections()]
+                sub_sequence_tracks for section in shot_tracks.get_sections()]
     else:
         return [section for shot_tracks in
-                movie_shot_tracks for section in shot_tracks.get_sections()]
+                sub_sequence_tracks for section in shot_tracks.get_sections()]
 
 
 def get_shot_tracks(members):
