@@ -197,11 +197,11 @@ def start_rendering():
 
         elif i["productType"] == "editorial_pkg":
             members = ast.literal_eval(i["members"])
-            for i, track in enumerate(get_shot_tracks(members)):
+            for e, track in enumerate(get_shot_tracks(members)):
                 track_name = track.get_shot_display_name()
                 track_section = [{
                     "sequence": track,
-                    "output": f"{i['output']}/{track_name}_{i + 1}",
+                    "output": f"{i['output']}/{track_name}_{e + 1}",
                     "frame_range": (
                         int(track.get_start_frame()),
                         int(track.get_end_frame()))
