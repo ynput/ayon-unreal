@@ -167,7 +167,7 @@ class LayoutLoader(plugin.LayoutLoader):
                         f"No valid representation found for version"
                         f" {version_id}")
                     continue
-                extension = element.get("extension")
+                extension = element.get("extension", "ma")
                 repre_entity = None
                 if not force_loaded or loaded_extension == "json":
                     repre_entity = next((repre_entity for repre_entity in repre_entities
