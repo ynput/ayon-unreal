@@ -333,3 +333,8 @@ def get_shot_tracks(members):
         ar.get_asset_by_object_path(member).get_asset() for member in members
     ]
     return get_shot_track_names(selected_sequences, get_name=False)
+
+
+def get_screen_resolution():
+    game_user_settings = unreal.GameUserSettings.get_game_user_settings()
+    return game_user_settings.get_screen_resolution()
