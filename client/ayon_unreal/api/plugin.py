@@ -375,7 +375,7 @@ class LayoutLoader(Loader):
             return output
         # Extract extensions from data with backward compatibility for "ma"
         extensions = {
-            element["extension"]
+            element.get("extension", "ma")
             for element in data
             if element.get("representation")
         }
