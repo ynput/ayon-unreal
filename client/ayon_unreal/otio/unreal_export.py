@@ -195,8 +195,8 @@ def add_otio_gap(track_section, otio_track, prev_out):
     otio_track.append(otio_gap)
 
 
-def add_otio_metadata(instance, otio_item, **kwargs):
-    metadata = _get_metadata(instance)
+def add_otio_metadata(otio_item, media_source, **kwargs):
+    metadata = _get_metadata(media_source)
 
     # add additional metadata from kwargs
     if kwargs:
@@ -204,7 +204,7 @@ def add_otio_metadata(instance, otio_item, **kwargs):
 
     # add metadata to otio item metadata
     for key, value in metadata.items():
-        instance.data.update({key: value})
+        otio_item.metadata.update({key: value})
 
 
 def create_otio_timeline(instance):
