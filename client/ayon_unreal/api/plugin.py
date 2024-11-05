@@ -22,6 +22,7 @@ from ayon_core.lib import (
     BoolDef,
     UILabelDef
 )
+from ayon_core.pipeline.constants import AVALON_INSTANCE_ID
 from ayon_core.pipeline import (
     AutoCreator,
     Creator,
@@ -483,3 +484,39 @@ class LayoutLoader(Loader):
                 unreal.AppMsgType.YES_NO)
             if (remove_asset_confirmation_dialog == unreal.AppReturnType.YES):
                 remove_loaded_asset(container)
+
+
+def get_editorial_publish_data(
+    folder_path,
+    product_name,
+    version=None,
+    task=None,
+) -> dict:
+    """Get editorial publish data from context.
+
+    Args:
+        folder_path (str): Folder path where editorial package is located.
+        product_name (str): Editorial product name.
+        version (Optional[str]): Editorial product version. Defaults to None.
+        task (Optional[str]): Associated task name. Defaults to None (no task).
+
+    Returns:
+        dict: Editorial publish data.
+    """
+    data = {
+        "id": AVALON_INSTANCE_ID,
+        "family": "editorial_pkg",
+        "productType": "editorial_pkg",
+        "productName": product_name,
+        "folderPath": folder_path,
+        "active": True,
+        "publish": True,
+    }
+
+    if version:
+        data["version"] = version
+
+    if task:
+        data["task"] = task
+
+    return data

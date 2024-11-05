@@ -34,7 +34,7 @@ class CollectIntermediateRender(pyblish.api.InstancePlugin):
         for i, track in enumerate(get_shot_tracks(members)):
             track_name = track.get_shot_display_name()
 
-            product_type = "render"
+            product_type = data["productType"]
             new_product_name = (
                 f"{data.get('productName')}_{track_name}_{i + 1}"
             )
@@ -93,7 +93,7 @@ class CollectIntermediateRender(pyblish.api.InstancePlugin):
             repr = {
                 'frameStart': int(track.get_start_frame()),
                 'frameEnd': int(track.get_end_frame()),
-                'name': image_format,
+                'name': "intermediate",
                 'ext': image_format,
                 'files': frames,
                 'stagingDir': render_dir,

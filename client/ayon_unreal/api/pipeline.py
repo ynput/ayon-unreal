@@ -1217,14 +1217,3 @@ def generate_master_level_sequence(tools, asset_dir, asset_name,
             [asset_level])
 
     return shot, master_level, asset_level, sequences, frame_ranges
-
-
-
-def get_shot_filename_by_frame_range(files, frameStart, frameEnd):
-    pattern = re.compile(r'\d{4}(?=\.)')
-    frames = [
-        file for file in files
-        if int(pattern.search(file).group())>=frameStart and
-        int(pattern.search(file).group())<=frameEnd
-    ]
-    return frames
