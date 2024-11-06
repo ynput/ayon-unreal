@@ -952,6 +952,40 @@ def get_sequence(files):
     return [os.path.basename(filename) for filename in collections[0]]
 
 
+def get_sequence_for_otio(files):
+    """Get sequence from filename.
+
+    This will only return files if they exist on disk as it tries
+    to collect the sequence using the filename pattern and searching
+    for them on disk.
+
+    Supports negative frame ranges like -001, 0000, 0001 and -0001,
+    0000, 0001.
+
+    Arguments:
+        files (str): List of files
+
+    Returns:
+        Optional[list[str]]: file sequence.
+        Optional[str]: file head.
+
+    """
+    base_filenames = [os.path.basename(filename) for filename in files]
+    collections, _remainder = clique.assemble(
+        base_filenames,
+        patterns=[clique.PATTERNS["frames"]],
+        minimum_items=1)
+
+    if len(collections) > 1:
+        raise ValueError(
+            f"Multiple collections found for {collections}. "
+            "This is a bug.")
+    filename_head = collections[0].head
+    filename_padding = collections[0].padding
+    filename_tail = collections[0].tail
+    return filename_head, filename_padding, filename_tail
+
+
 def find_camera_actors_in_camera_tracks(sequence) -> list[Any]:
     """Find the camera actors in the tracks from the Level Sequence
 

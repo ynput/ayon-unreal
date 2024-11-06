@@ -2,10 +2,11 @@
 """
 
 import os
-import re
-import ast
 import unreal
+from pathlib import Path
+from ayon_core.pipeline import get_current_project_name, Anatomy
 from ayon_unreal.api.lib import get_shot_tracks, get_screen_resolution
+from ayon_unreal.api.pipeline import get_sequence_for_otio
 import opentimelineio as otio
 
 
@@ -42,22 +43,21 @@ def _get_metadata(item):
     return {}
 
 
-def create_otio_reference(instance, section):
+def create_otio_reference(instance, section, section_number,
+                          frame_start, frame_duration, is_sequence=False):
     metadata = _get_metadata(instance)
-    media_source = section.mediaSource()
 
-    # get file info for path and start frame
-    file_info = media_source.fileinfos().pop()
-    frame_start = file_info.startFrame()
-    path = file_info.filename()
-
+    project = get_current_project_name()
+    anatomy = Anatomy(project)
+    root = anatomy.roots['renders']
+    track_name = section.get_shot_display_name()
+    render_dir = f"{root}/{project}/editorial_pkg/{instance.data.get('output')}"
+    render_dir = f"{render_dir}/{track_name}_{section_number + 1}"
+    render_path = Path(render_dir)
+    frames = [str(x) for x in render_path.iterdir() if x.is_file()]
     # get padding and other file infos
-    padding = media_source.filenamePadding()
-    file_head = media_source.filenameHead()
-    is_sequence = not media_source.singleFile()
-    frame_duration = media_source.duration()
+    file_head, padding, extension = get_sequence_for_otio(frames)
     fps = CTX.project_fps
-    extension = os.path.splitext(path)[-1]
 
     if is_sequence:
         metadata.update({
@@ -78,9 +78,8 @@ def create_otio_reference(instance, section):
         # if it is file sequence try to create `ImageSequenceReference`
         # the OTIO might not be compatible so return nothing and do it old way
         try:
-            dirname = os.path.dirname(path)
             otio_ex_ref_item = otio.schema.ImageSequenceReference(
-                target_url_base=dirname + os.sep,
+                target_url_base=render_dir + os.sep,
                 name_prefix=file_head,
                 name_suffix=extension,
                 start_frame=frame_start,
@@ -96,7 +95,7 @@ def create_otio_reference(instance, section):
             pass
 
     if not otio_ex_ref_item:
-        section_filepath = "something.mp4"
+        section_filepath = f"{render_dir}/{file_head}.mp4"
         # in case old OTIO or video file create `ExternalReference`
         otio_ex_ref_item = otio.schema.ExternalReference(
             target_url=section_filepath,
@@ -108,13 +107,13 @@ def create_otio_reference(instance, section):
         )
 
     # add metadata to otio item
-    add_otio_metadata(otio_ex_ref_item, media_source, **metadata)
+    add_otio_metadata(otio_ex_ref_item, **metadata)
 
     return otio_ex_ref_item
 
 
 def create_otio_clip(instance, target_track):
-     for section in target_track.get_sections():
+     for section_number, section in enumerate(target_track.get_sections()):
         # flip if speed is in minus
         shot_start = section.get_start_frame()
         duration = int(section.get_end_frame() - section.get_start_frame()) + 1
@@ -122,7 +121,7 @@ def create_otio_clip(instance, target_track):
         fps = CTX.project_fps
         name = section.get_shot_display_name()
 
-        media_reference = create_otio_reference(instance, section)
+        media_reference = create_otio_reference(instance, section, section_number, shot_start, duration)
         source_range = create_otio_time_range(
             int(shot_start),
             int(duration),
@@ -195,9 +194,8 @@ def add_otio_gap(track_section, otio_track, prev_out):
     otio_track.append(otio_gap)
 
 
-def add_otio_metadata(otio_item, media_source, **kwargs):
-    metadata = _get_metadata(media_source)
-
+def add_otio_metadata(otio_item, **kwargs):
+    metadata = {}
     # add additional metadata from kwargs
     if kwargs:
         metadata.update(kwargs)
