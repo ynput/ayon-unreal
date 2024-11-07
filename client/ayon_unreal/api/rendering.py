@@ -177,36 +177,22 @@ def start_rendering():
         # Get all the sequences to render. If there are subsequences,
         # add them and their frame ranges to the render list. We also
         # use the names for the output paths.
-        if i["productType"] == "render":
-            for seq in sequences:
-                subscenes = pipeline.get_subsequences(seq.get('sequence'))
+        for seq in sequences:
+            subscenes = pipeline.get_subsequences(seq.get('sequence'))
 
-                if subscenes:
-                    for sub_seq in subscenes:
-                        sequences.append({
-                            "sequence": sub_seq.get_sequence(),
-                            "output": (f"{seq.get('output')}/"
-                                    f"{sub_seq.get_sequence().get_name()}"),
-                            "frame_range": (
-                                sub_seq.get_start_frame(), sub_seq.get_end_frame())
-                        })
-                else:
-                    # Avoid rendering camera sequences
-                    if "_camera" not in seq.get('sequence').get_name():
-                        render_list.append(seq)
-
-        elif i["productType"] == "editorial_pkg":
-            members = ast.literal_eval(i["members"])
-            for e, track in enumerate(get_shot_tracks(members)):
-                track_name = track.get_shot_display_name()
-                track_section = [{
-                    "sequence": track,
-                    "output": f"{i['output']}/{track_name}_{e + 1}",
-                    "frame_range": (
-                        int(track.get_start_frame()),
-                        int(track.get_end_frame()))
-                }]
-                render_list.extend(track_section)
+            if subscenes:
+                for sub_seq in subscenes:
+                    sequences.append({
+                        "sequence": sub_seq.get_sequence(),
+                        "output": (f"{seq.get('output')}/"
+                                f"{sub_seq.get_sequence().get_name()}"),
+                        "frame_range": (
+                            sub_seq.get_start_frame(), sub_seq.get_end_frame())
+                    })
+            else:
+                # Avoid rendering camera sequences
+                if "_camera" not in seq.get('sequence').get_name():
+                    render_list.append(seq)
 
         if i["master_level"] != current_level_name:
             unreal.log_warning(

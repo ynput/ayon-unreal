@@ -20,7 +20,6 @@ class CTX:
     project_fps = None
     timeline = None
     include_tags = True
-    instance = None
 
 
 def create_otio_rational_time(frame, fps):
@@ -37,15 +36,9 @@ def create_otio_time_range(start_frame, frame_duration, fps):
     )
 
 
-def _get_metadata(item):
-    if hasattr(item, 'metadata'):
-        return {key: value for key, value in dict(item.metadata()).items()}
-    return {}
-
-
 def create_otio_reference(instance, section, section_number,
                           frame_start, frame_duration, is_sequence=False):
-    metadata = _get_metadata(instance)
+    metadata = {}
 
     project = get_current_project_name()
     anatomy = Anatomy(project)
@@ -107,7 +100,7 @@ def create_otio_reference(instance, section, section_number,
         )
 
     # add metadata to otio item
-    add_otio_metadata(otio_ex_ref_item, **metadata)
+    add_otio_metadata(otio_ex_ref_item, metadata)
 
     return otio_ex_ref_item
 
@@ -152,15 +145,14 @@ def create_otio_gap(gap_start, clip_start, tl_start_frame, fps):
     )
 
 
-def _create_otio_timeline(instance):
-    metadata = _get_metadata(instance)
+def _create_otio_timeline(instance)
     resolution = get_screen_resolution()
-    metadata.update({
+    metadata = {
         "ayon.timeline.width": int(resolution.x),
         "ayon.timeline.height": int(resolution.y),
         # "ayon.project.ocioConfigName": unreal.OpenColorIOConfiguration().get_name(),
         # "ayon.project.ocioConfigPath": unreal.OpenColorIOConfiguration().configuration_file
-    })
+    }
 
     start_time = create_otio_rational_time(
         CTX.timeline.timecodeStart(), CTX.project_fps)
@@ -194,12 +186,7 @@ def add_otio_gap(track_section, otio_track, prev_out):
     otio_track.append(otio_gap)
 
 
-def add_otio_metadata(otio_item, **kwargs):
-    metadata = {}
-    # add additional metadata from kwargs
-    if kwargs:
-        metadata.update(kwargs)
-
+def add_otio_metadata(otio_item, metadata):
     # add metadata to otio item metadata
     for key, value in metadata.items():
         otio_item.metadata.update({key: value})
