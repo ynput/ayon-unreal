@@ -119,6 +119,6 @@ class CollectRenderInstances(pyblish.api.InstancePlugin):
                         'ext': image_format,
                         'files': frames,
                         'stagingDir': render_dir,
-                        'tags': ['review']
+                        'tags': ['review', 'remove']
                     }
                     new_instance.data["representations"].append(repr)
