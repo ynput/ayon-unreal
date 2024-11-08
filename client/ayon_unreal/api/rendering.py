@@ -1,5 +1,4 @@
 import os
-import ast
 import unreal
 
 from ayon_core.settings import get_project_settings

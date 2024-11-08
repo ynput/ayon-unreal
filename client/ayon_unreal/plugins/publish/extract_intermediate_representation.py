@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import pyblish.api
-import unreal
 import os
 from ayon_core.pipeline import get_current_project_name, Anatomy
 from ayon_core.pipeline import publish
@@ -22,10 +21,6 @@ class ExtractIntermediateRepresentation(publish.Extractor):
     def process(self, instance):
         self.log.debug("Collecting rendered files")
         data = instance.data
-        ar = unreal.AssetRegistryHelpers.get_asset_registry()
-        sequence = ar.get_asset_by_object_path(
-            data.get('sequence')).get_asset()
-
         try:
             project = get_current_project_name()
             anatomy = Anatomy(project)

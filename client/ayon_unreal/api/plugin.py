@@ -22,7 +22,6 @@ from ayon_core.lib import (
     BoolDef,
     UILabelDef
 )
-from ayon_core.pipeline.constants import AVALON_INSTANCE_ID
 from ayon_core.pipeline import (
     AutoCreator,
     Creator,
