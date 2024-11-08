@@ -230,6 +230,8 @@ def create_otio_timeline(instance):
 
 
 def write_to_file(otio_timeline, path):
+    directory = os.path.dirname(path)
+    os.makedirs(directory, exist_ok=True)
     otio.adapters.write_to_file(otio_timeline, path)
 
 

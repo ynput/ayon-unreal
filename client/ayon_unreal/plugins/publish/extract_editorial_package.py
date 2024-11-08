@@ -50,6 +50,18 @@ class ExtractEditorialPackage(publish.Extractor):
             raise ValueError("Intermediate representation not found")
         # export otio representation
         self.export_otio_representation(instance, otio_file_path)
+        frame_rate_obj = sequence.get_display_rate()
+        frame_rate = frame_rate_obj.numerator / frame_rate_obj.denominator
+        timeline_start_frame = sequence.get_playback_start()
+        timeline_end_frame = sequence.get_playback_end()
+        timeline_duration = timeline_end_frame - timeline_start_frame + 1
+        self.log.info(
+            f"Timeline: {sequence.get_name()}, "
+            f"Start: {timeline_start_frame}, "
+            f"End: {timeline_end_frame}, "
+            f"Duration: {timeline_duration}, "
+            f"FPS: {frame_rate}"
+        )
         # Finding clip references and replacing them with rootless paths
         # of video files
         otio_timeline = otio.adapters.read_from_file(otio_file_path.as_posix())
@@ -73,17 +85,14 @@ class ExtractEditorialPackage(publish.Extractor):
                         media_source_path = rootless_path
                     else:
                         media_source_path = path_to_media.as_posix()
-
                     new_media_reference = otio.schema.ExternalReference(
                         target_url=media_source_path,
                         available_range=otio.opentime.TimeRange(
                             start_time=otio.opentime.RationalTime(
-                                value=clip.range_in_parent().start_time.value,
-                                rate=sequence.get_display_rate()
+                                value=timeline_start_frame, rate=frame_rate
                             ),
                             duration=otio.opentime.RationalTime(
-                                value=int(clip.range_in_parent().end_time.value-clip.range_in_parent().start_time.value) + 1,       # noqa
-                                rate=sequence.get_display_rate()
+                                value=timeline_duration, rate=frame_rate
                             ),
                         ),
                     )
@@ -92,12 +101,14 @@ class ExtractEditorialPackage(publish.Extractor):
                     # replace clip source range with track parent range
                     clip.source_range = otio.opentime.TimeRange(
                         start_time=otio.opentime.RationalTime(
-                            value=clip.range_in_parent().start_time.value,
-                            rate=sequence.get_display_rate(),
+                            value=(
+                                timeline_start_frame
+                                + clip.range_in_parent().start_time.value
+                            ),
+                            rate=frame_rate,
                         ),
                         duration=clip.range_in_parent().duration,
                     )
-
         # reference video representations also needs to reframe available
         # frames and clip source
 
@@ -138,7 +149,7 @@ class ExtractEditorialPackage(publish.Extractor):
         template_data = instance.data.get("anatomyData")
 
         template_data["representation"] = representation["name"]
-        template_data["ext"] = representation["ext"]
+        template_data["ext"] = "mp4"
         template_data["comment"] = None
 
         anatomy = instance.context.data["anatomy"]

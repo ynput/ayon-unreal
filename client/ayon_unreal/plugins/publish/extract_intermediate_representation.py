@@ -52,13 +52,20 @@ class ExtractIntermediateRepresentation(publish.Extractor):
         if "representations" not in instance.data:
             instance.data["representations"] = []
 
+        instance.data["families"].append("review")
+
+        frame_rate_obj = sequence.get_display_rate()
+        frame_rate = frame_rate_obj.numerator / frame_rate_obj.denominator
+        instance.data["frameStart"] = int(sequence.get_playback_start())
+        instance.data["frameEnd"] = int(sequence.get_playback_end())
+        instance.data["fps"] = frame_rate
         representation = {
-            'frameStart': int(sequence.get_playback_start()),
-            'frameEnd': int(sequence.get_playback_end()),
+            'frameStart': instance.data["frameStart"],
+            'frameEnd': instance.data["frameEnd"],
             'name': "intermediate",
             'ext': image_format,
             'files': frames,
             'stagingDir': render_dir,
-            'tags': ['review', 'remove']
+            'tags': ['review']
         }
         instance.data["representations"].append(representation)
