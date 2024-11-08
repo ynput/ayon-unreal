@@ -54,11 +54,6 @@ class ExtractIntermediateRepresentation(publish.Extractor):
 
         instance.data["families"].append("review")
 
-        frame_rate_obj = sequence.get_display_rate()
-        frame_rate = frame_rate_obj.numerator / frame_rate_obj.denominator
-        instance.data["frameStart"] = int(sequence.get_playback_start())
-        instance.data["frameEnd"] = int(sequence.get_playback_end())
-        instance.data["fps"] = frame_rate
         representation = {
             'frameStart': instance.data["frameStart"],
             'frameEnd': instance.data["frameEnd"],
@@ -66,6 +61,6 @@ class ExtractIntermediateRepresentation(publish.Extractor):
             'ext': image_format,
             'files': frames,
             'stagingDir': render_dir,
-            'tags': ['review']
+            'tags': ['review', 'remove']
         }
         instance.data["representations"].append(representation)

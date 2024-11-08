@@ -1,8 +1,11 @@
 import os
 from pathlib import Path
 from ayon_core.pipeline.publish import PublishError
+
 import ayon_api
 import pyblish.api
+import unreal
+
 from ayon_core.pipeline import get_current_project_name, Anatomy
 
 
@@ -40,6 +43,15 @@ class CollectEditorialPackage(pyblish.api.InstancePlugin):
                     version = last_version + 1
 
             instance.data["version"] = version
+
+            ar = unreal.AssetRegistryHelpers.get_asset_registry()
+            sequence = ar.get_asset_by_object_path(
+                instance.data.get('sequence')).get_asset()
+            instance.data["frameStart"] = int(sequence.get_playback_start())
+            instance.data["frameEnd"] = int(sequence.get_playback_end())
+            frame_rate_obj = sequence.get_display_rate()
+            frame_rate = frame_rate_obj.numerator / frame_rate_obj.denominator
+            instance.data["fps"] = frame_rate
 
         try:
             project = get_current_project_name()

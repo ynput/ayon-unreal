@@ -50,10 +50,9 @@ class ExtractEditorialPackage(publish.Extractor):
             raise ValueError("Intermediate representation not found")
         # export otio representation
         self.export_otio_representation(instance, otio_file_path)
-        frame_rate_obj = sequence.get_display_rate()
-        frame_rate = frame_rate_obj.numerator / frame_rate_obj.denominator
-        timeline_start_frame = sequence.get_playback_start()
-        timeline_end_frame = sequence.get_playback_end()
+        frame_rate = instance.data["fps"]
+        timeline_start_frame = instance.data["frameStart"]
+        timeline_end_frame = instance.data["frameEnd"]
         timeline_duration = timeline_end_frame - timeline_start_frame + 1
         self.log.info(
             f"Timeline: {sequence.get_name()}, "
