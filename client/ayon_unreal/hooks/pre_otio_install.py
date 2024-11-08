@@ -48,7 +48,6 @@ class InstallOtioToBlender(PreLaunchHook):
         otio_binding_version = None
 
         python_dir = os.path.join(versions_dir, "ThirdParty", "Python3", "Win64")
-        print(python_dir)
         python_version = "python"
 
         if platform == "windows":
@@ -118,8 +117,8 @@ class InstallOtioToBlender(PreLaunchHook):
             self.log.warning("Couldn't import \"pywin32\" modules")
             return
 
-        if otio_binding_version:
-            otio_binding = f"{otio_binding}=={otio_binding_version}"
+
+        otio_binding = f"{otio_binding}==0.16.0"
 
         try:
             # Parameters
