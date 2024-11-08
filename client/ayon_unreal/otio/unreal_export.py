@@ -11,7 +11,8 @@ import opentimelineio as otio
 
 
 TRACK_TYPES = {
-    "MovieSceneSubTrack": otio.schema.TrackKind.Video,
+    "MovieSceneCinematicShotTrack": otio.schema.TrackKind.Video,
+    "MovieSceneCameraCutTrack": otio.schema.TrackKind.Video,
     "MovieSceneAudioTrack": otio.schema.TrackKind.Audio
 }
 
@@ -205,7 +206,9 @@ def create_otio_timeline(instance):
         instance.data.get('sequence')).get_asset()
     # get current timeline
     CTX.timeline = sequence
-    CTX.project_fps = CTX.timeline.get_display_rate()
+    frame_rate_obj = CTX.timeline.get_display_rate()
+    frame_rate = frame_rate_obj.numerator / frame_rate_obj.denominator
+    CTX.project_fps = frame_rate
     # convert timeline to otio
     otio_timeline = _create_otio_timeline()
     members = instance.data["members"]
@@ -214,7 +217,7 @@ def create_otio_timeline(instance):
         # convert track to otio
         otio_track = create_otio_track(
             target_track.get_class().get_name(),
-            target_track.get_display_name())
+            f"{target_track.get_display_name()}")
 
         # create otio clip and add it to track
         otio_clip = create_otio_clip(instance, target_track)

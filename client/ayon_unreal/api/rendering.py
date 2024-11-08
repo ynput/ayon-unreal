@@ -5,7 +5,6 @@ import unreal
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import Anatomy
 from ayon_unreal.api import pipeline
-from ayon_unreal.api.lib import get_shot_tracks
 from ayon_core.tools.utils import show_message_dialog
 
 

@@ -1,17 +1,20 @@
+import os
+from pathlib import Path
+from ayon_core.pipeline.publish import PublishError
 import ayon_api
-
 import pyblish.api
+from ayon_core.pipeline import get_current_project_name, Anatomy
 
 
-class CollectVersion(pyblish.api.InstancePlugin):
+class CollectEditorialPackage(pyblish.api.InstancePlugin):
     """
-    Collect version for editorial package publish
+    Collect neccessary data for editorial package publish
     """
 
     order = pyblish.api.CollectorOrder - 0.49
     hosts = ["unreal"]
     families = ["editorial_pkg"]
-    label = "Collect Version"
+    label = "Collect Editorial Package"
 
     def process(self, instance):
         project_name = instance.context.data["projectName"]
@@ -37,3 +40,21 @@ class CollectVersion(pyblish.api.InstancePlugin):
                     version = last_version + 1
 
             instance.data["version"] = version
+
+        try:
+            project = get_current_project_name()
+            anatomy = Anatomy(project)
+            root = anatomy.roots['renders']
+        except Exception as e:
+            raise Exception((
+                "Could not find render root "
+                "in anatomy settings.")) from e
+        render_dir = f"{root}/{project}/editorial_pkg/{instance.data.get('output')}"
+        render_path = Path(render_dir)
+        if not os.path.exists(render_path):
+            msg = (
+                f"Render directory {render_path} not found."
+                " Please render with the render instance"
+            )
+            self.log.error(msg)
+            raise PublishError(msg, title="Render directory not found.")

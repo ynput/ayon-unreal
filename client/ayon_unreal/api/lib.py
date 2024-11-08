@@ -320,11 +320,10 @@ def get_shot_track_names(sel_objects=None, get_name=True):
     ]
 
     if get_name:
-        return [section.get_shot_display_name() for shot_tracks in
-                sub_sequence_tracks for section in shot_tracks.get_sections()]
+        return [shot_tracks.get_display_name() for shot_tracks in
+                sub_sequence_tracks]
     else:
-        return [section for shot_tracks in
-                sub_sequence_tracks for section in shot_tracks.get_sections()]
+        return [shot_tracks for shot_tracks in sub_sequence_tracks]
 
 
 def get_shot_tracks(members):
