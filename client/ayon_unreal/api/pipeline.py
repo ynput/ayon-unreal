@@ -980,10 +980,8 @@ def get_sequence_for_otio(files):
         raise ValueError(
             f"Multiple collections found for {collections}. "
             "This is a bug.")
-    filename_head = collections[0].head
     filename_padding = collections[0].padding
-    filename_tail = collections[0].tail
-    return filename_head, filename_padding, filename_tail
+    return filename_padding
 
 
 def find_camera_actors_in_camera_tracks(sequence) -> list[Any]:

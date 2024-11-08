@@ -1,0 +1,149 @@
+from pathlib import Path
+import unreal
+import pyblish.api
+import opentimelineio as otio
+from ayon_core.pipeline import publish
+from ayon_unreal.otio import unreal_export
+
+
+class ExtractEditorialPackage(publish.Extractor):
+    """ This extractor will try to find
+    all the rendered frames, converting them into the mp4 file and publish it.
+    """
+
+    hosts = ["unreal"]
+    families = ["editorial_pkg"]
+    order = pyblish.api.ExtractorOrder + 0.45
+    label = "Extract Editorial Package"
+
+    def process(self, instance):
+        # create representation data
+        if "representations" not in instance.data:
+            instance.data["representations"] = []
+        anatomy = instance.context.data["anatomy"]
+        folder_path = instance.data["folderPath"]
+        ar = unreal.AssetRegistryHelpers.get_asset_registry()
+        sequence = ar.get_asset_by_object_path(
+            instance.data.get('sequence')).get_asset()
+        timeline_name = sequence.get_name()
+        folder_path_name = folder_path.lstrip("/").replace("/", "_")
+
+        staging_dir = Path(self.staging_dir(instance))
+        subfolder_name = folder_path_name + "_" + timeline_name
+
+        # new staging directory for each timeline
+        staging_dir = staging_dir / subfolder_name
+        self.log.info(f"Staging directory: {staging_dir}")
+
+        # otio file path
+        otio_file_path = staging_dir / f"{subfolder_name}.otio"
+
+
+        # Find Intermediate file representation file name
+        published_file_path = None
+        for repre in instance.data["representations"]:
+            if repre["name"] == "intermediate":
+                published_file_path = self._get_published_path(instance, repre)
+                break
+
+        if published_file_path is None:
+            raise ValueError("Intermediate representation not found")
+        # export otio representation
+        self.export_otio_representation(instance, otio_file_path)
+        # Finding clip references and replacing them with rootless paths
+        # of video files
+        otio_timeline = otio.adapters.read_from_file(otio_file_path.as_posix())
+        for track in otio_timeline.tracks:
+            for clip in track:
+                # skip transitions
+                if isinstance(clip, otio.schema.Transition):
+                    continue
+                # skip gaps
+                if isinstance(clip, otio.schema.Gap):
+                    # get duration of gap
+                    continue
+
+                if hasattr(clip.media_reference, "target_url"):
+                    path_to_media = Path(published_file_path)
+                    # remove root from path
+                    success, rootless_path = anatomy.find_root_template_from_path(  # noqa
+                        path_to_media.as_posix()
+                    )
+                    if success:
+                        media_source_path = rootless_path
+                    else:
+                        media_source_path = path_to_media.as_posix()
+
+                    new_media_reference = otio.schema.ExternalReference(
+                        target_url=media_source_path,
+                        available_range=otio.opentime.TimeRange(
+                            start_time=otio.opentime.RationalTime(
+                                value=clip.range_in_parent().start_time.value,
+                                rate=sequence.get_display_rate()
+                            ),
+                            duration=otio.opentime.RationalTime(
+                                value=int(clip.range_in_parent().end_time.value-clip.range_in_parent().start_time.value) + 1,       # noqa
+                                rate=sequence.get_display_rate()
+                            ),
+                        ),
+                    )
+                    clip.media_reference = new_media_reference
+
+                    # replace clip source range with track parent range
+                    clip.source_range = otio.opentime.TimeRange(
+                        start_time=otio.opentime.RationalTime(
+                            value=clip.range_in_parent().start_time.value,
+                            rate=sequence.get_display_rate(),
+                        ),
+                        duration=clip.range_in_parent().duration,
+                    )
+
+        # reference video representations also needs to reframe available
+        # frames and clip source
+
+        # new otio file needs to be saved as new file
+        otio_file_path_replaced = staging_dir / f"{subfolder_name}_remap.otio"
+        otio.adapters.write_to_file(
+            otio_timeline, otio_file_path_replaced.as_posix())
+
+        self.log.debug(
+            f"OTIO file with replaced references: {otio_file_path_replaced}")
+
+        # create drp workfile representation
+        representation_otio = {
+            "name": "editorial_pkg",
+            "ext": "otio",
+            "files": f"{subfolder_name}_remap.otio",
+            "stagingDir": staging_dir.as_posix(),
+        }
+        self.log.debug(f"OTIO representation: {representation_otio}")
+        instance.data["representations"].append(representation_otio)
+
+        self.log.info(
+            "Added OTIO file representation: "
+            f"{otio_file_path}"
+        )
+
+    def export_otio_representation(self, instance, filepath):
+        otio_timeline = unreal_export.create_otio_timeline(instance)
+        unreal_export.write_to_file(otio_timeline, filepath.as_posix())
+
+        # check if file exists
+        if not filepath.exists():
+            raise FileNotFoundError(f"OTIO file not found: {filepath}")
+
+    def _get_published_path(self, instance, representation):
+        """Calculates expected `publish` folder"""
+        # determine published path from Anatomy.
+        template_data = instance.data.get("anatomyData")
+
+        template_data["representation"] = representation["name"]
+        template_data["ext"] = representation["ext"]
+        template_data["comment"] = None
+
+        anatomy = instance.context.data["anatomy"]
+        template_data["root"] = anatomy.roots
+        template = anatomy.get_template_item("publish", "default", "path")
+        template_filled = template.format_strict(template_data)
+        file_path = Path(template_filled)
+        return file_path.as_posix()

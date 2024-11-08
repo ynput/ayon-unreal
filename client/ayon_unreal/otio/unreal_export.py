@@ -49,7 +49,14 @@ def create_otio_reference(instance, section, section_number,
     render_path = Path(render_dir)
     frames = [str(x) for x in render_path.iterdir() if x.is_file()]
     # get padding and other file infos
-    file_head, padding, extension = get_sequence_for_otio(frames)
+    padding = get_sequence_for_otio(frames)
+    published_file_path = None
+    for repre in instance.data["representations"]:
+        if repre["name"] == "intermediate":
+            published_file_path = _get_published_path(instance, repre)
+            break
+    published_dir = os.path.dirname(published_file_path)
+    file_head, extension = os.path.splitext(os.path.basename(published_file_path))
     fps = CTX.project_fps
 
     if is_sequence:
@@ -72,7 +79,7 @@ def create_otio_reference(instance, section, section_number,
         # the OTIO might not be compatible so return nothing and do it old way
         try:
             otio_ex_ref_item = otio.schema.ImageSequenceReference(
-                target_url_base=render_dir + os.sep,
+                target_url_base=published_dir + os.sep,
                 name_prefix=file_head,
                 name_suffix=extension,
                 start_frame=frame_start,
@@ -88,7 +95,7 @@ def create_otio_reference(instance, section, section_number,
             pass
 
     if not otio_ex_ref_item:
-        section_filepath = f"{render_dir}/{file_head}.mp4"
+        section_filepath = f"{published_dir}/{file_head}.mp4"
         # in case old OTIO or video file create `ExternalReference`
         otio_ex_ref_item = otio.schema.ExternalReference(
             target_url=section_filepath,
@@ -145,7 +152,7 @@ def create_otio_gap(gap_start, clip_start, tl_start_frame, fps):
     )
 
 
-def _create_otio_timeline(instance)
+def _create_otio_timeline():
     resolution = get_screen_resolution()
     metadata = {
         "ayon.timeline.width": int(resolution.x),
@@ -155,10 +162,10 @@ def _create_otio_timeline(instance)
     }
 
     start_time = create_otio_rational_time(
-        CTX.timeline.timecodeStart(), CTX.project_fps)
+        CTX.timeline.get_playback_start(), CTX.project_fps)
 
     return otio.schema.Timeline(
-        name=CTX.timeline.name(),
+        name=CTX.timeline.get_name(),
         global_start_time=start_time,
         metadata=metadata
     )
@@ -200,7 +207,7 @@ def create_otio_timeline(instance):
     CTX.timeline = sequence
     CTX.project_fps = CTX.timeline.get_display_rate()
     # convert timeline to otio
-    otio_timeline = _create_otio_timeline(instance)
+    otio_timeline = _create_otio_timeline()
     members = instance.data["members"]
     # loop all defined track types
     for target_track in get_shot_tracks(members):
@@ -221,3 +228,20 @@ def create_otio_timeline(instance):
 
 def write_to_file(otio_timeline, path):
     otio.adapters.write_to_file(otio_timeline, path)
+
+
+def _get_published_path(instance, representation):
+    """Calculates expected `publish` folder"""
+    # determine published path from Anatomy.
+    template_data = instance.data.get("anatomyData")
+
+    template_data["representation"] = representation["name"]
+    template_data["ext"] = representation["ext"]
+    template_data["comment"] = None
+
+    anatomy = instance.context.data["anatomy"]
+    template_data["root"] = anatomy.roots
+    template = anatomy.get_template_item("publish", "default", "path")
+    template_filled = template.format_strict(template_data)
+    file_path = Path(template_filled)
+    return file_path.as_posix()
