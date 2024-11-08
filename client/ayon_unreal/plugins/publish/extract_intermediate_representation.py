@@ -1,12 +1,12 @@
 from pathlib import Path
 
+import pyblish.api
 import unreal
 import os
 from ayon_core.pipeline import get_current_project_name, Anatomy
 from ayon_core.pipeline import publish
 from ayon_core.pipeline.publish import PublishError
 from ayon_unreal.api import pipeline
-import pyblish.api
 
 
 class ExtractIntermediateRepresentation(publish.Extractor):
@@ -15,14 +15,13 @@ class ExtractIntermediateRepresentation(publish.Extractor):
     """
 
     hosts = ["unreal"]
+    order = pyblish.api.ExtractorOrder - 0.45
     families = ["editorial_pkg"]
     label = "Extract Intermediate Representation"
 
     def process(self, instance):
         self.log.debug("Collecting rendered files")
-
         data = instance.data
-        data['remove'] = True
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
         sequence = ar.get_asset_by_object_path(
             data.get('sequence')).get_asset()
