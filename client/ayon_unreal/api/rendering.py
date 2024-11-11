@@ -158,7 +158,6 @@ def start_rendering():
     current_level_name = current_level.get_outer().get_path_name()
 
     for i in inst_data:
-        unreal.log(i)
         if i["productType"] == "editorial_pkg":
             render_dir = f"{root}/{project_name}/editorial_pkg"
         sequence = ar.get_asset_by_object_path(i["sequence"]).get_asset()
@@ -180,10 +179,13 @@ def start_rendering():
 
             if subscenes:
                 for sub_seq in subscenes:
+                    sub_seq_obj = sub_seq.get_sequence()
+                    if sub_seq_obj is None:
+                        continue
                     sequences.append({
-                        "sequence": sub_seq.get_sequence(),
+                        "sequence": sub_seq_obj,
                         "output": (f"{seq.get('output')}/"
-                                f"{sub_seq.get_name()}"),
+                                f"{sub_seq_obj.get_name()}"),
                         "frame_range": (
                             sub_seq.get_start_frame(), sub_seq.get_end_frame())
                     })
