@@ -87,5 +87,6 @@ class CollectRenderInstances(pyblish.api.InstancePlugin):
                     new_data["sequence"] = seq.get_path_name()
                     new_data["master_sequence"] = data["master_sequence"]
                     new_data["master_level"] = data["master_level"]
+                    new_data["farm"] = instance.data.get("farm", False)
 
                     self.log.debug(f"new instance data: {new_data}")
