@@ -2,34 +2,22 @@ import json
 from pathlib import Path
 
 import unreal
-import collections
 from unreal import EditorLevelLibrary
 import ayon_api
-
+from ayon_core.pipeline.load import LoadError
 from ayon_core.pipeline import (
-    discover_loader_plugins,
-    loaders_from_representation,
-    load_container,
-    get_representation_path,
-    AYON_CONTAINER_ID,
+    get_representation_path
 )
 from ayon_unreal.api import plugin
 from ayon_unreal.api import pipeline as upipeline
 
 
-class ExistingLayoutLoader(plugin.Loader):
+class ExistingLayoutLoader(plugin.LayoutLoader):
     """
     Load Layout for an existing scene, and match the existing assets.
     """
 
-    product_types = {"layout"}
-    representations = {"json"}
-
     label = "Load Layout on Existing Scene"
-    icon = "code-fork"
-    color = "orange"
-    ASSET_ROOT = "/Game/Ayon"
-
     delete_unmatched_assets = True
 
     @classmethod
@@ -40,40 +28,14 @@ class ExistingLayoutLoader(plugin.Loader):
         cls.delete_unmatched_assets = (
             project_settings["unreal"]["delete_unmatched_assets"]
         )
-
-    @staticmethod
-    def _get_current_level():
-        ue_version = unreal.SystemLibrary.get_engine_version().split('.')
-        ue_major = ue_version[0]
-
-        if ue_major == '4':
-            return EditorLevelLibrary.get_editor_world()
-        elif ue_major == '5':
-            return unreal.LevelEditorSubsystem().get_current_level()
-
-        raise NotImplementedError(
-            f"Unreal version {ue_major} not supported")
-
-    def _transform_from_basis(self, transform, basis):
-        """Transform a transform from a basis to a new basis."""
-        # Get the basis matrix
-        basis_matrix = unreal.Matrix(
-            basis[0],
-            basis[1],
-            basis[2],
-            basis[3]
+        cls.loaded_layout_dir = (
+            project_settings["unreal"].get(
+                "loaded_layout_dir", cls.loaded_layout_dir)
         )
-        transform_matrix = unreal.Matrix(
-            transform[0],
-            transform[1],
-            transform[2],
-            transform[3]
+        cls.remove_loaded_assets = (
+            project_settings["unreal"].get(
+                "remove_loaded_assets", cls.remove_loaded_assets)
         )
-
-        new_transform = (
-            basis_matrix.get_inverse() * transform_matrix * basis_matrix)
-
-        return new_transform.transform()
 
     def _spawn_actor(self, obj, lasset, sequence):
         actor = EditorLevelLibrary.spawn_actor_from_object(
@@ -83,8 +45,12 @@ class ExistingLayoutLoader(plugin.Loader):
         transform = lasset.get('transform_matrix')
         basis = lasset.get('basis')
         rotation = lasset.get("rotation", {})
+        unreal_import = (
+            True if "unreal" in lasset.get("host", []) else False
+        )
 
-        computed_transform = self._transform_from_basis(transform, basis)
+        computed_transform = self._transform_from_basis(
+            transform, basis, unreal_import=unreal_import)
 
         actor.set_actor_transform(computed_transform, False, True)
         if rotation:
@@ -94,42 +60,6 @@ class ExistingLayoutLoader(plugin.Loader):
             actor.set_actor_rotation(actor_rotation, False)
         sequence.add_possessable(actor)
 
-    @staticmethod
-    def _get_fbx_loader(loaders, family):
-        name = ""
-        if family == 'rig':
-            name = "SkeletalMeshFBXLoader"
-        elif family == 'model' or family == 'staticMesh':
-            name = "StaticMeshFBXLoader"
-        elif family == 'camera':
-            name = "CameraLoader"
-
-        if name == "":
-            return None
-
-        for loader in loaders:
-            if loader.__name__ == name:
-                return loader
-
-        return None
-
-    @staticmethod
-    def _get_abc_loader(loaders, family):
-        name = ""
-        if family == 'rig':
-            name = "SkeletalMeshAlembicLoader"
-        elif family == 'model' or family == 'staticMesh':
-            name = "StaticMeshAlembicLoader"
-
-        if name == "":
-            return None
-
-        for loader in loaders:
-            if loader.__name__ == name:
-                return loader
-
-        return None
-
     def _load_asset(self, repr_data, instance_name, family, extension):
         repre_entity = next((repre_entity for repre_entity in repr_data
                              if repre_entity["name"] == extension), None)
@@ -138,84 +68,9 @@ class ExistingLayoutLoader(plugin.Loader):
 
         repr_format = repre_entity.get('name')
         representation = repre_entity.get('id')
-        all_loaders = discover_loader_plugins()
-        loaders = loaders_from_representation(
-            all_loaders, representation)
-
-        loader = None
-
-        if repr_format == 'fbx':
-            loader = self._get_fbx_loader(loaders, family)
-        elif repr_format == 'abc':
-            loader = self._get_abc_loader(loaders, family)
-
-        if not loader:
-            if repr_format == "ma":
-                msg = (
-                    f"No valid {family} loader found for {representation} ({repr_format}), "
-                    f"consider using {family} loader (fbx/abc) instead."
-                )
-                self.log.warning(msg)
-            else:
-                self.log.error(
-                    f"No valid loader found for {representation} "
-                    f"({repr_format}) "
-                    f"{family}")
-            return []
-
-        # This option is necessary to avoid importing the assets with a
-        # different conversion compared to the other assets. For ABC files,
-        # it is in fact impossible to access the conversion settings. So,
-        # we must assume that the Maya conversion settings have been applied.
-        options = {
-            "default_conversion": True
-        }
-
-        assets = load_container(
-            loader,
-            representation,
-            namespace=instance_name,
-            options=options
-        )
-
+        assets = self._load_assets(
+            instance_name, representation, family, repr_format)
         return assets
-
-    def _get_repre_entities_by_version_id(self, project_name, data):
-        version_ids = {
-            element.get("version")
-            for element in data
-            if element.get("representation")
-        }
-        version_ids.discard(None)
-        output = collections.defaultdict(list)
-        if not version_ids:
-            return output
-        # Extract extensions from data with backward compatibility for "ma"
-        extensions = {
-            element["extension"]
-            for element in data
-            if element.get("representation")
-        }
-
-        # Update extensions based on the force_loaded flag
-        updated_extensions = set()
-
-        for ext in extensions:
-            if ext == "ma":
-                updated_extensions.update({"fbx", "abc"})
-            else:
-                updated_extensions.add(ext)
-
-        repre_entities = ayon_api.get_representations(
-            project_name,
-            representation_names=updated_extensions,
-            version_ids=version_ids,
-            fields={"id", "versionId", "name"}
-        )
-        for repre_entity in repre_entities:
-            version_id = repre_entity["versionId"]
-            output[version_id].append(repre_entity)
-        return output
 
     def _process(self, lib_path, project_name, sequence):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
@@ -231,7 +86,7 @@ class ExistingLayoutLoader(plugin.Loader):
         # Get all the representations in the JSON from the database.
         for element in data:
             repre_id = element.get('representation')
-            extension = element.get("extension")
+            extension = element.get("extension", "ma")
             if repre_id:
                 repre_ids.add(repre_id)
                 elements.append(element)
@@ -266,7 +121,7 @@ class ExistingLayoutLoader(plugin.Loader):
             version_ids.add(repre_entity["versionId"])
 
         repre_entities_by_version_id = self._get_repre_entities_by_version_id(
-            project_name, data
+            project_name, data, "json"
         )
         containers = []
         actors_matched = []
@@ -309,8 +164,12 @@ class ExistingLayoutLoader(plugin.Loader):
                 transform = lasset.get('transform_matrix')
                 basis = lasset.get('basis')
                 rotation = lasset.get("rotation", {})
+                unreal_import = (
+                    True if "unreal" in lasset.get("host", []) else False
+                )
+
                 computed_transform = self._transform_from_basis(
-                    transform, basis)
+                    transform, basis, unreal_import=unreal_import)
                 actor.set_actor_transform(computed_transform, False, True)
                 if rotation:
                     actor_rotation = unreal.Rotator(
@@ -403,70 +262,58 @@ class ExistingLayoutLoader(plugin.Loader):
         # Create directory for asset and Ayon container
         folder_entity = context["folder"]
         folder_path = folder_entity["path"]
-        hierarchy = folder_path.lstrip("/").split("/")
-        # Remove folder name
-        folder_name = hierarchy.pop(-1) if len(hierarchy) > 0 else hierarchy
-        product_type = context["product"]["productType"]
-        root = self.ASSET_ROOT
-        hierarchy_dir = root
-        hierarchy_dir_list = []
-        for h in hierarchy:
-            hierarchy_dir = f"{hierarchy_dir}/{h}"
-            hierarchy_dir_list.append(hierarchy_dir)
 
+        folder_name = folder_entity["name"]
+        asset_root, _ = upipeline.format_asset_directory(
+            context, self.loaded_layout_dir)
         suffix = "_CON"
         asset_name = f"{folder_name}_{name}" if folder_name else name
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            "{}/{}/{}".format(hierarchy_dir, folder_name, name),
+            asset_root,
             suffix="_existing"
         )
 
-        curr_level = self._get_current_level()
-        curr_level_path = Path(
+        sub_sys = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
+        curr_level = sub_sys.get_current_level()
+        curr_asset_dir = Path(
             curr_level.get_outer().get_path_name()).parent.as_posix()
-        if curr_level_path == "/Temp":
-            curr_level_path = asset_dir
-        #TODO: make sure curr_level_path is not a temp path,
+        if curr_asset_dir == "/Temp":
+            curr_asset_dir = asset_dir
+        #TODO: make sure asset_dir is not a temp path,
         # create new level for layout level
         level_seq_filter = unreal.ARFilter(
             class_names=["LevelSequence"],
-            package_paths=[curr_level_path],
+            package_paths=[curr_asset_dir],
             recursive_paths=False)
 
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
         sequence = next((asset.get_asset() for asset in ar.get_assets(level_seq_filter)), None)
+        if not sequence:
+            raise LoadError("No Level Sequence found for current level")
         if not curr_level:
-            raise AssertionError("Current level not saved")
+            raise LoadError("Current level not saved")
 
         project_name = context["project"]["name"]
         path = self.filepath_from_context(context)
-        containers = self._process(path, project_name, sequence)
+        loaded_assets = self._process(path, project_name, sequence)
+
         container_name += suffix
         if not unreal.EditorAssetLibrary.does_asset_exist(
-            f"{curr_level_path}/{container_name}"
+            f"{curr_asset_dir}/{container_name}"
         ):
             upipeline.create_container(
-                container=container_name, path=curr_level_path)
-
-        data = {
-            "schema": "ayon:container-2.0",
-            "id": AYON_CONTAINER_ID,
-            "folder_path": folder_path,
-            "namespace": curr_level_path,
-            "container_name": container_name,
-            "asset_name": asset_name,
-            "loader": str(self.__class__.__name__),
-            "representation": context["representation"]["id"],
-            "parent": context["representation"]["versionId"],
-            "product_type": product_type,
-            "loaded_assets": containers,
-            # TODO these shold be probably removed
-            "asset": folder_path,
-            "family": product_type,
-        }
-        upipeline.imprint(f"{curr_level_path}/{container_name}", data)
+                container=container_name, path=curr_asset_dir)
+        self.imprint(
+            context,
+            folder_path,
+            folder_name,
+            loaded_assets,
+            curr_asset_dir,
+            asset_name,
+            container_name
+        )
 
     def update(self, container, context):
         asset_dir = container.get('namespace')
@@ -481,18 +328,16 @@ class ExistingLayoutLoader(plugin.Loader):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
         sequence = next((asset for asset in ar.get_assets(level_seq_filter)), None)
         source_path = get_representation_path(repre_entity)
-        containers = self._process(source_path, project_name, sequence)
+        loaded_assets = self._process(source_path, project_name, sequence)
 
-        data = {
-            "representation": repre_entity["id"],
-            "loaded_assets": containers,
-            "parent": repre_entity["versionId"],
-        }
-        upipeline.imprint(
-            "{}/{}".format(asset_dir, container.get('container_name')), data)
+        upipeline.update_container(
+            container, repre_entity, loaded_assets=loaded_assets)
+
+        unreal.EditorLevelLibrary.save_current_level()
 
     def remove(self, container):
         parent_path = Path(container["namespace"])
+        self._remove_Loaded_asset(container)
         container_name = container["container_name"]
         if unreal.EditorAssetLibrary.does_asset_exist(
             f"{parent_path}/{container_name}"):
