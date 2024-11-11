@@ -78,6 +78,7 @@ class CollectRenderFiles(pyblish.api.InstancePlugin):
                     new_data["fps"] = seq.get_display_rate().numerator
                     new_data["frameStart"] = int(s.get('frame_range')[0])
                     new_data["frameEnd"] = int(s.get('frame_range')[1])
+                    new_data["farm"] = instance.data.get("farm", False)
                     new_data["sequence"] = seq.get_path_name()
                     new_data["master_sequence"] = data["master_sequence"]
                     new_data["master_level"] = data["master_level"]
