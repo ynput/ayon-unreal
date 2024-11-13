@@ -86,7 +86,7 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
         # Get all the representations in the JSON from the database.
         for element in data:
             repre_id = element.get('representation')
-            extension = element.get("extension")
+            extension = element.get("extension", "ma")
             if repre_id:
                 repre_ids.add(repre_id)
                 elements.append(element)
