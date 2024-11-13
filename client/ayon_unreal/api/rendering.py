@@ -177,7 +177,7 @@ def start_rendering():
         for seq in sequences:
             subscenes = pipeline.get_subsequences(seq.get('sequence'))
 
-            if subscenes:
+            if subscenes and i["productType"] != "editorial_pkg":
                 for sub_seq in subscenes:
                     sub_seq_obj = sub_seq.get_sequence()
                     if sub_seq_obj is None:
