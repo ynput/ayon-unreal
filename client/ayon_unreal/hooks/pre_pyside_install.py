@@ -17,6 +17,8 @@ from pathlib import Path
 from platform import system
 from typing import Union
 
+from ayon_core.settings import get_project_settings
+from ayon_core.pipeline import get_current_project_name
 from ayon_applications import LaunchTypes, PreLaunchHook
 
 python_versions = {7, 8, 9, 10, 11, 12, 13}
@@ -115,10 +117,15 @@ class InstallQtBinding(PreLaunchHook):
             return
 
         # Install PySide2/PySide6 in unreal's python
+        current_project = get_current_project_name()
+        unreal_settings = get_project_settings(current_project).get("unreal")
+        prelaunch_settings = unreal_settings["prelaunch_settings"]
         if platform == "windows":
-            result = self.install_pyside_windows(python_executable)
+            result = self.install_pyside_windows(
+                python_executable, pyside_name, prelaunch_settings)
         else:
-            result = self.install_pyside(python_executable, pyside_name)
+            result = self.install_pyside(
+                python_executable, pyside_name, prelaunch_settings)
 
         if result:
             self.log.info(
@@ -128,7 +135,7 @@ class InstallQtBinding(PreLaunchHook):
                 "Failed to install %s module to unreal.", pyside_name)
 
     def install_pyside_windows(
-            self, python_executable: Path) -> Union[None, int]:
+            self, python_executable: Path, pyside_name: str, settings: dict) -> Union[None, int]:
         """Install PySide2 python module to unreal's python.
 
         Installation requires administration rights that's why it is required
@@ -160,8 +167,21 @@ class InstallQtBinding(PreLaunchHook):
             # - use "-m pip" as module pip to install PySide2 and argument
             #   "--ignore-installed" is to force install module to unreal's
             #   site-packages and make sure it is binary compatible
-            parameters = "-m pip install --ignore-installed PySide2"
-
+            fake_exe = "fake.exe"
+            args = [
+                fake_exe,
+                "-m",
+                "pip",
+                "install",
+                "--ignore-installed",
+                pyside_name,
+            ]
+            args = self.use_dependency_path(args, settings)
+            parameters = (
+                subprocess.list2cmdline(args)
+                .lstrip(fake_exe)
+                .lstrip(" ")
+            )
             # Execute command and ask for administrator's rights
             process_info = ShellExecuteEx(
                 nShow=win32con.SW_SHOWNORMAL,
@@ -178,7 +198,7 @@ class InstallQtBinding(PreLaunchHook):
             return return_code == 0
 
     def install_pyside(
-            self, python_executable: Path, pyside_name: str) -> int:
+            self, python_executable: Path, pyside_name: str, settings: dict) -> int:
         """Install PySide2 python module to unreal's python."""
         args = [
             python_executable.as_posix(),
@@ -188,7 +208,7 @@ class InstallQtBinding(PreLaunchHook):
             "--ignore-installed",
             pyside_name,
         ]
-
+        args = self.use_dependency_path(args, settings)
         try:
             # Parameters
             # - use "-m pip" as module pip to install PySide2/6 and argument
@@ -245,7 +265,7 @@ class InstallQtBinding(PreLaunchHook):
                 return True
         return False
 
-    def find_parent_directory(self, file_path, target_dir="Binaries"):
+    def find_parent_directory(self, file_path: str, target_dir="Binaries") -> str:
         # Split the path into components
         path_components = file_path.split(os.sep)
 
@@ -255,3 +275,20 @@ class InstallQtBinding(PreLaunchHook):
                 # Join the components to form the target directory path
                 return os.sep.join(path_components[:i + 1])
         return None
+
+    def use_dependency_path(self, commands: list, settings: dict) -> list:
+        if settings.get("use_dependency"):
+            dependency_path = settings.get("dependency_path")
+            if dependency_path:
+                commands.extend(
+                    [
+                        "--no-index",
+                        f"--find-links={dependency_path}"
+                    ]
+                )
+            else:
+                self.log.warning(
+                    "Skipping to install Pyside with dependency."
+                    " No dependency path filled in the setting")
+
+        return commands
