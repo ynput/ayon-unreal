@@ -1,6 +1,6 @@
-"""Install PySide2 python module to 3dequalizer's python.
+"""Install PySide2 python module to unreal's python.
 
-If 3dequalizer doesn't have PySide2 module installed, it will try to install
+If unreal doesn't have PySide module installed, it will try to install
 it.
 
 Note:
@@ -26,7 +26,7 @@ MAX_PYSIDE2_PYTHON_VERSION = 10
 
 
 class InstallQtBinding(PreLaunchHook):
-    """Install Qt binding to 3dequalizer's python packages."""
+    """Install Qt binding to unreal's python packages."""
 
     app_groups = ("unreal")
     launch_types = (LaunchTypes.local)
@@ -77,7 +77,7 @@ class InstallQtBinding(PreLaunchHook):
             self.log.info((
                 f"Executable does not lead to {expected_executable} file."
                 "Can't determine Unreal's python to check/install"
-                " otio binding."
+                " Qt binding."
             ))
             return
         versions_dir = self.find_parent_directory(executable)
@@ -98,6 +98,10 @@ class InstallQtBinding(PreLaunchHook):
             if not python_executable.exists():
                 python_executable = Path(python_dir) / f"python3.{py_version}m"
 
+        current_project = get_current_project_name()
+        unreal_settings = get_project_settings(current_project).get("unreal")
+        python_executable = self.use_venv_for_installation(
+            python_executable, unreal_settings, platform)
         if not python_executable.exists():
             self.log.warning(
                 "Couldn't find python executable "
@@ -113,12 +117,10 @@ class InstallQtBinding(PreLaunchHook):
         # Check if PySide2 is installed and skip if yes
         if self.is_pyside_installed(python_executable, pyside_name):
             self.log.debug(
-                "3Dequalizer has already installed %s.", pyside_name)
+                "unreal has already installed %s.", pyside_name)
             return
 
         # Install PySide2/PySide6 in unreal's python
-        current_project = get_current_project_name()
-        unreal_settings = get_project_settings(current_project).get("unreal")
         prelaunch_settings = unreal_settings["prelaunch_settings"]
         if platform == "windows":
             result = self.install_pyside_windows(
@@ -150,52 +152,24 @@ class InstallQtBinding(PreLaunchHook):
             in subprocess and parse its output.
 
         """
-        try:
-            import pywintypes
-            import win32con
-            import win32event
-            import win32process
-            from win32comext.shell import shellcon
-            from win32comext.shell.shell import ShellExecuteEx
-        except Exception:  # noqa: BLE001
-            self.log.warning(
-                "Couldn't import 'pywin32' modules", exc_info=True)
-            return None
+        fake_exe = "fake.exe"
+        args = [
+            fake_exe,
+            "-m",
+            "pip",
+            "install",
+            "--ignore-installed",
+            pyside_name,
+        ]
+        args = self.use_dependency_path(args, settings)
+        parameters = (
+            subprocess.list2cmdline(args)
+            .lstrip(fake_exe)
+            .lstrip(" ")
+        )
+        return_code = self.pip_install_for_window(python_executable, parameters)
 
-        with contextlib.suppress(pywintypes.error):
-            # Parameters
-            # - use "-m pip" as module pip to install PySide2 and argument
-            #   "--ignore-installed" is to force install module to unreal's
-            #   site-packages and make sure it is binary compatible
-            fake_exe = "fake.exe"
-            args = [
-                fake_exe,
-                "-m",
-                "pip",
-                "install",
-                "--ignore-installed",
-                pyside_name,
-            ]
-            args = self.use_dependency_path(args, settings)
-            parameters = (
-                subprocess.list2cmdline(args)
-                .lstrip(fake_exe)
-                .lstrip(" ")
-            )
-            # Execute command and ask for administrator's rights
-            process_info = ShellExecuteEx(
-                nShow=win32con.SW_SHOWNORMAL,
-                fMask=shellcon.SEE_MASK_NOCLOSEPROCESS,
-                lpVerb="runas",
-                lpFile=python_executable.as_posix(),
-                lpParameters=parameters,
-                lpDirectory=python_executable.parent.as_posix()
-            )
-            process_handle = process_info["hProcess"]
-            win32event.WaitForSingleObject(
-                process_handle, win32event.INFINITE)
-            return_code = win32process.GetExitCodeProcess(process_handle)
-            return return_code == 0
+        return return_code
 
     def install_pyside(
             self, python_executable: Path, pyside_name: str, settings: dict) -> int:
@@ -209,28 +183,8 @@ class InstallQtBinding(PreLaunchHook):
             pyside_name,
         ]
         args = self.use_dependency_path(args, settings)
-        try:
-            # Parameters
-            # - use "-m pip" as module pip to install PySide2/6 and argument
-            #   "--ignore-installed" is to force install module to unreal
-            #   site-packages and make sure it is binary compatible
-
-            process = subprocess.Popen(
-                args, stdout=subprocess.PIPE, universal_newlines=True
-            )
-            process.communicate()
-
-        except PermissionError:
-            self.log.warning(
-                'Permission denied with command: "%s".', " ".join(args),
-                exc_info=True)
-        except OSError as error:
-            self.log.warning(
-                'OS error has occurred: "%s".', error, exc_info=True)
-        except subprocess.SubprocessError:
-            pass
-        else:
-            return process.returncode == 0
+        return_code = self.pip_install(args)
+        return return_code
 
     @staticmethod
     def is_pyside_installed(python_executable: Path, pyside_name: str) -> bool:
@@ -292,3 +246,100 @@ class InstallQtBinding(PreLaunchHook):
                     " No dependency path filled in the setting")
 
         return commands
+
+    def use_venv_for_installation(self, python_executable: Path,
+                                  settings: dict, platform: str) -> str:
+        """Get python executable from virtual environment.
+
+        Args:
+            python_executable (Path): python_executable
+            settings (dict): unreal settings
+            platform (str): system platform
+
+        Returns:
+            Path: path for python executable
+        """
+        if not settings.get("use_venv"):
+            return python_executable
+
+        venv_name = settings.get("venv_name")
+        if not venv_name:
+            return python_executable
+
+        if platform == "windows":
+            fake_exe = "fake.exe"
+            args = [fake_exe, '-m', 'venv', venv_name]
+            parameters = (
+                subprocess.list2cmdline(args)
+                .lstrip(fake_exe)
+                .lstrip(" ")
+            )
+            _ = self.pip_install_for_window(python_executable, parameters)
+        else:
+            args = [python_executable.as_posix(), '-m', 'venv', venv_name]
+            _ = self.pip_install(args)
+        if platform == "windows":
+            venv_python = os.path.join(venv_name, "Scripts", "python.exe")
+        else:
+            venv_python = os.path.join(venv_name, "bin", "python")
+        venv_python_executable = Path(
+            os.path.join(os.path.dirname(python_executable), venv_python)
+        )
+
+        return venv_python_executable
+
+    def pip_install_for_window(self, python_executable: Path, parameters: list):
+        try:
+            import pywintypes
+            import win32con
+            import win32event
+            import win32process
+            from win32comext.shell import shellcon
+            from win32comext.shell.shell import ShellExecuteEx
+        except Exception:  # noqa: BLE001
+            self.log.warning(
+                "Couldn't import 'pywin32' modules", exc_info=True)
+            return None
+        with contextlib.suppress(pywintypes.error):
+            # Parameters
+            # - use "-m pip" as module pip to install PySide2 and argument
+            #   "--ignore-installed" is to force install module to unreal's
+            #   site-packages and make sure it is binary compatible
+            # Execute command and ask for administrator's rights
+            process_info = ShellExecuteEx(
+                nShow=win32con.SW_SHOWNORMAL,
+                fMask=shellcon.SEE_MASK_NOCLOSEPROCESS,
+                lpVerb="runas",
+                lpFile=python_executable.as_posix(),
+                lpParameters=parameters,
+                lpDirectory=python_executable.parent.as_posix()
+            )
+            process_handle = process_info["hProcess"]
+            win32event.WaitForSingleObject(
+                process_handle, win32event.INFINITE)
+            return_code = win32process.GetExitCodeProcess(process_handle)
+            return return_code == 0
+
+    def pip_install(self, args: list):
+        try:
+            # Parameters
+            # - use "-m pip" as module pip to install PySide2/6 and argument
+            #   "--ignore-installed" is to force install module to unreal
+            #   site-packages and make sure it is binary compatible
+
+            process = subprocess.Popen(
+                args, stdout=subprocess.PIPE, universal_newlines=True
+            )
+            process.communicate()
+
+        except PermissionError:
+            self.log.warning(
+                'Permission denied with command: "%s".', " ".join(args),
+                exc_info=True)
+        except OSError as error:
+            self.log.warning(
+                'OS error has occurred: "%s".', error, exc_info=True)
+        except subprocess.SubprocessError:
+            pass
+        else:
+            return process.returncode == 0
