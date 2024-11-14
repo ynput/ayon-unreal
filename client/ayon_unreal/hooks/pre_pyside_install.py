@@ -47,15 +47,19 @@ class InstallQtBinding(PreLaunchHook):
         """Find python executable in unreal's directory.
 
         Args:
-            path_str (str): Path string with "{version}" placeholder.
+            path_str (str): Python Directory.
 
         Returns:
             valid_path (Path): Path to python executable.
 
         """
         for version in python_versions:
-            python_dir = Path(path_str.format(version=version))
-            if python_dir.exists():
+            matching_python_dll_files = [
+                dll_file for dll_file in os.listdir(path_str)
+                if dll_file.endswith(f"{version}.dll")
+            ]
+            python_dir = Path(path_str)
+            if python_dir.exists() and matching_python_dll_files:
                 return python_dir, version
         return None, None
 
@@ -112,7 +116,6 @@ class InstallQtBinding(PreLaunchHook):
         pyside_name = "PySide6"
         if py_version <= MAX_PYSIDE2_PYTHON_VERSION:
             pyside_name = "PySide2"
-
 
         # Check if PySide2 is installed and skip if yes
         if self.is_pyside_installed(python_executable, pyside_name):
