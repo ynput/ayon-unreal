@@ -16,9 +16,6 @@ import subprocess
 from pathlib import Path
 from platform import system
 from typing import Union
-
-from ayon_core.settings import get_project_settings
-from ayon_core.pipeline import get_current_project_name
 from ayon_applications import LaunchTypes, PreLaunchHook
 
 python_versions = {7, 8, 9, 10, 11, 12, 13}
@@ -102,10 +99,10 @@ class InstallQtBinding(PreLaunchHook):
             if not python_executable.exists():
                 python_executable = Path(python_dir) / f"python3.{py_version}m"
 
-        current_project = get_current_project_name()
-        unreal_settings = get_project_settings(current_project).get("unreal")
+        unreal_settings = self.data["project_settings"]["unreal"]
+        prelaunch_settings = unreal_settings["prelaunch_settings"]
         python_executable = self.use_venv_for_installation(
-            python_executable, unreal_settings, platform)
+            python_executable, prelaunch_settings, platform)
         if not python_executable.exists():
             self.log.warning(
                 "Couldn't find python executable "
@@ -124,7 +121,6 @@ class InstallQtBinding(PreLaunchHook):
             return
 
         # Install PySide2/PySide6 in unreal's python
-        prelaunch_settings = unreal_settings["prelaunch_settings"]
         if platform == "windows":
             result = self.install_pyside_windows(
                 python_executable, pyside_name, prelaunch_settings)
@@ -155,19 +151,19 @@ class InstallQtBinding(PreLaunchHook):
             in subprocess and parse its output.
 
         """
-        fake_exe = "fake.exe"
+        site_package_path = os.path.join(os.path.dirname(python_executable), "Lib")
         args = [
-            fake_exe,
             "-m",
             "pip",
             "install",
             "--ignore-installed",
             pyside_name,
+            "--target",
+            f"{site_package_path}"
         ]
         args = self.use_dependency_path(args, settings)
         parameters = (
             subprocess.list2cmdline(args)
-            .lstrip(fake_exe)
             .lstrip(" ")
         )
         return_code = self.pip_install_for_window(python_executable, parameters)
@@ -177,6 +173,7 @@ class InstallQtBinding(PreLaunchHook):
     def install_pyside(
             self, python_executable: Path, pyside_name: str, settings: dict) -> int:
         """Install PySide2 python module to unreal's python."""
+        site_package_path = os.path.join(os.path.dirname(python_executable), "Lib")
         args = [
             python_executable.as_posix(),
             "-m",
@@ -184,6 +181,8 @@ class InstallQtBinding(PreLaunchHook):
             "install",
             "--ignore-installed",
             pyside_name,
+            "--target",
+            f"{site_package_path}"
         ]
         args = self.use_dependency_path(args, settings)
         return_code = self.pip_install(args)
@@ -270,11 +269,9 @@ class InstallQtBinding(PreLaunchHook):
             return python_executable
 
         if platform == "windows":
-            fake_exe = "fake.exe"
-            args = [fake_exe, '-m', 'venv', venv_name]
+            args = ['-m', 'venv', venv_name]
             parameters = (
                 subprocess.list2cmdline(args)
-                .lstrip(fake_exe)
                 .lstrip(" ")
             )
             _ = self.pip_install_for_window(python_executable, parameters)
