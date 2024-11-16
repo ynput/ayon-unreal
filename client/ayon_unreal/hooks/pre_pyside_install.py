@@ -10,8 +10,9 @@ Note:
 """
 from __future__ import annotations
 
-import contextlib
 import os
+import site
+import contextlib
 import subprocess
 from pathlib import Path
 from platform import system
@@ -267,24 +268,26 @@ class InstallQtBinding(PreLaunchHook):
         venv_name = settings.get("venv_name")
         if not venv_name:
             return python_executable
-
+        venv_dir = Path(os.getenv("AYON_LAUNCHER_LOCAL_DIR")) / venv_name
         if platform == "windows":
-            args = ['-m', 'venv', venv_name]
+            args = ['-m', 'venv', venv_dir]
             parameters = (
                 subprocess.list2cmdline(args)
                 .lstrip(" ")
             )
             _ = self.pip_install_for_window(python_executable, parameters)
         else:
-            args = [python_executable.as_posix(), '-m', 'venv', venv_name]
+            args = [python_executable.as_posix(), '-m', 'venv', venv_dir]
             _ = self.pip_install(args)
+
+        venv_site_packages_path = os.path.join(venv_dir, "Lib", "site-packages")
+        site.addsitedir(venv_site_packages_path)
+        venv_python = None
         if platform == "windows":
-            venv_python = os.path.join(venv_name, "Scripts", "python.exe")
+            venv_python = os.path.join(venv_dir, "Scripts", "python.exe")
         else:
-            venv_python = os.path.join(venv_name, "bin", "python")
-        venv_python_executable = Path(
-            os.path.join(os.path.dirname(python_executable), venv_python)
-        )
+            venv_python = os.path.join(venv_dir, "bin", "python")
+        venv_python_executable = Path(venv_python)
 
         return venv_python_executable
 
