@@ -288,7 +288,7 @@ class InstallQtBinding(PreLaunchHook):
         else:
             venv_python = os.path.join(venv_dir, "bin", "python")
         if ue_pythonpath := self.launch_context.env.get("UE_PYTHONPATH"):
-            ue_pythonpath = os.pathsep.join([ue_pythonpath, venv_sitepackages.as_posix()])
+            ue_pythonpath = os.pathsep.join([ue_pythonpath, Path(venv_sitepackages).as_posix()])
             self.launch_context.env["UE_PYTHONPATH"] = ue_pythonpath
 
         venv_python_executable = Path(venv_python)
