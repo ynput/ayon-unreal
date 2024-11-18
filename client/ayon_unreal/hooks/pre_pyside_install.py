@@ -109,7 +109,7 @@ class InstallQtBinding(PreLaunchHook):
         unreal_settings = self.data["project_settings"]["unreal"]
         prelaunch_settings = unreal_settings["prelaunch_settings"]
         python_executable = self.use_venv_for_installation(
-            python_executable, prelaunch_settings, platform)
+            python_executable, prelaunch_settings, platform, py_version)
         if not python_executable.exists():
             self.log.warning(
                 "Couldn't find python executable "
@@ -255,13 +255,15 @@ class InstallQtBinding(PreLaunchHook):
         return commands
 
     def use_venv_for_installation(self, python_executable: Path,
-                                  settings: dict, platform: str) -> Path:
+                                  settings: dict, platform: str,
+                                  py_version: int) -> Path:
         """Get python executable from virtual environment.
 
         Args:
             python_executable (Path): python_executable
             settings (dict): unreal settings
             platform (str): system platform
+            py_version (int): python version
 
         Returns:
             Path: path for python executable
@@ -276,16 +278,18 @@ class InstallQtBinding(PreLaunchHook):
         args = [python_executable.as_posix(), '-m', 'venv', venv_dir]
         _ = self.pip_install(args)
 
-        venv_sitepackages = venv_dir / "Lib" / "site-packages"
+        if platform == "windows":
+            venv_sitepackages = venv_dir / "Lib" / "site-packages"
+            venv_python = os.path.join(venv_dir, "Scripts", "python.exe")
+        else:
+            venv_sitepackages = venv_dir / f"python3.{py_version}" / "site-packages"
+            venv_python = os.path.join(venv_dir, "bin", "python")
+
         site.addsitedir(venv_sitepackages)
         if ue_pythonpath := self.launch_context.env.get("UE_PYTHONPATH"):
             ue_pythonpath = os.pathsep.join([ue_pythonpath, venv_sitepackages.as_posix()])
             self.launch_context.env["UE_PYTHONPATH"] = ue_pythonpath
 
-        if platform == "windows":
-            venv_python = os.path.join(venv_dir, "Scripts", "python.exe")
-        else:
-            venv_python = os.path.join(venv_dir, "bin", "python")
         venv_python_executable = Path(venv_python)
 
         return venv_python_executable
