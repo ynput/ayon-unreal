@@ -255,8 +255,7 @@ class InstallQtBinding(PreLaunchHook):
         return commands
 
     def use_venv_for_installation(self, python_executable: Path,
-                                  settings: dict, platform: str,
-                                  py_version: int) -> Path:
+                                  settings: dict, platform: str) -> Path:
         """Get python executable from virtual environment.
 
         Args:
@@ -278,14 +277,16 @@ class InstallQtBinding(PreLaunchHook):
         args = [python_executable.as_posix(), '-m', 'venv', venv_dir]
         _ = self.pip_install(args)
 
+        command = "python -c 'import site; print(next((path for path in site.getsitepackages() if path.endswith('site-packages')), None))'"
+        process = subprocess.Popen(command, stdout=subprocess.PIPE)
+        stdout, _ = process.communicate()
+        venv_sitepackages = stdout.decode().strip()
+        if venv_sitepackages:
+            site.addsitedir(venv_sitepackages)
         if platform == "windows":
-            venv_sitepackages = venv_dir / "Lib" / "site-packages"
             venv_python = os.path.join(venv_dir, "Scripts", "python.exe")
         else:
-            venv_sitepackages = venv_dir / f"python3.{py_version}" / "site-packages"
             venv_python = os.path.join(venv_dir, "bin", "python")
-
-        site.addsitedir(venv_sitepackages)
         if ue_pythonpath := self.launch_context.env.get("UE_PYTHONPATH"):
             ue_pythonpath = os.pathsep.join([ue_pythonpath, venv_sitepackages.as_posix()])
             self.launch_context.env["UE_PYTHONPATH"] = ue_pythonpath
