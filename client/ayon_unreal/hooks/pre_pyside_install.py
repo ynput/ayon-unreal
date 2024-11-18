@@ -109,7 +109,8 @@ class InstallQtBinding(PreLaunchHook):
         unreal_settings = self.data["project_settings"]["unreal"]
         prelaunch_settings = unreal_settings["prelaunch_settings"]
         python_executable = self.use_venv_for_installation(
-            python_executable, prelaunch_settings, platform, py_version)
+            python_executable, prelaunch_settings, platform
+        )
         if not python_executable.exists():
             self.log.warning(
                 "Couldn't find python executable "
