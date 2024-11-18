@@ -158,7 +158,7 @@ class InstallQtBinding(PreLaunchHook):
         """
         site_package_path = os.path.join(os.path.dirname(python_executable), "Lib")
         if settings["use_venv"] and settings["venv_name"]:
-            site_package_path = python_executable
+            site_package_path = os.path.dirname(python_executable)
         args = [
             "-m",
             "pip",
@@ -182,7 +182,7 @@ class InstallQtBinding(PreLaunchHook):
         """Install PySide2 python module to unreal's python."""
         site_package_path = os.path.join(os.path.dirname(python_executable), "lib")
         if settings["use_venv"] and settings["venv_name"]:
-            site_package_path = python_executable
+            site_package_path = os.path.dirname(python_executable)
         args = [
             python_executable.as_posix(),
             "-m",
