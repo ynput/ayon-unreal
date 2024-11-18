@@ -182,18 +182,13 @@ class InstallQtBinding(PreLaunchHook):
     def install_pyside(
             self, python_executable: Path, pyside_name: str, settings: dict) -> int:
         """Install PySide2 python module to unreal's python."""
-        site_package_path = os.path.join(os.path.dirname(python_executable), "lib")
-        if settings["use_venv"] and settings["venv_name"]:
-            site_package_path = os.path.dirname(python_executable)
         args = [
             python_executable.as_posix(),
             "-m",
             "pip",
             "install",
             "--ignore-installed",
-            pyside_name,
-            "--target",
-            f"{site_package_path}"
+            pyside_name
         ]
         args = self.use_dependency_path(args, settings)
         return_code = self.pip_install(args)
