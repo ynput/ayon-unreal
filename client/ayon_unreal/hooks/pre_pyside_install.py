@@ -277,6 +277,9 @@ class InstallQtBinding(PreLaunchHook):
         _ = self.pip_install(args)
 
         site.addsitedir(venv_dir)
+        if venv_dir not in os.environ["UE_PYTHONPATH"]:
+            os.environ["UE_PYTHONPATH"] += [venv_dir]
+
         venv_python = None
         if platform == "windows":
             venv_python = os.path.join(venv_dir, "Scripts", "python.exe")
