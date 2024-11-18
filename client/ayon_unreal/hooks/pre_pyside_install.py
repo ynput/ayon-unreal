@@ -83,7 +83,11 @@ class InstallQtBinding(PreLaunchHook):
             ))
             return
         versions_dir = self.find_parent_directory(executable)
-        unreal_python_dir = os.path.join(versions_dir, "ThirdParty", "Python3", "Win64")
+        unreal_python_dir = None
+        if platform == "windows":
+            unreal_python_dir = os.path.join(versions_dir, "ThirdParty", "Python3", "Win64")
+        else:
+            unreal_python_dir = os.path.join(versions_dir, "ThirdParty", "Python3", "Linux")
         python_dir, py_version = self._find_python_executable(unreal_python_dir)
 
         if not python_dir:
@@ -153,6 +157,8 @@ class InstallQtBinding(PreLaunchHook):
 
         """
         site_package_path = os.path.join(os.path.dirname(python_executable), "Lib")
+        if settings["use_venv"] and settings["venv_name"]:
+            site_package_path = python_executable
         args = [
             "-m",
             "pip",
@@ -174,7 +180,9 @@ class InstallQtBinding(PreLaunchHook):
     def install_pyside(
             self, python_executable: Path, pyside_name: str, settings: dict) -> int:
         """Install PySide2 python module to unreal's python."""
-        site_package_path = os.path.join(os.path.dirname(python_executable), "Lib")
+        site_package_path = os.path.join(os.path.dirname(python_executable), "lib")
+        if settings["use_venv"] and settings["venv_name"]:
+            site_package_path = python_executable
         args = [
             python_executable.as_posix(),
             "-m",
@@ -269,19 +277,10 @@ class InstallQtBinding(PreLaunchHook):
         if not venv_name:
             return python_executable
         venv_dir = Path(os.getenv("AYON_LAUNCHER_LOCAL_DIR")) / venv_name
-        if platform == "windows":
-            args = ['-m', 'venv', venv_dir]
-            parameters = (
-                subprocess.list2cmdline(args)
-                .lstrip(" ")
-            )
-            _ = self.pip_install_for_window(python_executable, parameters)
-        else:
-            args = [python_executable.as_posix(), '-m', 'venv', venv_dir]
-            _ = self.pip_install(args)
+        args = [python_executable.as_posix(), '-m', 'venv', venv_dir]
+        _ = self.pip_install(args)
 
-        venv_site_packages_path = os.path.join(venv_dir, "Lib", "site-packages")
-        site.addsitedir(venv_site_packages_path)
+        site.addsitedir(venv_dir)
         venv_python = None
         if platform == "windows":
             venv_python = os.path.join(venv_dir, "Scripts", "python.exe")
