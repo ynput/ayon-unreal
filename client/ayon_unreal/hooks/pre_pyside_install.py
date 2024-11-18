@@ -158,18 +158,17 @@ class InstallQtBinding(PreLaunchHook):
             in subprocess and parse its output.
 
         """
-        site_package_path = os.path.join(os.path.dirname(python_executable), "Lib")
-        if settings["use_venv"] and settings["venv_name"]:
-            site_package_path = os.path.dirname(python_executable)
         args = [
             "-m",
             "pip",
             "install",
             "--ignore-installed",
-            pyside_name,
-            "--target",
-            f"{site_package_path}"
+            pyside_name
         ]
+        if not settings["use_venv"] or not settings["venv_name"]:
+            site_package_path = os.path.join(os.path.dirname(python_executable), "Lib")
+            args += ["--target", f"{site_package_path}"]
+
         args = self.use_dependency_path(args, settings)
         parameters = (
             subprocess.list2cmdline(args)
