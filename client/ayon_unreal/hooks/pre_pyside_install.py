@@ -276,13 +276,8 @@ class InstallQtBinding(PreLaunchHook):
         args = [python_executable.as_posix(), '-m', 'venv', venv_dir]
         _ = self.pip_install(args)
 
-        venv_sitepackages = next(
-            (path for path in site.getsitepackages()
-             if os.path.dirname(path) == venv_dir),
-             None
-        )
-        if venv_sitepackages:
-            site.addsitedir(venv_sitepackages)
+        venv_sitepackages = venv_dir / "Lib" / "site-packages"
+        site.addsitedir(venv_sitepackages)
         if ue_pythonpath := self.launch_context.env.get("UE_PYTHONPATH"):
             ue_pythonpath = os.pathsep.join([ue_pythonpath, venv_sitepackages.as_posix()])
             self.launch_context.env["UE_PYTHONPATH"] = ue_pythonpath
