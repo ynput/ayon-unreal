@@ -86,8 +86,10 @@ class InstallQtBinding(PreLaunchHook):
         unreal_python_dir = None
         if platform == "windows":
             unreal_python_dir = os.path.join(versions_dir, "ThirdParty", "Python3", "Win64")
+        elif platform == "darwin":
+            unreal_python_dir = os.path.join(versions_dir, "ThirdParty", "Python3", "Mac", "bin", "python3")
         else:
-            unreal_python_dir = os.path.join(versions_dir, "ThirdParty", "Python3", "Linux")
+            unreal_python_dir = os.path.join(versions_dir, "ThirdParty", "Python3", "Linux", "bin")
         python_dir, py_version = self._find_python_executable(unreal_python_dir)
 
         if not python_dir:
