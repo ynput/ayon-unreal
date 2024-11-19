@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import os
 import hashlib
-import contextlib
 import subprocess
 from pathlib import Path
 from platform import system
@@ -159,27 +158,23 @@ class InstallQtBinding(PreLaunchHook):
             in subprocess and parse its output.
 
         """
+        if settings["arbitrary_site_package_location"]:
+            qt_binding_dir = self.use_arbitrary_location_for_qt(python_executable)
+        else:
+            qt_binding_dir = os.path.join(os.path.dirname(python_executable), "Lib")
         args = [
+            python_executable.as_posix(),
             "-m",
             "pip",
             "install",
             "--ignore-installed",
             pyside_name,
-            "--target"
+            "--target",
+            f"{qt_binding_dir}"
         ]
-        if settings["arbitrary_site_package_location"]:
-            qt_binding_dir = self.use_arbitrary_location_for_qt(python_executable)
-        else:
-            qt_binding_dir = os.path.join(os.path.dirname(python_executable), "Lib")
-
-        args.append(qt_binding_dir)
 
         args = self.use_dependency_path(args, settings)
-        parameters = (
-            subprocess.list2cmdline(args)
-            .lstrip(" ")
-        )
-        return_code = self.pip_install_for_window(python_executable, parameters)
+        return_code = self.pip_install(args)
 
         return return_code
 
@@ -247,53 +242,22 @@ class InstallQtBinding(PreLaunchHook):
         return None
 
     def use_dependency_path(self, commands: list, settings: dict) -> list:
-        if settings.get("use_dependency"):
-            dependency_path = settings.get("dependency_path")
-            if dependency_path:
-                commands.extend(
-                    [
-                        "--no-index",
-                        f"--find-links={dependency_path}"
-                    ]
-                )
-            else:
-                self.log.warning(
-                    "Skipping to install Pyside with dependency."
-                    " No dependency path filled in the setting")
-
-        return commands
-
-    def pip_install_for_window(self, python_executable: Path, parameters: list):
-        try:
-            import pywintypes
-            import win32con
-            import win32event
-            import win32process
-            from win32comext.shell import shellcon
-            from win32comext.shell.shell import ShellExecuteEx
-        except Exception:  # noqa: BLE001
+        if not settings.get("use_dependency"):
             self.log.warning(
-                "Couldn't import 'pywin32' modules", exc_info=True)
-            return None
-        with contextlib.suppress(pywintypes.error):
-            # Parameters
-            # - use "-m pip" as module pip to install PySide2 and argument
-            #   "--ignore-installed" is to force install module to unreal's
-            #   site-packages and make sure it is binary compatible
-            # Execute command and ask for administrator's rights
-            process_info = ShellExecuteEx(
-                nShow=win32con.SW_SHOWNORMAL,
-                fMask=shellcon.SEE_MASK_NOCLOSEPROCESS,
-                lpVerb="runas",
-                lpFile=python_executable.as_posix(),
-                lpParameters=parameters,
-                lpDirectory=python_executable.parent.as_posix()
+                "Skipping to install Pyside with dependency path.")
+            return commands
+        if dependency_path := settings.get("dependency_path"):
+            commands.extend(
+                [
+                    "--no-index",
+                    f"--find-links={dependency_path}"
+                ]
             )
-            process_handle = process_info["hProcess"]
-            win32event.WaitForSingleObject(
-                process_handle, win32event.INFINITE)
-            return_code = win32process.GetExitCodeProcess(process_handle)
-            return return_code == 0
+        else:
+            self.log.warning("No dependency path filled in the setting.")
+            return commands
+        self.log.info(f"Using dependency path: {dependency_path}")
+        return commands
 
     def pip_install(self, args: list):
         try:
@@ -346,4 +310,4 @@ class InstallQtBinding(PreLaunchHook):
 
         self.launch_context.env["UE_PYTHONPATH"] = ue_pythonpath
 
-        return qt_binding_dir
+        return qt_binding_dir.as_posix()
