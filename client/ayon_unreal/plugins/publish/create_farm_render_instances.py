@@ -100,6 +100,7 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
                     new_data["sequence"] = seq.get_path_name()
                     new_data["master_sequence"] = data["master_sequence"]
                     new_data["master_level"] = data["master_level"]
+                    new_data["review"] = instance.data.get("review", False)
                     new_data["farm"] = instance.data.get("farm", False)
 
                     self.log.debug(f"new instance data: {new_data}")
@@ -233,6 +234,7 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
                 master_level=inst.data["master_level"],
                 render_queue_path=render_queue_path,
                 deadline=inst.data.get("deadline"),
+                multipartExr=True,
             )
             new_instance.farm = True
 
@@ -253,14 +255,14 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
                                                     frame_placeholder)
         return f"{file_name_format}.{ext}"
 
-    def get_expected_files(self, render_instance):
+    def get_expected_files(self, render_instance: UnrealRenderInstance):
         """
             Returns list of rendered files that should be created by
             Deadline. These are not published directly, they are source
             for later 'submit_publish_job'.
 
         Args:
-            render_instance (RenderInstance): to pull anatomy and parts used
+            render_instance (UnrealRenderInstance): to pull anatomy and parts used
                 in url
 
         Returns:
@@ -288,7 +290,7 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
         """
             Returns dir path of rendered files, used in submit_publish_job
             for metadata.json location.
-            Should be in separate folder inside of work area.
+            Should be in separate folder inside work area.
 
         Args:
             render_instance (RenderInstance):
