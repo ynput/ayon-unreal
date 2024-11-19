@@ -339,7 +339,7 @@ class InstallQtBinding(PreLaunchHook):
         ue_pythonpath = self.launch_context.env.get("UE_PYTHONPATH")
         if ue_pythonpath:
             ue_pythonpath = os.pathsep.join(
-                [ue_pythonpath, qt_binding_dir])
+                [ue_pythonpath, qt_binding_dir.as_posix()])
         else:
             ue_pythonpath = qt_binding_dir
 
