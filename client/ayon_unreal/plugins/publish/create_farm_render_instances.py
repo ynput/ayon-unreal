@@ -4,8 +4,10 @@ import unreal
 
 import pyblish.api
 
-from ayon_core.pipeline import publish
+from ayon_core.pipeline import publish, PublishError
 from ayon_core.pipeline.publish import RenderInstance
+
+from ayon_unreal.api import pipeline
 
 from ayon_unreal.api.pipeline import UNREAL_VERSION
 from ayon_unreal.api.rendering import (
@@ -30,12 +32,77 @@ class UnrealRenderInstance(RenderInstance):
     render_queue_path = attr.ib(default=None)
 
 
-class CollectUnrealRemoteRender(publish.AbstractCollectRender):
+class CreateFarmRenderInstances(publish.AbstractCollectRender):
 
-    order = pyblish.api.CollectorOrder + 0.405
-    label = "Collect Farm Expected files"
+    order = pyblish.api.CollectorOrder + 0.21
+    label = "Create Farm Render Instances"
     hosts = ["unreal"]
-    families = ["render.farm"]
+    families = ["render"]
+
+    def preparing_rendering_instance(self, instance):
+        context = instance.context
+
+        data = instance.data
+        data["remove"] = True
+
+        ar = unreal.AssetRegistryHelpers.get_asset_registry()
+
+        sequence = ar.get_asset_by_object_path(
+            data.get("sequence")).get_asset()
+
+        sequences = [{
+            "sequence": sequence,
+            "output": data.get("output"),
+            "frame_range": (
+                data.get("frameStart"), data.get("frameEnd"))
+        }]
+
+        for s in sequences:
+            self.log.debug(f"Processing: {s.get('sequence').get_name()}")
+            subscenes = pipeline.get_subsequences(s.get('sequence'))
+
+            if subscenes:
+                for ss in subscenes:
+                    sequences.append({
+                        "sequence": ss.get_sequence(),
+                        "output": (f"{s.get('output')}/"
+                                   f"{ss.get_sequence().get_name()}"),
+                        "frame_range": (
+                            ss.get_start_frame(), ss.get_end_frame() - 1)
+                    })
+            else:
+                # Avoid creating instances for camera sequences
+                if "_camera" not in s.get('sequence').get_name():
+                    seq = s.get('sequence')
+                    seq_name = seq.get_name()
+
+                    product_type = "render"
+                    new_product_name = f"{data.get('productName')}_{seq_name}"
+                    new_instance = context.create_instance(
+                        new_product_name
+                    )
+                    new_instance[:] = seq_name
+
+                    new_data = new_instance.data
+
+                    new_data["folderPath"] = instance.data["folderPath"]
+                    new_data["setMembers"] = seq_name
+                    new_data["productName"] = new_product_name
+                    new_data["productType"] = product_type
+                    new_data["family"] = product_type
+                    new_data["families"] = [product_type, "review"]
+                    new_data["parent"] = data.get("parent")
+                    new_data["level"] = data.get("level")
+                    new_data["output"] = s['output']
+                    new_data["fps"] = seq.get_display_rate().numerator
+                    new_data["frameStart"] = int(s.get('frame_range')[0])
+                    new_data["frameEnd"] = int(s.get('frame_range')[1])
+                    new_data["sequence"] = seq.get_path_name()
+                    new_data["master_sequence"] = data["master_sequence"]
+                    new_data["master_level"] = data["master_level"]
+                    new_data["farm"] = instance.data.get("farm", False)
+
+                    self.log.debug(f"new instance data: {new_data}")
 
     def get_instances(self, context):
         instances = []
@@ -70,6 +137,9 @@ class CollectUnrealRemoteRender(publish.AbstractCollectRender):
         fps = f"{output_fps.denominator}.{output_fps.numerator}"
 
         for inst in context:
+            instance_families = inst.data.get("families", [])
+            product_name = inst.data["productName"]
+
             if not inst.data.get("active", True):
                 continue
 
@@ -77,13 +147,19 @@ class CollectUnrealRemoteRender(publish.AbstractCollectRender):
             if family not in ["render"]:
                 continue
 
+            # skip if locar render instances
+            if "render.local" in instance_families:
+                continue
+
             render_queue_path = (
                 project_settings["unreal"]["render_queue_path"]
             )
             if not unreal.EditorAssetLibrary.does_asset_exist(
                     render_queue_path):
-                # TODO temporary until C++ blueprint is created as it is not
-                # possible to create renderQueue
+                # TODO: temporary until C++ blueprint is created as it is not
+                #   possible to create renderQueue. Also, we could
+                #   use Render Graph from UE 5.4
+
                 master_level = inst.data["master_level"]
                 sequence = inst.data["sequence"]
                 msg = (f"Please create `Movie Pipeline Queue` "
@@ -91,19 +167,17 @@ class CollectUnrealRemoteRender(publish.AbstractCollectRender):
                        f"Set it Sequence to `{sequence}`, "
                        f"Map to `{master_level}` and "
                        f"Settings to `{config_path}` ")
-                raise RuntimeError(msg)
+                raise PublishError(msg)
 
-            instance_families = inst.data.get("families", [])
-            product_name = inst.data["productName"]
             # backward compatibility
             task_name = inst.data.get("task") or inst.data.get("task_name")
-            self.log.info(f"task_name::{task_name}")
+            self.log.debug(f"Task name:{task_name}")
 
             ar = unreal.AssetRegistryHelpers.get_asset_registry()
             sequence = (ar.get_asset_by_object_path(inst.data["sequence"]).
                         get_asset())
             if not sequence:
-                raise RuntimeError(f"Cannot find {inst.data['sequence']}")
+                raise PublishError(f"Cannot find {inst.data['sequence']}")
 
             # current frame range - might be different from created
             frame_start = sequence.get_playback_start()
@@ -123,13 +197,15 @@ class CollectUnrealRemoteRender(publish.AbstractCollectRender):
 
             publish_attributes = {}
 
-            instance = UnrealRenderInstance(
+            review = bool(inst.data["creator_attributes"].get("review"))
+
+            new_instance = UnrealRenderInstance(
                 family="render",
                 families=["render.farm"],
                 version=version,
                 time="",
                 source=current_file,
-                label="{} - {}".format(product_name, family),
+                label=f"{product_name} - {family}",
                 productName=product_name,
                 productType="render",
                 folderPath=inst.data["folderPath"],
@@ -144,7 +220,7 @@ class CollectUnrealRemoteRender(publish.AbstractCollectRender):
                 tileRendering=False,
                 tilesX=0,
                 tilesY=0,
-                review="review" in instance_families,
+                review=review,
                 frameStart=frame_start,
                 frameEnd=frame_end,
                 frameStep=1,
@@ -156,14 +232,15 @@ class CollectUnrealRemoteRender(publish.AbstractCollectRender):
                 config_path=config_path,
                 master_level=inst.data["master_level"],
                 render_queue_path=render_queue_path,
-                deadline=inst.data.get("deadline")
+                deadline=inst.data.get("deadline"),
             )
-            instance.farm = True
+            new_instance.farm = True
 
-            instances.append(instance)
+            instances.append(new_instance)
             instances_to_remove.append(inst)
 
         for instance in instances_to_remove:
+            self.log.debug(f"Removing instance: {instance}")
             context.remove(instance)
         return instances
 
