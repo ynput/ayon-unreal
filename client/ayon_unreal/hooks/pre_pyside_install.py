@@ -11,13 +11,14 @@ Note:
 from __future__ import annotations
 
 import os
-import site
+import hashlib
 import contextlib
 import subprocess
 from pathlib import Path
 from platform import system
 from typing import Union
 from ayon_applications import LaunchTypes, PreLaunchHook
+from ayon_core.lib import get_launcher_local_dir
 
 python_versions = {7, 8, 9, 10, 11, 12, 13}
 MAX_PYSIDE2_PYTHON_VERSION = 10
@@ -45,21 +46,21 @@ class InstallQtBinding(PreLaunchHook):
         """Find python executable in unreal's directory.
 
         Args:
-            path_str (str): Python Directory.
+            path_str (str): Python Executable path.
 
         Returns:
             valid_path (Path): Path to python executable.
 
         """
+        result = subprocess.Popen([path_str.as_posix(), "--version"], stdout=subprocess.PIPE)
+        version_str = result.stdout.strip().split()[1]
+        version_parts = version_str.split('.')
+        version_int = int(version_parts[1])
         for version in python_versions:
-            matching_python_dll_files = [
-                dll_file for dll_file in os.listdir(path_str)
-                if dll_file.endswith(f"{version}.dll")
-            ]
-            python_dir = Path(path_str)
-            if python_dir.exists() and matching_python_dll_files:
-                return python_dir, version
+            if int(version) == version_int:
+                return version
         return None, None
+
 
     def _execute(self) -> None:  # noqa: PLR0912, C901
         """Execute the hook.
@@ -85,36 +86,37 @@ class InstallQtBinding(PreLaunchHook):
         versions_dir = self.find_parent_directory(executable)
         unreal_python_dir = None
         if platform == "windows":
-            unreal_python_dir = os.path.join(versions_dir, "ThirdParty", "Python3", "Win64")
+            unreal_python_dir = os.path.join(
+                versions_dir, "ThirdParty", "Python3", "Win64")
         elif platform == "darwin":
-            unreal_python_dir = os.path.join(versions_dir, "ThirdParty", "Python3", "Mac", "bin", "python3")
+            unreal_python_dir = os.path.join(
+                versions_dir, "ThirdParty", "Python3", "Mac", "bin", "python3")
         else:
-            unreal_python_dir = os.path.join(versions_dir, "ThirdParty", "Python3", "Linux", "bin")
-        python_dir, py_version = self._find_python_executable(unreal_python_dir)
+            unreal_python_dir = os.path.join(
+                versions_dir, "ThirdParty", "Python3", "Linux", "bin")
 
-        if not python_dir:
+        if not os.path.exists(unreal_python_dir):
             self.log.warning(
-                "Couldn't find python executable "
+                "Couldn't find the directory for python executable "
                 "for unreal in %s", unreal_python_dir)
             return
 
         if platform == "windows":
-            python_executable = Path(python_dir) / "python.exe"
+            python_executable = Path(unreal_python_dir) / "python.exe"
         else:
-            python_executable = Path(python_dir) / "python"
-            # Check for python with enabled 'pymalloc'
-            if not python_executable.exists():
-                python_executable = Path(python_dir) / f"python3.{py_version}m"
+            python_executable = Path(unreal_python_dir) / "python"
 
-        unreal_settings = self.data["project_settings"]["unreal"]
-        prelaunch_settings = unreal_settings["prelaunch_settings"]
-        python_executable = self.use_venv_for_installation(python_executable, prelaunch_settings, platform)
         if not python_executable.exists():
             self.log.warning(
                 "Couldn't find python executable "
                 "for unreal %s", python_executable.as_posix())
 
             return
+
+        py_version = self._find_python_executable(python_executable)
+
+        unreal_settings = self.data["project_settings"]["unreal"]
+        prelaunch_settings = unreal_settings["prelaunch_settings"]
 
         pyside_name = "PySide6"
         if py_version <= MAX_PYSIDE2_PYTHON_VERSION:
@@ -162,11 +164,15 @@ class InstallQtBinding(PreLaunchHook):
             "pip",
             "install",
             "--ignore-installed",
-            pyside_name
+            pyside_name,
+            "--target"
         ]
-        if not settings["use_venv"] or not settings["venv_name"]:
-            site_package_path = os.path.join(os.path.dirname(python_executable), "Lib")
-            args += ["--target", f"{site_package_path}"]
+        if settings["arbitrary_site_package_location"]:
+            qt_binding_dir = self.use_arbitrary_location_for_qt(python_executable)
+        else:
+            qt_binding_dir = os.path.join(os.path.dirname(python_executable), "Lib")
+
+        args.append(qt_binding_dir)
 
         args = self.use_dependency_path(args, settings)
         parameters = (
@@ -188,6 +194,10 @@ class InstallQtBinding(PreLaunchHook):
             "--ignore-installed",
             pyside_name
         ]
+        if settings["arbitrary_site_package_location"]:
+            qt_binding_dir = self.use_arbitrary_location_for_qt(python_executable)
+            args += ["--target", f"{qt_binding_dir}"]
+
         args = self.use_dependency_path(args, settings)
         return_code = self.pip_install(args)
         return return_code
@@ -253,59 +263,6 @@ class InstallQtBinding(PreLaunchHook):
 
         return commands
 
-    def use_venv_for_installation(self, python_executable: Path,
-                                  settings: dict, platform: str) -> Path:
-        """Get python executable from virtual environment.
-
-        Args:
-            python_executable (Path): python_executable
-            settings (dict): unreal settings
-            platform (str): system platform
-
-        Returns:
-            Path: path for python executable
-        """
-        if not settings.get("use_venv"):
-            return python_executable
-
-        venv_name = settings.get("venv_name")
-        if not venv_name:
-            return python_executable
-        venv_dir = Path(os.getenv("AYON_LAUNCHER_LOCAL_DIR")) / venv_name
-        args = [python_executable.as_posix(), '-m', 'venv', venv_dir]
-        _ = self.pip_install(args)
-
-        if platform == "windows":
-            venv_python = os.path.join(venv_dir, "Scripts", "python.exe")
-        else:
-            venv_python = os.path.join(venv_dir, "bin", "python")
-
-        args = [
-            venv_python, "-c",
-            (
-                "import site;print(next((path for path "
-                "in site.getsitepackages() "
-                'if path.endswith("site-packages")), None))')
-        ]
-        process = subprocess.Popen(
-            args, stdout=subprocess.PIPE, universal_newlines=True
-        )
-        stdout, _ = process.communicate()
-        venv_sitepackages = stdout.strip()
-        if venv_sitepackages:
-            site.addsitedir(venv_sitepackages)
-
-        ue_pythonpath = self.launch_context.env.get("UE_PYTHONPATH")
-        if ue_pythonpath:
-            ue_pythonpath = os.pathsep.join(
-                [ue_pythonpath, venv_sitepackages])
-        else:
-            ue_pythonpath = venv_sitepackages
-
-        self.launch_context.env["UE_PYTHONPATH"] = ue_pythonpath
-
-        return Path(venv_python)
-
     def pip_install_for_window(self, python_executable: Path, parameters: list):
         try:
             import pywintypes
@@ -361,3 +318,31 @@ class InstallQtBinding(PreLaunchHook):
             pass
         else:
             return process.returncode == 0
+
+    def use_arbitrary_location_for_qt(self, python_executable):
+        """Use custom location for storing PySide-related site-packages
+        and add the package paths as part of the unreal python environment
+
+        Args:
+            python_executable (Path): Python Executable
+
+        Returns:
+            str: Qt-binding directory
+        """
+        ue_python_hash = hashlib.sha512(python_executable).hexdigest()[0:8]
+
+        qt_binding_dir = (
+            Path(get_launcher_local_dir()) / "unreal_dependencies" / ue_python_hash
+        )
+
+        # add arbitrary_site_packages as part of the unreal python path
+        ue_pythonpath = self.launch_context.env.get("UE_PYTHONPATH")
+        if ue_pythonpath:
+            ue_pythonpath = os.pathsep.join(
+                [ue_pythonpath, qt_binding_dir])
+        else:
+            ue_pythonpath = qt_binding_dir
+
+        self.launch_context.env["UE_PYTHONPATH"] = ue_pythonpath
+
+        return qt_binding_dir

@@ -20,11 +20,5 @@ class UnrealPreLaunchSetting(BaseSettingsModel):
         )
     )
 
-    use_venv: bool = SettingsField(False, title="Use Virtual Environment")
-    venv_name: str = SettingsField(
-        "",
-        title="Virtual Environment Name",
-        description=(
-            "Name of the virtual environment folder for PySide installation"
-        )
-    )
+    arbitrary_site_package_location: bool = SettingsField(
+        False, title="Use arbitrary site-packages location")
