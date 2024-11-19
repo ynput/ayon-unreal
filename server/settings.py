@@ -1,6 +1,7 @@
 from ayon_server.settings import BaseSettingsModel, SettingsField
 from .imageio import UnrealImageIOModel
 from .import_settings import UnrealImportModel
+from .pre_launch_settings import UnrealPreLaunchSetting
 
 
 class ProjectSetup(BaseSettingsModel):
@@ -43,6 +44,10 @@ class UnrealSettings(BaseSettingsModel):
     imageio: UnrealImageIOModel = SettingsField(
         default_factory=UnrealImageIOModel,
         title="Color Management (ImageIO)"
+    )
+    prelaunch_settings: UnrealPreLaunchSetting = SettingsField(
+        default_factory=UnrealPreLaunchSetting,
+        title="Prelaunch Settings"
     )
     loaded_asset_dir: str = SettingsField(
         "{folder[path]}/{product[name]}_{version[version]}",
