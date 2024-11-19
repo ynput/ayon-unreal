@@ -42,18 +42,18 @@ class InstallQtBinding(PreLaunchHook):
 
     @staticmethod
     def _find_python_executable(
-            path_str: str) -> tuple[Union[Path, None], Union[int, None]]:
+            path: Path) -> tuple[Union[Path, None], Union[int, None]]:
         """Find python executable in unreal's directory.
 
         Args:
-            path_str (str): Python Executable path.
+            path (Path): Python Executable path.
 
         Returns:
             valid_path (Path): Path to python executable.
 
         """
-        result = subprocess.Popen([path_str.as_posix(), "--version"], stdout=subprocess.PIPE)
-        version_str = result.stdout.strip().split()[1]
+        result = subprocess.check_output([path.as_posix(), "--version"])
+        version_str = result.decode().strip().split()[1]
         version_parts = version_str.split('.')
         version_int = int(version_parts[1])
         for version in python_versions:
