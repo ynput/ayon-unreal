@@ -329,7 +329,8 @@ class InstallQtBinding(PreLaunchHook):
         Returns:
             str: Qt-binding directory
         """
-        ue_python_hash = hashlib.sha512(python_executable).hexdigest()[0:8]
+        ue_python_hash = hashlib.sha512(
+            python_executable.as_posix().encode("utf-8")).hexdigest()[:8]
 
         qt_binding_dir = (
             Path(get_launcher_local_dir()) / "unreal_dependencies" / ue_python_hash
