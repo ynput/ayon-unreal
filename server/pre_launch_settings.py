@@ -21,4 +21,8 @@ class UnrealPreLaunchSetting(BaseSettingsModel):
     )
 
     arbitrary_site_package_location: bool = SettingsField(
-        False, title="Use arbitrary site-packages location")
+        False, title="Use local user space location for dependencies",
+        description=("Use user space location for dependencies "
+                              "instead of installing them directly to "
+                              "Unreal install location.")
+    )
