@@ -512,7 +512,7 @@ def get_subsequences(sequence: unreal.LevelSequence):
         list(unreal.LevelSequence): List of subsequences
 
     """
-    tracks = sequence.get_master_tracks()
+    tracks = get_tracks(sequence)
     subscene_track = next(
         (
             t
@@ -530,7 +530,7 @@ def set_sequence_hierarchy(
     seq_i, seq_j, max_frame_i, min_frame_j, max_frame_j, map_paths
 ):
     # Get existing sequencer tracks or create them if they don't exist
-    tracks = seq_i.get_master_tracks()
+    tracks = get_tracks(seq_i)
     subscene_track = None
     visibility_track = None
     for t in tracks:
@@ -643,7 +643,7 @@ def generate_sequence(h, h_dir):
     sequence.set_view_range_start(min_frame / fps)
     sequence.set_view_range_end(max_frame / fps)
 
-    tracks = sequence.get_master_tracks()
+    tracks = get_tracks(sequence)
     track = None
     for t in tracks:
         if (t.get_class() ==
@@ -985,7 +985,7 @@ def get_camera_tracks(sequence):
         list: list of movie scene camera cut tracks
     """
     camera_tracks = []
-    tracks = sequence.get_master_tracks()
+    tracks = get_tracks(sequence)
     for track in tracks:
         if str(track).count("MovieSceneCameraCutTrack"):
             camera_tracks.append(track)
@@ -1193,3 +1193,21 @@ def generate_master_level_sequence(tools, asset_dir, asset_name,
             [asset_level])
 
     return shot, master_level, asset_level, sequences, frame_ranges
+
+
+def get_tracks(sequence):
+    """Backward compatibility for deprecated function of get_master_tracks() in UE 5.5
+
+    Args:
+        sequence (unreal.LevelSequence): Level Sequence
+
+    Returns:
+        Array(MovieSceneTracks): Movie scene tracks
+    """
+    if (
+        UNREAL_VERSION.major == 5
+        and UNREAL_VERSION.minor > 4
+    ):
+        return sequence.get_tracks()
+    else:
+        return sequence.get_master_tracks()

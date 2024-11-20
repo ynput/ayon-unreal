@@ -13,6 +13,7 @@ import ayon_api
 from ayon_core.pipeline import (
     get_representation_path,
     get_current_project_name,
+    get_tracks
 )
 from ayon_core.settings import get_current_project_settings
 from ayon_unreal.api import plugin
@@ -485,7 +486,7 @@ class LayoutLoader(plugin.LayoutLoader):
 
             parent = None
             for s in sequences:
-                tracks = s.get_master_tracks()
+                tracks = get_tracks(s)
                 subscene_track = None
                 visibility_track = None
                 for t in tracks:

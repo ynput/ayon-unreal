@@ -3,6 +3,7 @@
 import pyblish.api
 import unreal
 from ayon_core.pipeline.publish import PublishValidationError, RepairAction
+from ayon_unreal.api.pipeline import get_tracks
 
 
 class ValidateCameraTracks(pyblish.api.InstancePlugin):
@@ -33,7 +34,7 @@ class ValidateCameraTracks(pyblish.api.InstancePlugin):
                     "The published assets must be Level Sequence")
             sequence = data.get_asset()
             seq_name = sequence.get_name()
-            all_tracks = sequence.get_master_tracks()
+            all_tracks = get_tracks(sequence)
             if not all_tracks:
                 message = (
                     f"No tracks found in Level Sequence {seq_name}. You can perform\n "
