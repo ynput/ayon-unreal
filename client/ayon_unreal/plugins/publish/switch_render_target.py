@@ -1,22 +1,19 @@
-"""Collect current project path."""
-import unreal  # noqa
 import pyblish.api
 
 
-class CollectRenderTarget(pyblish.api.InstancePlugin):
-    """Inject the current working file into context."""
-
-    order = pyblish.api.CollectorOrder - 0.5
-    label = "Collect Render Target"
-    hosts = ["unreal"]
+class SwitchRenderTargets(pyblish.api.InstancePlugin):
+    """Switch between farm and local render targets."""
+    order = pyblish.api.CollectorOrder - 0.499
     families = ["render"]
+    label = "Switch Render Targets"
 
     def process(self, instance):
-        """Inject the current working file."""
+        self.log.debug(instance.data["creator_attributes"])
         render_target = (instance.data["creator_attributes"].
                          get("render_target"))
         if render_target == "farm":
             self.log.debug("Rendering on farm")
+            instance.data["families"].append("render.farm")
             instance.data["farm"] = True
             return
 

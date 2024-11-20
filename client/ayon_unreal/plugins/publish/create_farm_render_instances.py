@@ -36,8 +36,6 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
 
     order = pyblish.api.CollectorOrder + 0.21
     label = "Create Farm Render Instances"
-    hosts = ["unreal"]
-    families = ["render"]
 
     def preparing_rendering_instance(self, instance):
         context = instance.context
@@ -152,6 +150,10 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
             if "render.local" in instance_families:
                 continue
 
+            if not inst.data.get("farm", False):
+                self.log.info("Skipping local render instance")
+                continue
+
             render_queue_path = (
                 project_settings["unreal"]["render_queue_path"]
             )
@@ -198,7 +200,10 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
 
             publish_attributes = {}
 
-            review = bool(inst.data["creator_attributes"].get("review"))
+            try:
+                review = bool(inst.data["creator_attributes"].get("review"))
+            except KeyError:
+                review = inst.data.get("review", False)
 
             new_instance = UnrealRenderInstance(
                 family="render",
@@ -234,7 +239,6 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
                 master_level=inst.data["master_level"],
                 render_queue_path=render_queue_path,
                 deadline=inst.data.get("deadline"),
-                multipartExr=True,
             )
             new_instance.farm = True
 

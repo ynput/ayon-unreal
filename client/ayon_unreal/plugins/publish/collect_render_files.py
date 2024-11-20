@@ -15,7 +15,6 @@ class CollectRenderFiles(pyblish.api.InstancePlugin):
     add them as representation.
     """
     order = pyblish.api.CollectorOrder + 0.001
-    hosts = ["unreal"]
     families = ["render.local"]
     label = "Collect Render Files"
 

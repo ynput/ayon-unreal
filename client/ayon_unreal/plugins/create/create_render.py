@@ -330,7 +330,10 @@ class CreateRender(UnrealAssetCreator):
                 and "folderPath" in changes
                 and instance.creator_identifier == self.identifier
             ):
-                instance.data["label"] = f'{instance.data.get("folderPath")} - {instance.data.get("productName")}'
+                instance.data["label"] = (
+                    f'{instance.data.get("folderPath")} - '
+                    f'{instance.data.get("productName")}'
+                )
 
     def register_callbacks(self):
         self.create_context.add_value_changed_callback(self._on_value_changed)
