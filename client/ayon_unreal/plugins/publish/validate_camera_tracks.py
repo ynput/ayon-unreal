@@ -3,7 +3,7 @@
 import pyblish.api
 import unreal
 from ayon_core.pipeline.publish import PublishValidationError, RepairAction
-from ayon_unreal.api.pipeline import get_tracks
+from ayon_unreal.api.lib import get_tracks, add_track
 
 
 class ValidateCameraTracks(pyblish.api.InstancePlugin):
@@ -72,4 +72,4 @@ class ValidateCameraTracks(pyblish.api.InstancePlugin):
                 data.asset_class_path.asset_name == "LevelSequence")
             if is_level_sequence:
                 sequence = data.get_asset()
-                sequence.add_master_track(unreal.MovieSceneCameraCutTrack)
+                add_track(sequence, unreal.MovieSceneCameraCutTrack)

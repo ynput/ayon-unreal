@@ -540,10 +540,10 @@ def set_sequence_hierarchy(
                 unreal.MovieSceneLevelVisibilityTrack.static_class()):
             visibility_track = t
     if not subscene_track:
-        subscene_track = seq_i.add_master_track(unreal.MovieSceneSubTrack)
+        subscene_track = add_track(seq_i, unreal.MovieSceneSubTrack)
     if not visibility_track:
-        visibility_track = seq_i.add_master_track(
-            unreal.MovieSceneLevelVisibilityTrack)
+        visibility_track = add_track(
+            seq_i, unreal.MovieSceneLevelVisibilityTrack)
 
     # Create the sub-scene section
     subscenes = subscene_track.get_sections()
@@ -651,8 +651,7 @@ def generate_sequence(h, h_dir):
             track = t
             break
     if not track:
-        track = sequence.add_master_track(
-            unreal.MovieSceneCameraCutTrack)
+        track = add_track(sequence, unreal.MovieSceneCameraCutTrack)
 
     return sequence, (min_frame, max_frame)
 
@@ -1211,3 +1210,21 @@ def get_tracks(sequence):
         return sequence.get_tracks()
     else:
         return sequence.get_master_tracks()
+
+
+def add_track(sequence, track):
+    """Backward compatibility for deprecated function of add_master_track() in UE 5.5
+
+    Args:
+        sequence (unreal.LevelSequence): Level Sequence
+
+    Returns:
+        MovieSceneTrack: Any tracks inherited from unreal.MovieSceneTrack
+    """
+    if (
+        UNREAL_VERSION.major == 5
+        and UNREAL_VERSION.minor > 4
+    ):
+        return sequence.add_tracks(track)
+    else:
+        return sequence.add_master_track(track)
