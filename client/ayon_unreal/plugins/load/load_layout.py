@@ -12,8 +12,7 @@ import ayon_api
 
 from ayon_core.pipeline import (
     get_representation_path,
-    get_current_project_name,
-    get_tracks
+    get_current_project_name
 )
 from ayon_core.settings import get_current_project_settings
 from ayon_unreal.api import plugin
@@ -26,7 +25,8 @@ from ayon_unreal.api.pipeline import (
     get_top_hierarchy_folder,
     generate_hierarchy_path,
     update_container,
-    remove_map_and_sequence
+    remove_map_and_sequence,
+    get_tracks
 )
 from ayon_unreal.api.lib import (
     import_animation
