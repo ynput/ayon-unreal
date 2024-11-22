@@ -90,8 +90,10 @@ class TexturePNGLoader(plugin.Loader):
             pipeline = editor_asset_subsystem.duplicate_asset(
                 self.pipeline_path, tmp_pipeline_path)
 
-            # Interchange settings here
-            pipeline.asset_name = asset_name
+            unreal.EditorAssetLibrary.rename_asset(
+                pipeline.get_path_name(),
+                f"{tmp_pipeline_path}/{asset_name}.{asset_name}"
+            )
 
             import_assetparameters.override_pipelines.append(
                 unreal.SoftObjectPath(f"{tmp_pipeline_path}.tmp"))

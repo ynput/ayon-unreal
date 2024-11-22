@@ -88,11 +88,16 @@ class StaticMeshFBXLoader(plugin.Loader):
             editor_asset_subsystem = unreal.EditorAssetSubsystem()
             import_assetparameters.is_automated = not cls.show_dialog
 
+            # The path to the Interchange asset
             tmp_pipeline_path = "/Game/tmp"
-            pipeline = editor_asset_subsystem.duplicate_asset(cls.pipeline_path, tmp_pipeline_path) # the path to the Interchange asset
-
             # interchange settings here
-            pipeline.asset_name = asset_name
+            pipeline = editor_asset_subsystem.duplicate_asset(
+                cls.pipeline_path, tmp_pipeline_path)
+
+            unreal.EditorAssetLibrary.rename_asset(
+                pipeline.get_path_name(),
+                f"{tmp_pipeline_path}/{asset_name}.{asset_name}"
+            )
 
             import_assetparameters.override_pipelines.append(
                 unreal.SoftObjectPath(f"{tmp_pipeline_path}.tmp"))
@@ -106,7 +111,7 @@ class StaticMeshFBXLoader(plugin.Loader):
             editor_asset_subsystem.delete_asset(tmp_pipeline_path) # remove temp file
 
         else:
-            unreal.log("Import using defered method")
+            unreal.log("Import using deferred method")
             task = None
             if asset_path:
                 loaded_asset_dir = unreal.Paths.split(asset_path)[0]
