@@ -87,11 +87,9 @@ class TexturePNGLoader(plugin.Loader):
 
             # The path to the Interchange asset
             tmp_pipeline_path = "/Game/tmp"
-            pipeline = editor_asset_subsystem.duplicate_asset(
-                self.pipeline_path, tmp_pipeline_path)
-
+            # interchange settings here
             unreal.EditorAssetLibrary.rename_asset(
-                pipeline.get_path_name(),
+                f"{self.pipeline_path}",
                 f"{tmp_pipeline_path}/{asset_name}.{asset_name}"
             )
 

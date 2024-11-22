@@ -91,11 +91,10 @@ class StaticMeshFBXLoader(plugin.Loader):
             # The path to the Interchange asset
             tmp_pipeline_path = "/Game/tmp"
             # interchange settings here
-            pipeline = editor_asset_subsystem.duplicate_asset(
-                cls.pipeline_path, tmp_pipeline_path)
-
+            # pipeline = editor_asset_subsystem.duplicate_asset(
+            #     cls.pipeline_path, tmp_pipeline_path)
             unreal.EditorAssetLibrary.rename_asset(
-                pipeline.get_path_name(),
+                f"{cls.pipeline_path}",
                 f"{tmp_pipeline_path}/{asset_name}.{asset_name}"
             )
 
