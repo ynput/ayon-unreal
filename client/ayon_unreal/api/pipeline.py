@@ -1225,6 +1225,6 @@ def add_track(sequence, track):
         UNREAL_VERSION.major == 5
         and UNREAL_VERSION.minor > 4
     ):
-        return sequence.add_tracks(track)
+        return sequence.add_track(track)
     else:
         return sequence.add_master_track(track)
