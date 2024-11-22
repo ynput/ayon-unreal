@@ -211,8 +211,8 @@ class LayoutLoader(plugin.LayoutLoader):
                         container = obj
                     if obj.get_class().get_name() == 'Skeleton':
                         skeleton = obj
-
-                loaded_assets.append(container.get_path_name())
+                    if container is not None:
+                        loaded_assets.append(container.get_path_name())
 
                 instances = [
                     item for item in data
@@ -341,7 +341,8 @@ class LayoutLoader(plugin.LayoutLoader):
             path, project_name, asset_dir, shot,
             loaded_extension=extension,
             force_loaded=self.force_loaded)
-
+        unreal.log("loaded assets")
+        unreal.log(loaded_assets)
         for s in sequences:
             EditorAssetLibrary.save_asset(s.get_path_name())
 
