@@ -412,6 +412,7 @@ class LayoutLoader(Loader):
         asset_dir,
         asset_name,
         container_name,
+        project_name,
         hierarchy_dir=None
     ):
         data = {
@@ -427,6 +428,7 @@ class LayoutLoader(Loader):
             "parent": context["representation"]["versionId"],
             "family": context["product"]["productType"],
             "loaded_assets": loaded_assets,
+            "project_name": project_name
         }
         if hierarchy_dir is not None:
             data["master_directory"] = hierarchy_dir

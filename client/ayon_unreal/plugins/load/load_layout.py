@@ -358,6 +358,7 @@ class LayoutLoader(plugin.LayoutLoader):
             asset_dir,
             asset_name,
             container_name,
+            context["project"]["name"],
             hierarchy_dir=hierarchy_dir
         )
         save_dir = hierarchy_dir if create_sequences else asset_dir
@@ -371,6 +372,7 @@ class LayoutLoader(plugin.LayoutLoader):
         return asset_content
 
     def update(self, container, context):
+        project_name = context["project"]["name"]
         data = get_current_project_settings()
         create_sequences = data["unreal"]["level_sequences_for_layouts"]
 
@@ -429,7 +431,6 @@ class LayoutLoader(plugin.LayoutLoader):
 
         if create_sequences:
             EditorLevelLibrary.save_current_level()
-        project_name = get_current_project_name()
         source_path = get_representation_path(repre_entity)
 
         loaded_assets = self._process(
@@ -437,7 +438,7 @@ class LayoutLoader(plugin.LayoutLoader):
             loaded_extension=self.folder_representation_type,
             force_loaded=self.force_loaded)
 
-        update_container(container, repre_entity, loaded_assets=loaded_assets)
+        update_container(container, project_name, repre_entity, loaded_assets=loaded_assets)
 
         EditorLevelLibrary.save_current_level()
 

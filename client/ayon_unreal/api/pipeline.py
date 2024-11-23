@@ -1103,11 +1103,12 @@ def remove_map_and_sequence(container):
     unreal.EditorAssetLibrary.delete_directory(f"{AYON_ROOT_DIR}/tmp")
 
 
-def update_container(container, repre_entity, loaded_assets=None):
+def update_container(container, project_name, repre_entity, loaded_assets=None):
     asset_dir = container.get('namespace')
     data = {
         "representation": repre_entity["id"],
         "parent": repre_entity["versionId"],
+        "project_name": project_name
     }
     if loaded_assets is not None:
         data["loaded_assets"] = loaded_assets
