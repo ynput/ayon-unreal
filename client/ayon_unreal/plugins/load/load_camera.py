@@ -184,7 +184,6 @@ class CameraLoader(plugin.Loader):
             list(str): list of container content
         """
         # Create directory for asset and Ayon container
-        project_name = context["project"]["name"]
         folder_entity = context["folder"]
         folder_path = folder_entity["path"]
         folder_name = folder_entity["name"]
