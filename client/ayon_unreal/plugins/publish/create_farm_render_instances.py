@@ -288,8 +288,8 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
         sequence_path = job.sequence.export_text()
         map_path = job.map.export_text()
 
-        sequence_name = os.path.splitext(os.path.basename(sequence_path)[0])
-        map_name = os.path.splitext(os.path.basename(map_path)[0])
+        sequence_name = os.path.splitext(os.path.basename(sequence_path))[0]
+        map_name = os.path.splitext(os.path.basename(map_path))[0]
 
         file_name_format = file_name_format.replace("{sequence_name}", sequence_name)
         file_name_format = file_name_format.replace("{level_name}", map_name)
