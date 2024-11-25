@@ -172,6 +172,11 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
                        f"Settings to `{config_path}` ")
                 raise PublishError(msg)
 
+            # Get current jobs
+            jobs = unreal.EditorAssetLibrary.load_asset(
+                project_settings["unreal"]["render_queue_path"]
+            ).get_jobs()
+
             # backward compatibility
             task_name = inst.data.get("task") or inst.data.get("task_name")
             self.log.debug(f"Task name:{task_name}")
@@ -182,6 +187,20 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
             if not sequence:
                 raise PublishError(f"Cannot find {inst.data['sequence']}")
 
+            # Get current job
+            job = next(
+                (
+                    job
+                    for job in jobs
+                    if job.sequence.export_text() == inst.data["sequence"]
+                ),
+                None,
+            )
+            if not job:
+                raise PublishError(
+                    f"Cannot find job with sequence {inst.data['sequence']}"
+                )
+
             # current frame range - might be different from created
             frame_start = sequence.get_playback_start()
             # in Unreal 1 of 60 >> 0-59
@@ -190,13 +209,20 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
             inst.data["frameStart"] = frame_start
             inst.data["frameEnd"] = frame_end
 
-            master_sequence_name = inst.data["output"]
             frame_placeholder = "#" * output_settings.zero_pad_frame_numbers
+            version = (
+                version
+                if output_settings.auto_version
+                else output_settings.version_number
+            )
+
             exp_file_name = self._get_expected_file_name(
                 output_settings.file_name_format,
                 ext,
                 frame_placeholder,
-                master_sequence_name)
+                job,
+                version,
+            )
 
             publish_attributes = {}
 
@@ -250,13 +276,26 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
             context.remove(instance)
         return instances
 
-    def _get_expected_file_name(self, file_name_format, ext,
-                                frame_placeholder, sequence_name):
+    def _get_expected_file_name(
+        self,
+        file_name_format,
+        ext,
+        frame_placeholder,
+        job: unreal.MoviePipelineExecutorJob,
+        version: int,
+    ):
         """Calculate file name that should be rendered."""
-        file_name_format = file_name_format.replace("{sequence_name}",
-                                                    sequence_name)
-        file_name_format = file_name_format.replace("{frame_number}",
-                                                    frame_placeholder)
+        sequence_path = job.sequence.export_text()
+        map_path = job.map.export_text()
+
+        sequence_name = os.path.splitext(os.path.basename(sequence_path)[0])
+        map_name = os.path.splitext(os.path.basename(map_path)[0])
+
+        file_name_format = file_name_format.replace("{sequence_name}", sequence_name)
+        file_name_format = file_name_format.replace("{level_name}", map_name)
+        file_name_format = file_name_format.replace("{job_name}", job.job_name)
+        file_name_format = file_name_format.replace("{version}", f"v{version:03d}")
+        file_name_format = file_name_format.replace("{frame_number}", frame_placeholder)
         return f"{file_name_format}.{ext}"
 
     def get_expected_files(self, render_instance: UnrealRenderInstance):
