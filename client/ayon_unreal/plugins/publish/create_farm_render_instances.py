@@ -146,7 +146,7 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
             if family not in ["render"]:
                 continue
 
-            # skip if locar render instances
+            # skip if local render instances
             if "render.local" in instance_families:
                 continue
 
