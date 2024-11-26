@@ -58,7 +58,13 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
                 roll=rotation["x"], pitch=rotation["z"],
                 yaw=-rotation["y"])
             actor.set_actor_rotation(actor_rotation, False)
-        sequence.add_possessable(actor)
+        if sequence is not None:
+            sequence.add_possessable(actor)
+        else:
+            self.log.warning(
+                "No Level Sequence found for current level. "
+                "Skipping to add spawned actor into the sequence."
+            )
 
     def _load_asset(self, repr_data, instance_name, family, extension):
         repre_entity = next((repre_entity for repre_entity in repr_data
@@ -290,8 +296,6 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
 
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
         sequence = next((asset.get_asset() for asset in ar.get_assets(level_seq_filter)), None)
-        if not sequence:
-            raise LoadError("No Level Sequence found for current level")
         if not curr_level:
             raise LoadError("Current level not saved")
 
