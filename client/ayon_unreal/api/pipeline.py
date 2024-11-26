@@ -859,7 +859,26 @@ def format_asset_directory(context, directory_template):
     """
 
     data = copy.deepcopy(context)
+    if "{product[type]}" in directory_template:
+        unreal.warning(
+            "{{product[type]}} is deprecated, "
+            "using {{product[productType]}} "
+            "from context data for directory mapping"
+        )
+        directory_template = directory_template.replace(
+            "{product[type]}", "{product[productType]}")
+
+    if "{folder[type]}" in directory_template:
+        unreal.warning(
+            "{{folder[type]}} is deprecated, "
+            "using {{folder[folderType]}} "
+            "from context data for directory mapping"
+        )
+        directory_template = directory_template.replace(
+            "{folder[type]}", "{folder[folderType]}")
+
     version = data["version"]["version"]
+
     # if user set {version[version]},
     # the copied data from data["version"]["version"] convert
     # to set the version of the exclusive version folder
