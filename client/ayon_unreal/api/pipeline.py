@@ -861,18 +861,20 @@ def format_asset_directory(context, directory_template):
     data = copy.deepcopy(context)
     if "{product[type]}" in directory_template:
         unreal.warning(
-            "{{product[type]}} is deprecated, "
-            "using {{product[productType]}} "
-            "from context data for directory mapping"
+            "Deprecated settings: AYON is using settings "
+            "that won't work in future releases. "
+            "Details: {product[type]} in the template should "
+            "be replaced with {product[productType]}."
         )
         directory_template = directory_template.replace(
             "{product[type]}", "{product[productType]}")
 
     if "{folder[type]}" in directory_template:
         unreal.warning(
-            "{{folder[type]}} is deprecated, "
-            "using {{folder[folderType]}} "
-            "from context data for directory mapping"
+            "Deprecated settings: AYON is using settings "
+            "that won't work in future releases. "
+            "Details: {folder[type]} in the template should "
+            "be replaced with {folder[folderType]}."
         )
         directory_template = directory_template.replace(
             "{folder[type]}", "{folder[folderType]}")
