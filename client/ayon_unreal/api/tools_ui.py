@@ -19,7 +19,7 @@ class ToolsBtnsWidget(QtWidgets.QWidget):
         super(ToolsBtnsWidget, self).__init__(parent)
 
         load_btn = QtWidgets.QPushButton("Load...", self)
-        publish_btn = QtWidgets.QPushButton("Publisher...", self)
+        publish_btn = QtWidgets.QPushButton("Publish...", self)
         manage_btn = QtWidgets.QPushButton("Manage...", self)
         render_btn = QtWidgets.QPushButton("Render...", self)
         sequence_btn = QtWidgets.QPushButton(
@@ -31,17 +31,17 @@ class ToolsBtnsWidget(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(load_btn, 0)
-        layout.addWidget(publish_btn, 0)
         layout.addWidget(manage_btn, 0)
         layout.addWidget(render_btn, 0)
+        layout.addWidget(publish_btn, 0)
         layout.addWidget(sequence_btn, 0)
         layout.addWidget(experimental_tools_btn, 0)
         layout.addStretch(1)
 
         load_btn.clicked.connect(self._on_load)
-        publish_btn.clicked.connect(self._on_publish)
         manage_btn.clicked.connect(self._on_manage)
         render_btn.clicked.connect(self._on_render)
+        publish_btn.clicked.connect(self._on_publish)
         sequence_btn.clicked.connect(self._on_sequence)
         experimental_tools_btn.clicked.connect(self._on_experimental)
 
