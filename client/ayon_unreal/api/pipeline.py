@@ -858,7 +858,28 @@ def format_asset_directory(context, directory_template):
     """
 
     data = copy.deepcopy(context)
+    if "{product[type]}" in directory_template:
+        unreal.warning(
+            "Deprecated settings: AYON is using settings "
+            "that won't work in future releases. "
+            "Details: {product[type]} in the template should "
+            "be replaced with {product[productType]}."
+        )
+        directory_template = directory_template.replace(
+            "{product[type]}", "{product[productType]}")
+
+    if "{folder[type]}" in directory_template:
+        unreal.warning(
+            "Deprecated settings: AYON is using settings "
+            "that won't work in future releases. "
+            "Details: {folder[type]} in the template should "
+            "be replaced with {folder[folderType]}."
+        )
+        directory_template = directory_template.replace(
+            "{folder[type]}", "{folder[folderType]}")
+
     version = data["version"]["version"]
+
     # if user set {version[version]},
     # the copied data from data["version"]["version"] convert
     # to set the version of the exclusive version folder
