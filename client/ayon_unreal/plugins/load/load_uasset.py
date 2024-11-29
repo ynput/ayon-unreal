@@ -30,9 +30,8 @@ class UAssetLoader(plugin.Loader):
     def apply_settings(cls, project_settings):
         super(UAssetLoader, cls).apply_settings(project_settings)
         # Apply import settings
-        unreal_settings = project_settings.get("unreal", {})
-        if unreal_settings.get("loaded_asset_dir", cls.loaded_asset_dir):
-            cls.loaded_asset_dir = unreal_settings.get(
+        unreal_settings = project_settings["unreal"]["import_settings"]
+        cls.loaded_asset_dir = unreal_settings.get(
                     "loaded_asset_dir", cls.loaded_asset_dir)
 
     def load(self, context, name, namespace, options):

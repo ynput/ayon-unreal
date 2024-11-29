@@ -26,14 +26,15 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
             project_settings
         )
         cls.delete_unmatched_assets = (
-            project_settings["unreal"]["delete_unmatched_assets"]
+            project_settings["unreal"]["import_settings"]
+            ["delete_unmatched_assets"]
         )
         cls.loaded_layout_dir = (
-            project_settings["unreal"].get(
+            project_settings["unreal"]["import_settings"].get(
                 "loaded_layout_dir", cls.loaded_layout_dir)
         )
         cls.remove_loaded_assets = (
-            project_settings["unreal"].get(
+            project_settings["unreal"]["import_settings"].get(
                 "remove_loaded_assets", cls.remove_loaded_assets)
         )
 

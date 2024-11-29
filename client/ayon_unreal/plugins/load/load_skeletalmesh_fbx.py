@@ -30,16 +30,11 @@ class SkeletalMeshFBXLoader(plugin.Loader):
 
     @classmethod
     def apply_settings(cls, project_settings):
-        unreal_settings = project_settings.get("unreal", {})
+        unreal_settings = project_settings["unreal"]["import_settings"]
         super(SkeletalMeshFBXLoader, cls).apply_settings(project_settings)
-        if unreal_settings.get("loaded_asset_dir", cls.loaded_asset_dir):
-            cls.loaded_asset_dir = unreal_settings.get(
-                    "loaded_asset_dir", cls.loaded_asset_dir)
-        # Apply import settings
-        import_settings = (
-            project_settings.get("unreal", {}).get("import_settings", {})
-        )
-        cls.show_dialog = import_settings.get("show_dialog", cls.show_dialog)
+        cls.loaded_asset_dir = unreal_settings.get(
+            "loaded_asset_dir", cls.loaded_asset_dir)
+        cls.show_dialog = unreal_settings.get("show_dialog", cls.show_dialog)
 
     @classmethod
     def get_task(cls, filename, asset_dir, asset_name, replace):

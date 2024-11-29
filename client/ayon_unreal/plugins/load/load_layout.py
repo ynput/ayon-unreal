@@ -47,25 +47,25 @@ class LayoutLoader(plugin.LayoutLoader):
         super(LayoutLoader, cls).apply_settings(project_settings)
         # Apply import settings
         cls.folder_representation_type = (
-            project_settings["unreal"].get(
+            project_settings["unreal"]["import_settings"].get(
                 "folder_representation_type",
                 cls.folder_representation_type)
         )
         cls.use_force_loaded = (
-            project_settings["unreal"].get(
+            project_settings["unreal"]["import_settings"].get(
                 "force_loaded", cls.force_loaded)
         )
         cls.level_sequences_for_layouts = (
-            project_settings["unreal"].get(
+            project_settings["unreal"]["import_settings"].get(
                 "level_sequences_for_layouts",
                 cls.level_sequences_for_layouts)
         )
         cls.loaded_layout_dir = (
-            project_settings["unreal"].get(
+            project_settings["unreal"]["import_settings"].get(
                 "loaded_layout_dir", cls.loaded_layout_dir)
         )
         cls.remove_loaded_assets = (
-            project_settings["unreal"].get(
+            project_settings["unreal"]["import_settings"].get(
                 "remove_loaded_assets",
                 cls.remove_loaded_assets)
         )
@@ -281,8 +281,9 @@ class LayoutLoader(plugin.LayoutLoader):
             list(str): list of container content
         """
         data = get_current_project_settings()
-        create_sequences = data["unreal"]["level_sequences_for_layouts"]
-
+        create_sequences = (
+            data["unreal"]["import_settings"]["level_sequences_for_layouts"]
+        )
         # Create directory for asset and Ayon container
         folder_entity = context["folder"]
         folder_path = folder_entity["path"]
@@ -300,6 +301,9 @@ class LayoutLoader(plugin.LayoutLoader):
         asset_level = f"{asset_dir}/{folder_name}_map.{folder_name}_map"
         if not EditorAssetLibrary.does_asset_exist(asset_level):
             EditorLevelLibrary.new_level(f"{asset_dir}/{folder_name}_map")
+
+        shot = None
+        sequences = []
         if create_sequences:
             shot, _, asset_level, sequences, frame_ranges = (
                 generate_master_level_sequence(
@@ -341,8 +345,6 @@ class LayoutLoader(plugin.LayoutLoader):
             path, project_name, asset_dir, shot,
             loaded_extension=extension,
             force_loaded=self.force_loaded)
-        unreal.log("loaded assets")
-        unreal.log(loaded_assets)
         for s in sequences:
             EditorAssetLibrary.save_asset(s.get_path_name())
 
@@ -374,8 +376,9 @@ class LayoutLoader(plugin.LayoutLoader):
 
     def update(self, container, context):
         data = get_current_project_settings()
-        create_sequences = data["unreal"]["level_sequences_for_layouts"]
-
+        create_sequences = (
+            data["unreal"]["import_settings"]["level_sequences_for_layouts"]
+        )
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
         curr_level_sequence = LevelSequenceLib.get_current_level_sequence()

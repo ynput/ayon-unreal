@@ -30,16 +30,12 @@ class AnimationAlembicLoader(plugin.Loader):
     def apply_settings(cls, project_settings):
         super(AnimationAlembicLoader, cls).apply_settings(project_settings)
         # Apply import settings
-        unreal_settings = project_settings.get("unreal", {})
-        if unreal_settings.get("abc_conversion_preset", cls.abc_conversion_preset):
-            cls.abc_conversion_preset = unreal_settings.get(
-                "abc_conversion_preset", cls.abc_conversion_preset)
-        if unreal_settings.get("loaded_asset_dir", cls.loaded_asset_dir):
-            cls.loaded_asset_dir = unreal_settings.get(
-                    "loaded_asset_dir", cls.loaded_asset_dir)
-        if unreal_settings.get("show_dialog", cls.show_dialog):
-            cls.show_dialog = unreal_settings.get(
-                "show_dialog", cls.show_dialog)
+        unreal_settings = project_settings["unreal"]["import_settings"]
+        cls.abc_conversion_preset = unreal_settings.get(
+            "abc_conversion_preset", cls.abc_conversion_preset)
+        cls.loaded_asset_dir = unreal_settings.get(
+            "loaded_asset_dir", cls.loaded_asset_dir)
+        cls.show_dialog = unreal_settings.get("show_dialog", cls.show_dialog)
 
     @classmethod
     def get_options(cls, contexts):

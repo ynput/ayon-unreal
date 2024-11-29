@@ -45,9 +45,8 @@ class TexturePNGLoader(plugin.Loader):
         cls.pipeline_path = import_settings.get("interchange", {}).get(
             "pipeline_path_static_mesh", cls.pipeline_path
         )
-        if unreal_settings.get("loaded_asset_dir", cls.loaded_asset_dir):
-            cls.loaded_asset_dir = unreal_settings.get(
-                    "loaded_asset_dir", cls.loaded_asset_dir)
+        cls.loaded_asset_dir = import_settings.get(
+            "loaded_asset_dir", cls.loaded_asset_dir)
 
     @classmethod
     def get_task(cls, filename, asset_dir, asset_name, replace):

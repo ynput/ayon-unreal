@@ -39,7 +39,7 @@ class CameraLoader(plugin.Loader):
             project_settings
         )
         cls.loaded_asset_dir = (
-            project_settings["unreal"].get(
+            project_settings["unreal"]["import_settings"].get(
                 "loaded_asset_dir", cls.loaded_asset_dir)
         )
 
