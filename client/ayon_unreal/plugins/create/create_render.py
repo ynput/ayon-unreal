@@ -40,14 +40,14 @@ class CreateRender(UnrealAssetCreator):
         instance_data["frameStart"] = seq_data.get('frame_range')[0]
         instance_data["frameEnd"] = seq_data.get('frame_range')[1]
 
-        super(CreateRender, self).create(
+        super().create(
             product_name,
             instance_data,
             pre_create_data)
 
     def update_instance(self, instance, instance_data, pre_create_data):
         instance_data["label"] = f'instance_data.get("folderPath") - {instance_data.get("productName")}'
-        super(CreateRender, self).update_instance(
+        super().update_instance(
             instance,
             instance_data,
             pre_create_data)
