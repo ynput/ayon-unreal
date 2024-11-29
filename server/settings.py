@@ -1,7 +1,7 @@
 from ayon_server.settings import BaseSettingsModel, SettingsField
 from .imageio import UnrealImageIOModel
-from .import_settings import UnrealImportModel
-from .pre_launch_settings import UnrealPreLaunchSetting
+from .import_settings import UnrealImportModel, DEFAULT_IMPORT_SETTINGS
+from .pre_launch_settings import UnrealPreLaunchSetting, DEFAULT_PRELAUNCH_SETTINGS
 
 
 def _render_format_enum():
@@ -74,6 +74,8 @@ class UnrealSettings(BaseSettingsModel):
 
 
 DEFAULT_VALUES = {
+    "prelaunch_settings": DEFAULT_PRELAUNCH_SETTINGS,
+    "import_settings": DEFAULT_IMPORT_SETTINGS,
     "render_setup": {
         "render_queue_path": "/Game/Ayon/renderQueue",
         "render_config_path": "/Game/Ayon/DefaultMovieRenderQueueConfig.DefaultMovieRenderQueueConfig",

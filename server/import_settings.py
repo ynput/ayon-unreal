@@ -103,3 +103,21 @@ class UnrealImportModel(BaseSettingsModel):
             "'Load Layout (JSON) on existing'"
         )
     )
+
+DEFAULT_IMPORT_SETTINGS = {
+    "loaded_asset_dir": "{folder[path]}/{product[name]}_{version[version]}",
+    "interchange": {
+        "enabled": False,
+        "pipeline_path_static_mesh": "/Game/Interchange/CustomPipeline.CustomPipeline",
+        "pipeline_path_textures": "/Game/Interchange/CustomPipeline.CustomPipeline",
+    },
+    "use_nanite": True,
+    "show_dialog": False,
+    "abc_conversion_preset": "maya",
+    "loaded_layout_dir": "{folder[path]}/{product[name]}",
+    "level_sequences_for_layouts": True,
+    "force_loaded": False,
+    "folder_representation_type": "json",
+    "remove_loaded_assets": False,
+    "delete_unmatched_assets": False,
+}
