@@ -37,11 +37,9 @@ class PointCacheAlembicLoader(plugin.Loader):
         super(PointCacheAlembicLoader, cls).apply_settings(project_settings)
         # Apply import settings
         unreal_settings = project_settings["unreal"]["import_settings"]
-        cls.abc_conversion_preset = unreal_settings.get(
-            "abc_conversion_preset", cls.abc_conversion_preset)
-        cls.loaded_asset_dir = unreal_settings.get(
-            "loaded_asset_dir", cls.loaded_asset_dir)
-        cls.show_dialog = unreal_settings.get("show_dialog", cls.show_dialog)
+        cls.abc_conversion_preset = unreal_settings["abc_conversion_preset"]
+        cls.loaded_asset_dir = unreal_settings["loaded_asset_dir"]
+        cls.show_dialog = unreal_settings["show_dialog"]
 
     @classmethod
     def get_options(cls, contexts):

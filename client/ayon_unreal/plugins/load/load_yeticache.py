@@ -25,9 +25,11 @@ class YetiLoader(plugin.Loader):
     def apply_settings(cls, project_settings):
         super(YetiLoader, cls).apply_settings(project_settings)
         # Apply import settings
-        unreal_settings = project_settings["unreal"]["import_settings"]
-        cls.loaded_asset_dir = unreal_settings.get(
-            "loaded_asset_dir", cls.loaded_asset_dir)
+        cls.loaded_asset_dir = (
+            project_settings["unreal"]
+                            ["import_settings"]
+                            ["loaded_asset_dir"]
+        )
 
     @staticmethod
     def get_task(filename, asset_dir, asset_name, replace):

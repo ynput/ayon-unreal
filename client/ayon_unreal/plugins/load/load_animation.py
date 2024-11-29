@@ -34,9 +34,8 @@ class AnimationFBXLoader(plugin.Loader):
         super(AnimationFBXLoader, cls).apply_settings(project_settings)
         # Apply import settings
         unreal_settings = project_settings["unreal"]["import_settings"]
-        cls.loaded_asset_dir = unreal_settings.get(
-            "loaded_asset_dir", cls.loaded_asset_dir)
-        cls.show_dialog = unreal_settings.get("show_dialog", cls.show_dialog)
+        cls.loaded_asset_dir = unreal_settings["loaded_asset_dir"]
+        cls.show_dialog = unreal_settings["show_dialog"]
 
     def _import_latest_skeleton(self, version_ids):
         version_ids = set(version_ids)

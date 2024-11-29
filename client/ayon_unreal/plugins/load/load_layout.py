@@ -46,29 +46,16 @@ class LayoutLoader(plugin.LayoutLoader):
     def apply_settings(cls, project_settings):
         super(LayoutLoader, cls).apply_settings(project_settings)
         # Apply import settings
+        import_settings = project_settings["unreal"]["import_settings"]
         cls.folder_representation_type = (
-            project_settings["unreal"]["import_settings"].get(
-                "folder_representation_type",
-                cls.folder_representation_type)
+            import_settings["folder_representation_type"]
         )
-        cls.use_force_loaded = (
-            project_settings["unreal"]["import_settings"].get(
-                "force_loaded", cls.force_loaded)
-        )
+        cls.use_force_loaded = import_settings["force_loaded"]
         cls.level_sequences_for_layouts = (
-            project_settings["unreal"]["import_settings"].get(
-                "level_sequences_for_layouts",
-                cls.level_sequences_for_layouts)
+            import_settings["level_sequences_for_layouts"]
         )
-        cls.loaded_layout_dir = (
-            project_settings["unreal"]["import_settings"].get(
-                "loaded_layout_dir", cls.loaded_layout_dir)
-        )
-        cls.remove_loaded_assets = (
-            project_settings["unreal"]["import_settings"].get(
-                "remove_loaded_assets",
-                cls.remove_loaded_assets)
-        )
+        cls.loaded_layout_dir = import_settings["loaded_layout_dir"]
+        cls.remove_loaded_assets = import_settings["remove_loaded_assets"]
 
     @classmethod
     def get_options(cls, contexts):
