@@ -260,6 +260,9 @@ class UEProjectGenerationWorker(UEWorker):
                 self.failed.emit(msg, return_code)
                 raise RuntimeError(msg)
 
+        self.progress.emit(100)
+        self.finished.emit("Project successfully built!")
+
 
 class UEPluginInstallWorker(UEWorker):
     installing = QtCore.Signal(str)
