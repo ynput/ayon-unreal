@@ -28,9 +28,8 @@ class UnrealPreLaunchSetting(BaseSettingsModel):
     )
 
 
-    DEFAULT_PRELAUNCH_SETTINGS = {
-        "use_dependency": False,
-        "dependency_path": "",
-        "arbitrary_site_package_location": False
-
-    }
+DEFAULT_PRELAUNCH_SETTINGS = {
+    "use_dependency": False,
+    "dependency_path": "",
+    "arbitrary_site_package_location": False
+}
