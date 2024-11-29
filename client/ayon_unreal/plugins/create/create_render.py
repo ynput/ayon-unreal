@@ -40,10 +40,18 @@ class CreateRender(UnrealAssetCreator):
         instance_data["frameStart"] = seq_data.get('frame_range')[0]
         instance_data["frameEnd"] = seq_data.get('frame_range')[1]
 
-        super(CreateRender, self).create(
+        super().create(
             product_name,
             instance_data,
             pre_create_data)
+
+    def update_instance(self, instance, instance_data, pre_create_data):
+        instance_data["label"] = f'instance_data.get("folderPath") - {instance_data.get("productName")}'
+        super().update_instance(
+            instance,
+            instance_data,
+            pre_create_data)
+
 
     def create_with_new_sequence(
             self, product_name, instance_data, pre_create_data
@@ -236,6 +244,10 @@ class CreateRender(UnrealAssetCreator):
                 selected_asset_path, master_seq, master_lvl, seq_data)
 
     def create(self, product_name, instance_data, pre_create_data):
+        instance_data["label"] = f'{instance_data.get("folderPath")} - {product_name}'
+        if not instance_data.get("creator_attributes"):
+            instance_data["creator_attributes"] = {}
+        instance_data["creator_attributes"]["render_target"] = pre_create_data.get("render_target")
         if pre_create_data.get("create_seq"):
             self.create_with_new_sequence(
                 product_name, instance_data, pre_create_data)
@@ -299,6 +311,29 @@ class CreateRender(UnrealAssetCreator):
         return [
             EnumDef(
                 "render_target", items=rendering_targets,
-                label="Render target"
+                label="Render target",
+                default="local"
+            ),
+            BoolDef(
+                "review",
+                label="Generate review",
+                default=True
             ),
         ]
+
+    def _on_value_changed(self, event):
+        for changed_item in event["changes"]:
+            instance = changed_item["instance"]
+            changes = changed_item["changes"]
+            if  (
+                instance is not None
+                and "folderPath" in changes
+                and instance.creator_identifier == self.identifier
+            ):
+                instance.data["label"] = (
+                    f'{instance.data.get("folderPath")} - '
+                    f'{instance.data.get("productName")}'
+                )
+
+    def register_callbacks(self):
+        self.create_context.add_value_changed_callback(self._on_value_changed)
