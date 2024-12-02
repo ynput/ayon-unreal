@@ -42,7 +42,7 @@ class AnimationAlembicLoader(plugin.Loader):
                 "abc_conversion_preset",
                 label="Alembic Conversion Preset",
                 items={
-                    "custom": "custom",
+                    "3dsmax": "3dsmax",
                     "maya": "maya"
                 },
                 default=cls.abc_conversion_preset
@@ -66,12 +66,17 @@ class AnimationAlembicLoader(plugin.Loader):
                     flip_u=False, flip_v=True,
                     rotation=[90.0, 0.0, 0.0],
                     scale=[1.0, -1.0, 1.0])
-        else:
-            conversion_settings = unreal.AbcConversionSettings(
-                preset=unreal.AbcConversionPreset.CUSTOM,
-                flip_u=False, flip_v=False,
-                rotation=[0.0, 0.0, 0.0],
-                scale=[1.0, 1.0, 1.0])
+        elif abc_conversion_preset == "3dsmax":
+            if unreal_pipeline.UNREAL_VERSION.major >= 5 and (
+                unreal_pipeline.UNREAL_VERSION.minor >= 4):
+                    conversion_settings = unreal.AbcConversionSettings(
+                        preset=unreal.AbcConversionPreset.MAX)
+            else:
+                conversion_settings = unreal.AbcConversionSettings(
+                    preset=unreal.AbcConversionPreset.CUSTOM,
+                    flip_u=False, flip_v=True,
+                    rotation=[0.0, 0.0, 0.0],
+                    scale=[1.0, -1.0, 1.0])
 
         options.sampling_settings.frame_start = loaded_options.get("frameStart")
         options.sampling_settings.frame_end = loaded_options.get("frameEnd")

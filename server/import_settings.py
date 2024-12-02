@@ -12,7 +12,7 @@ def _loaded_asset_enum():
 def _abc_conversion_presets_enum():
     return [
         {"value": "maya", "label": "maya"},
-        {"value": "custom", "label": "custom"}
+        {"value": "3dsmax", "label": "3dsmax"}
     ]
 
 
