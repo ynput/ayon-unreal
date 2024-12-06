@@ -512,7 +512,7 @@ def get_subsequences(sequence: unreal.LevelSequence):
         list(unreal.LevelSequence): List of subsequences
 
     """
-    tracks = sequence.get_master_tracks()
+    tracks = get_tracks(sequence)
     subscene_track = next(
         (
             t
@@ -530,7 +530,7 @@ def set_sequence_hierarchy(
     seq_i, seq_j, max_frame_i, min_frame_j, max_frame_j, map_paths
 ):
     # Get existing sequencer tracks or create them if they don't exist
-    tracks = seq_i.get_master_tracks()
+    tracks = get_tracks(seq_i)
     subscene_track = None
     visibility_track = None
     for t in tracks:
@@ -540,10 +540,10 @@ def set_sequence_hierarchy(
                 unreal.MovieSceneLevelVisibilityTrack.static_class()):
             visibility_track = t
     if not subscene_track:
-        subscene_track = seq_i.add_master_track(unreal.MovieSceneSubTrack)
+        subscene_track = add_track(seq_i, unreal.MovieSceneSubTrack)
     if not visibility_track:
-        visibility_track = seq_i.add_master_track(
-            unreal.MovieSceneLevelVisibilityTrack)
+        visibility_track = add_track(
+            seq_i, unreal.MovieSceneLevelVisibilityTrack)
 
     # Create the sub-scene section
     subscenes = subscene_track.get_sections()
@@ -643,7 +643,7 @@ def generate_sequence(h, h_dir):
     sequence.set_view_range_start(min_frame / fps)
     sequence.set_view_range_end(max_frame / fps)
 
-    tracks = sequence.get_master_tracks()
+    tracks = get_tracks(sequence)
     track = None
     for t in tracks:
         if (t.get_class() ==
@@ -651,8 +651,7 @@ def generate_sequence(h, h_dir):
             track = t
             break
     if not track:
-        track = sequence.add_master_track(
-            unreal.MovieSceneCameraCutTrack)
+        track = add_track(sequence, unreal.MovieSceneCameraCutTrack)
 
     return sequence, (min_frame, max_frame)
 
@@ -859,7 +858,28 @@ def format_asset_directory(context, directory_template):
     """
 
     data = copy.deepcopy(context)
+    if "{product[type]}" in directory_template:
+        unreal.warning(
+            "Deprecated settings: AYON is using settings "
+            "that won't work in future releases. "
+            "Details: {product[type]} in the template should "
+            "be replaced with {product[productType]}."
+        )
+        directory_template = directory_template.replace(
+            "{product[type]}", "{product[productType]}")
+
+    if "{folder[type]}" in directory_template:
+        unreal.warning(
+            "Deprecated settings: AYON is using settings "
+            "that won't work in future releases. "
+            "Details: {folder[type]} in the template should "
+            "be replaced with {folder[folderType]}."
+        )
+        directory_template = directory_template.replace(
+            "{folder[type]}", "{folder[folderType]}")
+
     version = data["version"]["version"]
+
     # if user set {version[version]},
     # the copied data from data["version"]["version"] convert
     # to set the version of the exclusive version folder
@@ -985,7 +1005,7 @@ def get_camera_tracks(sequence):
         list: list of movie scene camera cut tracks
     """
     camera_tracks = []
-    tracks = sequence.get_master_tracks()
+    tracks = get_tracks(sequence)
     for track in tracks:
         if str(track).count("MovieSceneCameraCutTrack"):
             camera_tracks.append(track)
@@ -1194,3 +1214,39 @@ def generate_master_level_sequence(tools, asset_dir, asset_name,
             [asset_level])
 
     return shot, master_level, asset_level, sequences, frame_ranges
+
+
+def get_tracks(sequence):
+    """Backward compatibility for deprecated function of get_master_tracks() in UE 5.5
+
+    Args:
+        sequence (unreal.LevelSequence): Level Sequence
+
+    Returns:
+        Array(MovieSceneTracks): Movie scene tracks
+    """
+    if (
+        UNREAL_VERSION.major == 5
+        and UNREAL_VERSION.minor > 4
+    ):
+        return sequence.get_tracks()
+    else:
+        return sequence.get_master_tracks()
+
+
+def add_track(sequence, track):
+    """Backward compatibility for deprecated function of add_master_track() in UE 5.5
+
+    Args:
+        sequence (unreal.LevelSequence): Level Sequence
+
+    Returns:
+        MovieSceneTrack: Any tracks inherited from unreal.MovieSceneTrack
+    """
+    if (
+        UNREAL_VERSION.major == 5
+        and UNREAL_VERSION.minor > 4
+    ):
+        return sequence.add_track(track)
+    else:
+        return sequence.add_master_track(track)
