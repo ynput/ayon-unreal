@@ -352,7 +352,8 @@ class AnimationFBXLoader(plugin.Loader):
         asset_name,
         representation,
         product_type,
-        folder_entity
+        folder_entity,
+        project_name
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -369,7 +370,8 @@ class AnimationFBXLoader(plugin.Loader):
             "asset": folder_path,
             "family": product_type,
             "frameStart": folder_entity["attrib"]["frameStart"],
-            "frameEnd": folder_entity["attrib"]["frameEnd"]
+            "frameEnd": folder_entity["attrib"]["frameEnd"],
+            "project_name": project_name
         }
         unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
 
@@ -441,7 +443,8 @@ class AnimationFBXLoader(plugin.Loader):
             asset_name,
             context["representation"],
             product_type,
-            folder_entity
+            folder_entity,
+            context["project"]["name"]
         )
 
         imported_content = EditorAssetLibrary.list_assets(
@@ -501,7 +504,8 @@ class AnimationFBXLoader(plugin.Loader):
             asset_name,
             repre_entity,
             product_type,
-            folder_entity
+            folder_entity,
+            context["project"]["name"]
         )
 
         asset_content = EditorAssetLibrary.list_assets(

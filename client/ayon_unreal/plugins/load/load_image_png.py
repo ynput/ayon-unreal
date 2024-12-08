@@ -123,13 +123,14 @@ class TexturePNGLoader(plugin.Loader):
                 create_container(container=container_name, path=asset_dir)
 
     def imprint(
-            self,
-            folder_path,
-            asset_dir,
-            container_name,
-            asset_name,
-            repre_entity,
-            product_type
+        self,
+        folder_path,
+        asset_dir,
+        container_name,
+        asset_name,
+        repre_entity,
+        product_type,
+        project_name
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -144,7 +145,8 @@ class TexturePNGLoader(plugin.Loader):
             "product_type": product_type,
             # TODO these shold be probably removed
             "asset": folder_path,
-            "family": product_type
+            "family": product_type,
+            "project_name": project_name
         }
         imprint(f"{asset_dir}/{container_name}", data)
 
@@ -198,7 +200,8 @@ class TexturePNGLoader(plugin.Loader):
             container_name,
             asset_name,
             context["representation"],
-            context["product"]["productType"]
+            context["product"]["productType"],
+            context["project"]["name"]
         )
 
         asset_contents = unreal.EditorAssetLibrary.list_assets(
@@ -236,7 +239,8 @@ class TexturePNGLoader(plugin.Loader):
             container_name,
             asset_name,
             repre_entity,
-            product_type
+            product_type,
+            context["project"]["name"]
         )
 
         asset_contents = unreal.EditorAssetLibrary.list_assets(

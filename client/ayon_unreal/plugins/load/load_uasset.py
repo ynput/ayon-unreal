@@ -96,7 +96,8 @@ class UAssetLoader(plugin.Loader):
             # TODO these should be probably removed
             "asset": folder_path,
             "family": context["product"]["productType"],
-            "asset_path": asset_path
+            "asset_path": asset_path,
+            "project_name": context["project"]["name"]
         }
 
         if asset_path:
@@ -145,6 +146,7 @@ class UAssetLoader(plugin.Loader):
             {
                 "representation": repre_entity["id"],
                 "parent": repre_entity["versionId"],
+                "project_name": context["project"]["name"]
             }
         )
 
