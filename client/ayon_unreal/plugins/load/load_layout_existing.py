@@ -25,17 +25,12 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
         super(ExistingLayoutLoader, cls).apply_settings(
             project_settings
         )
+        import_settings = project_settings["unreal"]["import_settings"]
         cls.delete_unmatched_assets = (
-            project_settings["unreal"]["delete_unmatched_assets"]
+            import_settings["delete_unmatched_assets"]
         )
-        cls.loaded_layout_dir = (
-            project_settings["unreal"].get(
-                "loaded_layout_dir", cls.loaded_layout_dir)
-        )
-        cls.remove_loaded_assets = (
-            project_settings["unreal"].get(
-                "remove_loaded_assets", cls.remove_loaded_assets)
-        )
+        cls.loaded_layout_dir = import_settings["loaded_layout_dir"]
+        cls.remove_loaded_assets = import_settings["remove_loaded_assets"]
 
     def _spawn_actor(self, obj, lasset, sequence):
         actor = EditorLevelLibrary.spawn_actor_from_object(

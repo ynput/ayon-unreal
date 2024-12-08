@@ -112,12 +112,13 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
 
         project_name = context.data["projectName"]
         project_settings = context.data['project_settings']
-        config_path, config = get_render_config(project_name, project_settings)
+        render_settings = project_settings["unreal"]["render_setup"]
+        config_path, config = get_render_config(project_name, render_settings)
         if not config:
             raise RuntimeError("Please provide stored render config at path "
-                "set in `ayon+settings://unreal/render_config_path`")
+                "set in `ayon+settings://unreal/render_setup/render_config_path`")
 
-        output_ext_from_settings = project_settings["unreal"]["render_format"]
+        output_ext_from_settings = render_settings["render_format"]
         config = set_output_extension_from_settings(output_ext_from_settings,
                                                     config)
 
@@ -154,9 +155,7 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
                 self.log.info("Skipping local render instance")
                 continue
 
-            render_queue_path = (
-                project_settings["unreal"]["render_queue_path"]
-            )
+            render_queue_path = render_settings["render_queue_path"]
             if not unreal.EditorAssetLibrary.does_asset_exist(
                     render_queue_path):
                 # TODO: temporary until C++ blueprint is created as it is not
@@ -174,7 +173,7 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
 
             # Get current jobs
             jobs = unreal.EditorAssetLibrary.load_asset(
-                project_settings["unreal"]["render_queue_path"]
+                render_settings["render_queue_path"]
             ).get_jobs()
 
             # backward compatibility
