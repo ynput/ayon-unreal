@@ -132,7 +132,8 @@ class StaticMeshFBXLoader(plugin.Loader):
         container_name,
         asset_name,
         repre_entity,
-        product_type
+        product_type,
+        project_name
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -147,7 +148,8 @@ class StaticMeshFBXLoader(plugin.Loader):
             "product_type": product_type,
             # TODO these shold be probably removed
             "asset": folder_path,
-            "family": product_type
+            "family": product_type,
+            "project_name": project_name
         }
         imprint(f"{asset_dir}/{container_name}", data)
 
@@ -200,7 +202,8 @@ class StaticMeshFBXLoader(plugin.Loader):
             container_name,
             asset_name,
             context["representation"],
-            context["product"]["productType"]
+            context["product"]["productType"],
+            context["project"]["name"]
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
@@ -239,7 +242,8 @@ class StaticMeshFBXLoader(plugin.Loader):
             container_name,
             asset_name,
             repre_entity,
-            product_type
+            product_type,
+            context["project"]["name"]
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(

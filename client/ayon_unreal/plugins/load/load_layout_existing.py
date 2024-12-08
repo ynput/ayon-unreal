@@ -316,7 +316,8 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
             loaded_assets,
             curr_asset_dir,
             asset_name,
-            container_name
+            container_name,
+            context["project"]["name"]
         )
 
     def update(self, container, context):

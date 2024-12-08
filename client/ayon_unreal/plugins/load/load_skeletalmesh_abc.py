@@ -160,7 +160,8 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
         representation,
         product_type,
         frameStart,
-        frameEnd
+        frameEnd,
+        project_name
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -177,7 +178,8 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             "frameEnd": frameEnd,
             # TODO these should be probably removed
             "asset": folder_path,
-            "family": product_type
+            "family": product_type,
+            "project_name": project_name
         }
 
         imprint(f"{asset_dir}/{container_name}", data)
@@ -243,6 +245,7 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             product_type,
             folder_entity["attrib"]["frameStart"],
             folder_entity["attrib"]["frameEnd"],
+            context["project"]["name"]
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
@@ -288,7 +291,8 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             repre_entity,
             product_type,
             container.get("frameStart", 1),
-            container.get("frameEnd", 1)
+            container.get("frameEnd", 1),
+            context["project"]["name"]
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(

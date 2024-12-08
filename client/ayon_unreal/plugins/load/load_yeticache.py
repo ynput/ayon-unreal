@@ -140,7 +140,8 @@ class YetiLoader(plugin.Loader):
             "product_type": context["product"]["productType"],
             # TODO these shold be probably removed
             "asset": folder_path,
-            "family": context["product"]["productType"]
+            "family": context["product"]["productType"],
+            "project_name": context["project"]["name"]
         }
 
         if asset_path:
@@ -176,7 +177,8 @@ class YetiLoader(plugin.Loader):
             container_path,
             {
                 "representation": repre_entity["id"],
-                "parent": repre_entity["versionId"]
+                "parent": repre_entity["versionId"],
+                "project_name": context["project"]["name"]
             }
         )
 
