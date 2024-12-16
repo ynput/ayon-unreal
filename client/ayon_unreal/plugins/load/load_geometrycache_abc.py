@@ -255,6 +255,7 @@ class PointCacheAlembicLoader(plugin.Loader):
         folder_path = context["folder"]["path"]
         product_type = context["product"]["productType"]
         repre_entity = context["representation"]
+        name = context["product"]["name"]
         asset_dir = container["namespace"]
         suffix = "_CON"
         path = get_representation_path(repre_entity)
@@ -265,6 +266,8 @@ class PointCacheAlembicLoader(plugin.Loader):
             asset_root, suffix=f"_{ext}")
 
         container_name += suffix
+        asset_path = has_asset_directory_pattern_matched(
+            asset_name, asset_dir, name, extension=ext)
 
         frame_start = int(container.get("frame_start"))
         frame_end = int(container.get("frame_end"))
@@ -276,8 +279,14 @@ class PointCacheAlembicLoader(plugin.Loader):
         }
         self.import_and_containerize(
             path, asset_dir, asset_name, container_name,
-            frame_start, frame_end, loaded_options)
+            frame_start, frame_end, loaded_options,
+            asset_path=asset_path)
 
+        if asset_path:
+            unreal.EditorAssetLibrary.rename_asset(
+                f"{asset_path}",
+                f"{asset_dir}/{asset_name}.{asset_name}"
+            )
 
         self.imprint(
             folder_path,

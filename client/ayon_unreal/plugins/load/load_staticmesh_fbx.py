@@ -218,6 +218,7 @@ class StaticMeshFBXLoader(plugin.Loader):
         folder_path = context["folder"]["path"]
         product_type = context["product"]["productType"]
         repre_entity = context["representation"]
+        name = context["product"]["name"]
 
         # Create directory for asset and Ayon container
         suffix = "_CON"
@@ -230,10 +231,19 @@ class StaticMeshFBXLoader(plugin.Loader):
 
 
         container_name += suffix
+        asset_path = (
+            has_asset_directory_pattern_matched(asset_name, asset_dir, name, extension=ext)
+            if not self.use_interchange else None
+        )
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
         self.import_and_containerize(path, asset_dir, asset_name,
-                                     container_name)
+                                     container_name, asset_path=asset_path)
+        if asset_path:
+            unreal.EditorAssetLibrary.rename_asset(
+                f"{asset_path}",
+                f"{asset_dir}/{asset_name}.{asset_name}"
+            )
 
         self.imprint(
             folder_path,
