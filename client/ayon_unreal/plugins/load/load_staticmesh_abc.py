@@ -14,6 +14,7 @@ from ayon_unreal.api.pipeline import (
     format_asset_directory,
     UNREAL_VERSION
 )
+from ayon_core.settings import get_current_project_settings
 from ayon_core.lib import EnumDef, BoolDef
 import unreal  # noqa
 
@@ -49,7 +50,8 @@ class StaticMeshAlembicLoader(plugin.Loader):
                 label="Alembic Conversion Preset",
                 items={
                     "3dsmax": "3dsmax",
-                    "maya": "maya"
+                    "maya": "maya",
+                    "custom": "custom"
                 },
                 default=cls.abc_conversion_preset
             ),
@@ -109,7 +111,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
             conversion_settings = None
             abc_conversion_preset = loaded_options.get("abc_conversion_preset")
             if abc_conversion_preset == "maya":
-                if UNREAL_VERSION.major >= 5 and UNREAL_VERSION.minor >= 4:
+                if UNREAL_VERSION.major >= 5:
                     conversion_settings = unreal.AbcConversionSettings(
                         preset=unreal.AbcConversionPreset.MAYA)
                 else:
@@ -119,7 +121,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
                         rotation=[90.0, 0.0, 0.0],
                         scale=[1.0, -1.0, 1.0])
             elif abc_conversion_preset == "3dsmax":
-                if UNREAL_VERSION.major >= 5 and UNREAL_VERSION.minor >= 4:
+                if UNREAL_VERSION.major >= 5:
                     conversion_settings = unreal.AbcConversionSettings(
                         preset=unreal.AbcConversionPreset.MAX)
                 else:
@@ -128,6 +130,26 @@ class StaticMeshAlembicLoader(plugin.Loader):
                         flip_u=False, flip_v=True,
                         rotation=[0.0, 0.0, 0.0],
                         scale=[1.0, -1.0, 1.0])
+            else:
+                data = get_current_project_settings()
+                preset = (
+                    data["unreal"]["import_settings"]["custom"]
+                )
+                conversion_settings = unreal.AbcConversionSettings(
+                    preset=unreal.AbcConversionPreset.CUSTOM,
+                    flip_u=preset["flip_u"],
+                    flip_v=preset["flip_v"],
+                    rotation=[
+                        preset["rot_x"],
+                        preset["rot_y"],
+                        preset["rot_z"]
+                    ],
+                    scale=[
+                        preset["scl_x"],
+                        preset["scl_y"],
+                        preset["scl_z"]
+                    ]
+                )
             options.conversion_settings = conversion_settings
 
         options.static_mesh_settings = sm_settings
