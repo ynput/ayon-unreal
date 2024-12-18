@@ -1,10 +1,7 @@
 # -*- coding: utf-8 -*-
 """Load textures from PNG."""
 import os
-from ayon_core.pipeline import (
-    get_representation_path,
-    AYON_CONTAINER_ID
-)
+from ayon_core.pipeline import AYON_CONTAINER_ID
 from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
     create_container,
@@ -217,7 +214,7 @@ class TexturePNGLoader(plugin.Loader):
         product_type = context["product"]["productType"]
         repre_entity = context["representation"]
         name = context["product"]["name"]
-        path = get_representation_path(repre_entity)
+        path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
 
         # Create directory for asset and Ayon container

@@ -2,10 +2,7 @@
 """Loader for published alembics."""
 import os
 
-from ayon_core.pipeline import (
-    get_representation_path,
-    AYON_CONTAINER_ID
-)
+from ayon_core.pipeline import AYON_CONTAINER_ID
 from ayon_core.lib import EnumDef
 from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
@@ -258,7 +255,7 @@ class PointCacheAlembicLoader(plugin.Loader):
         name = context["product"]["name"]
         asset_dir = container["namespace"]
         suffix = "_CON"
-        path = get_representation_path(repre_entity)
+        path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
         asset_root, asset_name = format_asset_directory(context, self.loaded_asset_dir)
         tools = unreal.AssetToolsHelpers().get_asset_tools()

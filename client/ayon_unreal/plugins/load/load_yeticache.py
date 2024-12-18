@@ -2,10 +2,7 @@
 """Loader for Yeti Cache."""
 import json
 import os
-from ayon_core.pipeline import (
-    get_representation_path,
-    AYON_CONTAINER_ID
-)
+from ayon_core.pipeline import AYON_CONTAINER_ID
 from ayon_unreal.api import plugin
 from ayon_unreal.api import pipeline as unreal_pipeline
 import unreal  # noqa
@@ -162,7 +159,7 @@ class YetiLoader(plugin.Loader):
     def update(self, container, context):
         repre_entity = context["representation"]
         asset_name = container["asset_name"]
-        source_path = get_representation_path(repre_entity)
+        source_path = self.filepath_from_context(context)
         destination_path = container["namespace"]
         asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
             asset_name, destination_path, context["product"]["name"])

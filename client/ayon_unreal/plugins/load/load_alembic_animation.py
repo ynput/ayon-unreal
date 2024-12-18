@@ -3,10 +3,7 @@
 import os
 
 from ayon_core.lib import EnumDef
-from ayon_core.pipeline import (
-    get_representation_path,
-    AYON_CONTAINER_ID
-)
+from ayon_core.pipeline import AYON_CONTAINER_ID
 from ayon_unreal.api import plugin
 from ayon_unreal.api import pipeline as unreal_pipeline
 import unreal  # noqa
@@ -248,7 +245,7 @@ class AnimationAlembicLoader(plugin.Loader):
 
         # Create directory for folder and Ayon container
         suffix = "_CON"
-        source_path = get_representation_path(repre_entity)
+        source_path = self.filepath_from_context(context)
 
         ext = os.path.splitext(source_path)[-1].lstrip(".")
         asset_root, asset_name = unreal_pipeline.format_asset_directory(context, self.loaded_asset_dir)

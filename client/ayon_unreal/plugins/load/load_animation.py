@@ -4,8 +4,9 @@ import json
 import os
 import ayon_api
 import unreal
-from ayon_core.pipeline import (AYON_CONTAINER_ID, get_current_project_name,
-                                get_representation_path, load_container,
+from ayon_core.pipeline import (AYON_CONTAINER_ID,
+                                get_current_project_name,
+                                load_container,
                                 discover_loader_plugins,
                                 loaders_from_representation)
 from ayon_core.pipeline.context_tools import get_current_folder_entity
@@ -475,7 +476,7 @@ class AnimationFBXLoader(plugin.Loader):
         folder_entity = context["folder"]
 
         suffix = "_CON"
-        source_path = get_representation_path(repre_entity)
+        source_path = self.filepath_from_context(context)
         ext = os.path.splitext(source_path)[-1].lstrip(".")
         asset_root, asset_name = unreal_pipeline.format_asset_directory(context, self.loaded_asset_dir)
         tools = unreal.AssetToolsHelpers().get_asset_tools()

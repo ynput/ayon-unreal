@@ -4,10 +4,7 @@ from pathlib import Path
 import os
 import shutil
 
-from ayon_core.pipeline import (
-    get_representation_path,
-    AYON_CONTAINER_ID
-)
+from ayon_core.pipeline import AYON_CONTAINER_ID
 from ayon_unreal.api import plugin
 from ayon_unreal.api import pipeline as unreal_pipeline
 import unreal  # noqa
@@ -136,7 +133,7 @@ class UAssetLoader(plugin.Loader):
             if obj.get_class().get_name() != "AyonAssetContainer":
                 unreal.EditorAssetLibrary.delete_asset(asset)
 
-        update_filepath = get_representation_path(repre_entity)
+        update_filepath = self.filepath_from_context(context)
         new_asset_name = os.path.basename(update_filepath)
         asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
             new_asset_name, asset_dir, name)
