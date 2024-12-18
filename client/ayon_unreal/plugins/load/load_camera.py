@@ -250,11 +250,11 @@ class CameraLoader(plugin.Loader):
         master_level = None
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             EditorAssetLibrary.make_directory(asset_dir)
-            path = self.filepath_from_context(context)
-            master_level = self._create_map_camera(
-                context, path, tools, hierarchy_dir,
-                master_dir_name, asset_dir, asset_name
-            )
+        path = self.filepath_from_context(context)
+        master_level = self._create_map_camera(
+            context, path, tools, hierarchy_dir,
+            master_dir_name, asset_dir, asset_name
+        )
 
         # Create Asset Container
         if not unreal.EditorAssetLibrary.does_asset_exist(

@@ -222,9 +222,10 @@ class StaticMeshAlembicLoader(plugin.Loader):
             asset_name, asset_dir, name, extension=ext)
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
-            self.import_and_containerize(path, asset_dir, asset_name,
-                                         container_name, loaded_options,
-                                         asset_path=asset_path)
+
+        self.import_and_containerize(path, asset_dir, asset_name,
+                                     container_name, loaded_options,
+                                     asset_path=asset_path)
 
         product_type = context["product"]["productType"]
         self.imprint(
