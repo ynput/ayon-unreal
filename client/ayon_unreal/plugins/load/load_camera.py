@@ -234,7 +234,6 @@ class CameraLoader(plugin.Loader):
 
     def update(self, container, context):
         # Create directory for asset and Ayon container
-        repre_entity = context["representation"]
         folder_entity = context["folder"]
         folder_path = folder_entity["path"]
         asset_root, asset_name = format_asset_directory(
