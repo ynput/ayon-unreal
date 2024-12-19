@@ -3,10 +3,7 @@
 import os
 
 from ayon_core.lib import EnumDef
-from ayon_core.pipeline import (
-    get_representation_path,
-    AYON_CONTAINER_ID
-)
+from ayon_core.pipeline import AYON_CONTAINER_ID
 from ayon_unreal.api import plugin
 from ayon_unreal.api import pipeline as unreal_pipeline
 import unreal  # noqa
@@ -241,12 +238,14 @@ class AnimationAlembicLoader(plugin.Loader):
 
     def update(self, container, context):
         folder_path = context["folder"]["path"]
+        hierarchy = folder_path.lstrip("/").split("/")
+        folder_name = hierarchy.pop(-1)
         product_type = context["product"]["productType"]
         repre_entity = context["representation"]
 
         # Create directory for folder and Ayon container
         suffix = "_CON"
-        source_path = get_representation_path(repre_entity)
+        source_path = self.filepath_from_context(context)
 
         ext = os.path.splitext(source_path)[-1].lstrip(".")
         asset_root, asset_name = unreal_pipeline.format_asset_directory(context, self.loaded_asset_dir)
@@ -256,6 +255,8 @@ class AnimationAlembicLoader(plugin.Loader):
              asset_root, suffix=f"_{ext}")
 
         container_name += suffix
+        asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
+            asset_name, asset_dir, folder_name, extension=ext)
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
         loaded_options = {
@@ -266,8 +267,14 @@ class AnimationAlembicLoader(plugin.Loader):
 
         self.import_and_containerize(
             source_path, asset_dir, asset_name,
-            container_name, loaded_options
+            container_name, loaded_options,
+            asset_path=asset_path
         )
+        if asset_path:
+            unreal.EditorAssetLibrary.rename_asset(
+                f"{asset_path}",
+                f"{asset_dir}/{asset_name}.{asset_name}"
+            )
 
         # update metadata
         self.imprint(

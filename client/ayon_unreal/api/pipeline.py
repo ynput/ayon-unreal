@@ -713,15 +713,6 @@ def replace_static_mesh_actors(old_assets, new_assets, selected):
         new_assets,
         selected
     )
-    unreal.log("static_mesh_comps")
-    unreal.log(static_mesh_comps)
-
-    unreal.log("old_meshes")
-    unreal.log(old_meshes)
-
-    unreal.log("new_meshes")
-    unreal.log(old_meshes)
-
 
     for old_name, old_mesh in old_meshes.items():
         new_mesh = new_meshes.get(old_name)
@@ -1043,7 +1034,9 @@ def has_asset_existing_directory(asset_name, asset_dir):
         str: package path
     """
     asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
-    all_assets = asset_registry.get_assets_by_path('/Game', recursive=True)
+    content_assets = asset_registry.get_assets_by_path('/Game', recursive=True)
+    plugin_assets = asset_registry.get_assets_by_path('/Plugins', recursive=True)
+    all_assets = content_assets + plugin_assets
     for game_asset in all_assets:
         if game_asset.asset_name == asset_name:
             asset_path = game_asset.get_asset().get_path_name()

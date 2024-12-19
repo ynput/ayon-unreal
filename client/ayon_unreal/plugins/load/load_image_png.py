@@ -1,10 +1,7 @@
 # -*- coding: utf-8 -*-
 """Load textures from PNG."""
 import os
-from ayon_core.pipeline import (
-    get_representation_path,
-    AYON_CONTAINER_ID
-)
+from ayon_core.pipeline import AYON_CONTAINER_ID
 from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
     create_container,
@@ -216,7 +213,8 @@ class TexturePNGLoader(plugin.Loader):
         folder_path = context["folder"]["path"]
         product_type = context["product"]["productType"]
         repre_entity = context["representation"]
-        path = get_representation_path(repre_entity)
+        name = context["product"]["name"]
+        path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
 
         # Create directory for asset and Ayon container
@@ -228,10 +226,21 @@ class TexturePNGLoader(plugin.Loader):
             asset_root, suffix=f"_{ext}")
 
         container_name += suffix
+        asset_path = (
+            has_asset_directory_pattern_matched(asset_name, asset_dir, name, extension=ext)
+            if not self.use_interchange else None
+        )
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
 
-        self.import_and_containerize(path, asset_dir, asset_name, container_name)
+        self.import_and_containerize(
+            path, asset_dir, asset_name, container_name, asset_path=asset_path)
+
+        if asset_path:
+            unreal.EditorAssetLibrary.rename_asset(
+                f"{asset_path}",
+                f"{asset_dir}/{asset_name}.{asset_name}"
+            )
 
         self.imprint(
             folder_path,

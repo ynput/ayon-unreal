@@ -10,10 +10,7 @@ from unreal import (
 )
 import ayon_api
 
-from ayon_core.pipeline import (
-    get_representation_path,
-    get_current_project_name
-)
+from ayon_core.pipeline import get_current_project_name
 from ayon_core.settings import get_current_project_settings
 from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
@@ -423,7 +420,7 @@ class LayoutLoader(plugin.LayoutLoader):
 
         if create_sequences:
             EditorLevelLibrary.save_current_level()
-        source_path = get_representation_path(repre_entity)
+        source_path = self.filepath_from_context(context)
 
         loaded_assets = self._process(
             source_path, project_name, asset_dir, sequence,

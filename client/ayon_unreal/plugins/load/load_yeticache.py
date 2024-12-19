@@ -2,10 +2,7 @@
 """Loader for Yeti Cache."""
 import json
 import os
-from ayon_core.pipeline import (
-    get_representation_path,
-    AYON_CONTAINER_ID
-)
+from ayon_core.pipeline import AYON_CONTAINER_ID
 from ayon_unreal.api import plugin
 from ayon_unreal.api import pipeline as unreal_pipeline
 import unreal  # noqa
@@ -116,9 +113,7 @@ class YetiLoader(plugin.Loader):
             loaded_asset_dir = unreal.Paths.split(asset_path)[0]
             task = self.get_task(path, loaded_asset_dir, asset_name, True)
         else:
-            if not unreal.EditorAssetLibrary.does_asset_exist(
-                f"{asset_dir}/{asset_name}"):
-                    task = self.get_task(path, asset_dir, asset_name, False)
+            task = self.get_task(path, asset_dir, asset_name, False)
 
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])  # noqa: E501
 
@@ -163,11 +158,18 @@ class YetiLoader(plugin.Loader):
 
     def update(self, container, context):
         repre_entity = context["representation"]
-        name = container["asset_name"]
-        source_path = get_representation_path(repre_entity)
+        asset_name = container["asset_name"]
+        source_path = self.filepath_from_context(context)
         destination_path = container["namespace"]
+        asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
+            asset_name, destination_path, context["product"]["name"])
+        task = None
+        if asset_path:
+            loaded_asset_dir = unreal.Paths.split(asset_path)[0]
+            task = self.get_task(source_path, loaded_asset_dir, asset_name, True)
+        else:
+            task = self.get_task(source_path, destination_path, asset_name, False)
 
-        task = self.get_task(source_path, destination_path, name, False)
 
         # do import fbx and replace existing data
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
@@ -182,7 +184,11 @@ class YetiLoader(plugin.Loader):
                 "project_name": context["project"]["name"]
             }
         )
-
+        if asset_path:
+            unreal.EditorAssetLibrary.rename_asset(
+                f"{asset_path}",
+                f"{destination_path}/{asset_name}.{asset_name}"
+            )
         asset_content = unreal.EditorAssetLibrary.list_assets(
             destination_path, recursive=True, include_folder=True
         )

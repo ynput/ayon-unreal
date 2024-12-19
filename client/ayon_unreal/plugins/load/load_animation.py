@@ -4,8 +4,9 @@ import json
 import os
 import ayon_api
 import unreal
-from ayon_core.pipeline import (AYON_CONTAINER_ID, get_current_project_name,
-                                get_representation_path, load_container,
+from ayon_core.pipeline import (AYON_CONTAINER_ID,
+                                get_current_project_name,
+                                load_container,
                                 discover_loader_plugins,
                                 loaders_from_representation)
 from ayon_core.pipeline.context_tools import get_current_folder_entity
@@ -475,7 +476,7 @@ class AnimationFBXLoader(plugin.Loader):
         folder_entity = context["folder"]
 
         suffix = "_CON"
-        source_path = get_representation_path(repre_entity)
+        source_path = self.filepath_from_context(context)
         ext = os.path.splitext(source_path)[-1].lstrip(".")
         asset_root, asset_name = unreal_pipeline.format_asset_directory(context, self.loaded_asset_dir)
         tools = unreal.AssetToolsHelpers().get_asset_tools()
@@ -483,12 +484,15 @@ class AnimationFBXLoader(plugin.Loader):
             asset_root, suffix=f"_{ext}")
 
         container_name += suffix
+        asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
+            asset_name, asset_dir, context["product"]["name"])
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             EditorAssetLibrary.make_directory(asset_dir)
 
         master_level = self._import_animation_with_json(
             source_path, context, hierarchy,
-            asset_dir, folder_name, asset_name
+            asset_dir, folder_name, asset_name,
+            asset_path=asset_path
         )
         if not unreal.EditorAssetLibrary.does_asset_exist(
             f"{asset_dir}/{container_name}"):
@@ -496,6 +500,13 @@ class AnimationFBXLoader(plugin.Loader):
                 unreal_pipeline.create_container(
                     container=container_name, path=asset_dir
                 )
+
+        if asset_path:
+            unreal.EditorAssetLibrary.rename_asset(
+                f"{asset_path}",
+                f"{asset_dir}/{asset_name}.{asset_name}"
+            )
+
         # update metadata
         self.imprint(
             folder_path,
