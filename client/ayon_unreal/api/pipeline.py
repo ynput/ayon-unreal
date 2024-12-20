@@ -2,7 +2,6 @@
 import os
 import re
 import json
-import numpy
 import clique
 import copy
 import logging
