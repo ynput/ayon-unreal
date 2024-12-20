@@ -2,6 +2,7 @@
 import os
 import re
 import json
+import numpy
 import clique
 import copy
 import logging
@@ -1063,6 +1064,58 @@ def has_asset_directory_pattern_matched(asset_name, asset_dir, name, extension=N
         return asset_path
 
     return None
+
+
+def get_target_content_plugin_path(name, extension):
+    """Get target content plugin path
+
+    Args:
+        name (str): Product Name
+        extension (str): extension
+
+    Returns:
+        unreal.Path: the directory of the related asset
+            in the content plugin
+    """
+    # Get the Asset Registry
+    asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
+
+    # Get all assets
+    asset_list = asset_registry.get_all_assets()
+    game_assets = [
+        asset.package_path for asset
+        in asset_registry.get_assets_by_path('/Game', recursive=True)
+    ]
+
+    for package in asset_list:
+        asset_name = str(package.asset_name)
+        pattern = rf"{name}_\d{{3}}"
+        if extension:
+            pattern = rf"{name}_v\d{{3}}_{extension}"
+        is_content_version_folder_matched = re.match(pattern, asset_name)
+        if is_content_version_folder_matched and (
+            package.package_path not in game_assets
+            ):
+                return unreal.Paths.split(package.package_path)[0]
+    return None
+
+
+def add_assets_to_content_plugin(name, extension, asset):
+    """Migrate the assets to the content plugin
+
+    Args:
+        name (str): Product Name
+        extension (str): extension
+        asset (Array[Name]): Packages to be migrated
+
+    Returns:
+        unreal.Path: the directory of the related asset
+            in the content plugin
+    """
+    content_plugin_path = get_target_content_plugin_path(name, extension)
+    if content_plugin_path:
+        asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
+        asset_tools.migrate_packages(asset, content_plugin_path)
 
 
 def get_top_hierarchy_folder(path):
