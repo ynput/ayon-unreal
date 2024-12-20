@@ -1034,9 +1034,7 @@ def has_asset_existing_directory(asset_name, asset_dir):
         str: package path
     """
     asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
-    content_assets = asset_registry.get_assets_by_path('/Game', recursive=True)
-    plugin_assets = asset_registry.get_assets_by_path('/Plugins', recursive=True)
-    all_assets = content_assets + plugin_assets
+    all_assets = asset_registry.get_assets_by_path('/Game', recursive=True)
     for game_asset in all_assets:
         if game_asset.asset_name == asset_name:
             asset_path = game_asset.get_asset().get_path_name()
