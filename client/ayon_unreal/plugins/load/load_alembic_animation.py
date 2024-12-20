@@ -234,6 +234,9 @@ class AnimationAlembicLoader(plugin.Loader):
         for a in asset_content:
             unreal.EditorAssetLibrary.save_asset(a)
 
+        unreal_pipeline.add_assets_to_content_plugin(
+            name, ext, asset_content)
+
         return asset_content
 
     def update(self, container, context):
@@ -294,6 +297,9 @@ class AnimationAlembicLoader(plugin.Loader):
 
         for a in asset_content:
             unreal.EditorAssetLibrary.save_asset(a)
+
+        unreal_pipeline.add_assets_to_content_plugin(
+            asset_name, ext, asset_content)
 
     def remove(self, container):
         path = container["namespace"]

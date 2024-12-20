@@ -8,7 +8,8 @@ from ayon_unreal.api.pipeline import (
     create_container,
     imprint,
     has_asset_directory_pattern_matched,
-    format_asset_directory
+    format_asset_directory,
+    add_assets_to_content_plugin
 )
 import unreal  # noqa
 
@@ -179,6 +180,7 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         for a in asset_content:
             unreal.EditorAssetLibrary.save_asset(a)
 
+        add_assets_to_content_plugin(name, ext, asset_content)
         return asset_content
 
     def update(self, container, context):
@@ -225,6 +227,8 @@ class SkeletalMeshFBXLoader(plugin.Loader):
 
         for a in asset_content:
             unreal.EditorAssetLibrary.save_asset(a)
+
+        add_assets_to_content_plugin(name, ext, asset_content)
 
     def remove(self, container):
         path = container["namespace"]

@@ -1085,12 +1085,11 @@ def get_target_content_plugin_path(name, extension):
         asset.package_path for asset
         in asset_registry.get_assets_by_path('/Game', recursive=True)
     ]
-
+    pattern = rf"{name}_\d{{3}}"
+    if extension:
+        pattern = rf"{name}_v\d{{3}}_{extension}"
     for package in asset_list:
         asset_name = str(package.asset_name)
-        pattern = rf"{name}_\d{{3}}"
-        if extension:
-            pattern = rf"{name}_v\d{{3}}_{extension}"
         is_content_version_folder_matched = re.match(pattern, asset_name)
         if is_content_version_folder_matched and (
             package.package_path not in game_assets

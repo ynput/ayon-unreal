@@ -465,6 +465,9 @@ class AnimationFBXLoader(plugin.Loader):
             unreal.EditorLevelLibrary.save_current_level()
             unreal.EditorLevelLibrary.load_level(master_level)
 
+        unreal_pipeline.add_assets_to_content_plugin(
+            name, ext, imported_content)
+
     def update(self, container, context):
         # Create directory for folder and Ayon container
         folder_path = context["folder"]["path"]
@@ -529,6 +532,9 @@ class AnimationFBXLoader(plugin.Loader):
         if master_level:
             unreal.EditorLevelLibrary.save_current_level()
             unreal.EditorLevelLibrary.load_level(master_level)
+
+        unreal_pipeline.add_assets_to_content_plugin(
+            asset_name, ext, asset_content)
 
         return asset_content
 

@@ -154,12 +154,16 @@ class YetiLoader(plugin.Loader):
         for a in asset_content:
             unreal.EditorAssetLibrary.save_asset(a)
 
+        unreal_pipeline.add_assets_to_content_plugin(
+            name, ext, asset_content)
+
         return asset_content
 
     def update(self, container, context):
         repre_entity = context["representation"]
         asset_name = container["asset_name"]
         source_path = self.filepath_from_context(context)
+        ext = os.path.splitext(source_path)[-1].lstrip(".")
         destination_path = container["namespace"]
         asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
             asset_name, destination_path, context["product"]["name"])
@@ -195,6 +199,9 @@ class YetiLoader(plugin.Loader):
 
         for a in asset_content:
             unreal.EditorAssetLibrary.save_asset(a)
+
+        unreal_pipeline.add_assets_to_content_plugin(
+            context["product"]["name"], ext, asset_content)
 
     def remove(self, container):
         path = container["namespace"]

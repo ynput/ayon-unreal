@@ -11,6 +11,7 @@ from ayon_unreal.api.pipeline import (
     imprint,
     has_asset_directory_pattern_matched,
     format_asset_directory,
+    add_assets_to_content_plugin,
     UNREAL_VERSION
 )
 import unreal  # noqa
@@ -251,6 +252,8 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
         for a in asset_content:
             unreal.EditorAssetLibrary.save_asset(a)
 
+        add_assets_to_content_plugin(name, ext, asset_content)
+
         return asset_content
 
     def update(self, container, context):
@@ -307,6 +310,8 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
 
         for a in asset_content:
             unreal.EditorAssetLibrary.save_asset(a)
+
+        add_assets_to_content_plugin(name, ext, asset_content)
 
     def remove(self, container):
         path = container["namespace"]

@@ -7,7 +7,8 @@ from ayon_unreal.api.pipeline import (
     create_container,
     imprint,
     has_asset_directory_pattern_matched,
-    format_asset_directory
+    format_asset_directory,
+    add_assets_to_content_plugin
 )
 
 import unreal  # noqa
@@ -207,6 +208,8 @@ class TexturePNGLoader(plugin.Loader):
         for unreal_asset in asset_contents:
             unreal.EditorAssetLibrary.save_asset(unreal_asset)
 
+        add_assets_to_content_plugin(name, ext, asset_contents)
+
         return asset_contents
 
     def update(self, container, context):
@@ -257,6 +260,8 @@ class TexturePNGLoader(plugin.Loader):
         )
         for unreal_asset in asset_contents:
             unreal.EditorAssetLibrary.save_asset(unreal_asset)
+
+        add_assets_to_content_plugin(name, ext, asset_contents)
 
     def remove(self, container):
         path = container["namespace"]
