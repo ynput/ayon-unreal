@@ -50,7 +50,6 @@ class ExtractMRQAsManifest(publish.Extractor):
 
     def serialize_mrq(self, instance):
         # serialize mrq to file and string
-        self.mrq = instance.data["mrq"]
         _, manifest = (
             unreal.MoviePipelineEditorLibrary.save_queue_to_manifest_file(self.mrq)
         )
