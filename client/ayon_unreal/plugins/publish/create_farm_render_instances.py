@@ -26,6 +26,7 @@ class UnrealRenderInstance(RenderInstance):
     publish_attributes = attr.ib(default={})
     file_names = attr.ib(default=[])
     master_level = attr.ib(default=None)
+    mrq_job = attr.ib(default=None)
     config_path = attr.ib(default=None)
     app_version = attr.ib(default=None)
     output_settings = attr.ib(default=None)
@@ -135,6 +136,28 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
         output_fps = output_settings.output_frame_rate
         fps = f"{output_fps.denominator}.{output_fps.numerator}"
 
+        mrq_subsystem = unreal.get_editor_subsystem(
+            unreal.MoviePipelineQueueSubsystem
+        )
+        render_queue_path = (
+            project_settings["unreal"]["render_queue_path"]
+        )
+        self.log.debug(f"{render_queue_path = }")
+        auto_handle_mrq = False
+        if not unreal.EditorAssetLibrary.does_asset_exist(
+                render_queue_path):
+            # TODO: temporary until C++ blueprint is created as it is not
+            #   possible to create renderQueue. Also, we could
+            #   use Render Graph from UE 5.4
+
+            self.mrq = mrq_subsystem.get_queue()
+            auto_handle_mrq = True
+            self.mrq.delete_all_jobs()
+        else:
+            self.mrq = unreal.EditorAssetLibrary.load_asset(
+                project_settings["unreal"]["render_queue_path"]
+            )
+
         for inst in context:
             instance_families = inst.data.get("families", [])
             product_name = inst.data["productName"]
@@ -153,29 +176,8 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
             if not inst.data.get("farm", False):
                 self.log.info("Skipping local render instance")
                 continue
-
-            render_queue_path = (
-                project_settings["unreal"]["render_queue_path"]
-            )
-            if not unreal.EditorAssetLibrary.does_asset_exist(
-                    render_queue_path):
-                # TODO: temporary until C++ blueprint is created as it is not
-                #   possible to create renderQueue. Also, we could
-                #   use Render Graph from UE 5.4
-
-                master_level = inst.data["master_level"]
-                sequence = inst.data["sequence"]
-                msg = (f"Please create `Movie Pipeline Queue` "
-                       f"at `{render_queue_path}`. "
-                       f"Set it Sequence to `{sequence}`, "
-                       f"Map to `{master_level}` and "
-                       f"Settings to `{config_path}` ")
-                raise PublishError(msg)
-
             # Get current jobs
-            jobs = unreal.EditorAssetLibrary.load_asset(
-                project_settings["unreal"]["render_queue_path"]
-            ).get_jobs()
+            jobs = self.mrq.get_jobs()
 
             # backward compatibility
             task_name = inst.data.get("task") or inst.data.get("task_name")
@@ -196,10 +198,19 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
                 ),
                 None,
             )
-            if not job:
+            if not job and not auto_handle_mrq:
                 raise PublishError(
                     f"Cannot find job with sequence {inst.data['sequence']}"
                 )
+            else:
+                # create job for instance
+                job = self.mrq.allocate_new_job()
+                job.map = unreal.SoftObjectPath(inst.data["master_level"])
+                job.sequence = unreal.SoftObjectPath(inst.data["sequence"])
+
+                # TODO: present render presets as combobox on ui item
+                # TODO: set output paths on config
+                job.set_configuration(config)
 
             # current frame range - might be different from created
             frame_start = sequence.get_playback_start()
@@ -264,6 +275,7 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
                 config_path=config_path,
                 master_level=inst.data["master_level"],
                 render_queue_path=render_queue_path,
+                mrq_job=job,
                 deadline=inst.data.get("deadline"),
             )
             new_instance.farm = True
