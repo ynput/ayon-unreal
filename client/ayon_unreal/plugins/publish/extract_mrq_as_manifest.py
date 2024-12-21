@@ -41,10 +41,7 @@ class ExtractMRQAsManifest(publish.Extractor):
 
 
     def configure_mrq(self, instance):
-        mrq_subsystem = unreal.get_editor_subsystem(
-            unreal.MoviePipelineQueueSubsystem
-        )
-        self.mrq = mrq_subsystem.get_queue()
+        self.mrq = instance.context.data["mrq"]
         for job in self.mrq.get_jobs():
             if job is instance.data["mrq_job"]:
                 job.set_is_enabled(True)

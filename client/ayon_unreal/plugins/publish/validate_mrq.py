@@ -15,7 +15,7 @@ class ValidateMRQ(pyblish.api.InstancePlugin):
         - checks if user has latest p4 changes synced
         """
         self.log.info(f"{instance = }")
-        self.curr_mrq = self.get_mrq()
+        self.curr_mrq = instance.context.data["mrq"]
         instance.data["mrq"] = self.curr_mrq
 
         self.validate_no_dirty_packages()

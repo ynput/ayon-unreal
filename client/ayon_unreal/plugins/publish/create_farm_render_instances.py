@@ -136,9 +136,6 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
         output_fps = output_settings.output_frame_rate
         fps = f"{output_fps.denominator}.{output_fps.numerator}"
 
-        mrq_subsystem = unreal.get_editor_subsystem(
-            unreal.MoviePipelineQueueSubsystem
-        )
         render_queue_path = (
             project_settings["unreal"]["render_queue_path"]
         )
@@ -150,11 +147,11 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
             #   possible to create renderQueue. Also, we could
             #   use Render Graph from UE 5.4
 
-            self.mrq = mrq_subsystem.get_queue()
+            mrq = unreal.MoviePipelineQueue()
             auto_handle_mrq = True
-            self.mrq.delete_all_jobs()
+            mrq.delete_all_jobs()
         else:
-            self.mrq = unreal.EditorAssetLibrary.load_asset(
+            mrq = unreal.EditorAssetLibrary.load_asset(
                 project_settings["unreal"]["render_queue_path"]
             )
 
@@ -177,7 +174,7 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
                 self.log.info("Skipping local render instance")
                 continue
             # Get current jobs
-            jobs = self.mrq.get_jobs()
+            jobs = mrq.get_jobs()
 
             # backward compatibility
             task_name = inst.data.get("task") or inst.data.get("task_name")
@@ -204,7 +201,7 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
                 )
             else:
                 # create job for instance
-                job = self.mrq.allocate_new_job()
+                job = mrq.allocate_new_job()
                 job.map = unreal.SoftObjectPath(inst.data["master_level"])
                 job.sequence = unreal.SoftObjectPath(inst.data["sequence"])
 
@@ -278,6 +275,7 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
                 mrq_job=job,
                 deadline=inst.data.get("deadline"),
             )
+            context.data["mrq"] = mrq
             new_instance.farm = True
 
             instances.append(new_instance)
