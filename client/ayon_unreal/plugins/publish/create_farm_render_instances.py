@@ -150,6 +150,7 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
 
             mrq = unreal.MoviePipelineQueue()
             auto_handle_mrq = True
+            context.data["auto_handle_mrq"] = auto_handle_mrq
             mrq.delete_all_jobs()
         else:
             mrq = unreal.EditorAssetLibrary.load_asset(
