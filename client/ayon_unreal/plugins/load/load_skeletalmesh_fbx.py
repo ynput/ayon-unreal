@@ -30,16 +30,10 @@ class SkeletalMeshFBXLoader(plugin.Loader):
 
     @classmethod
     def apply_settings(cls, project_settings):
-        unreal_settings = project_settings.get("unreal", {})
+        unreal_settings = project_settings["unreal"]["import_settings"]
         super(SkeletalMeshFBXLoader, cls).apply_settings(project_settings)
-        if unreal_settings.get("loaded_asset_dir", cls.loaded_asset_dir):
-            cls.loaded_asset_dir = unreal_settings.get(
-                    "loaded_asset_dir", cls.loaded_asset_dir)
-        # Apply import settings
-        import_settings = (
-            project_settings.get("unreal", {}).get("import_settings", {})
-        )
-        cls.show_dialog = import_settings.get("show_dialog", cls.show_dialog)
+        cls.loaded_asset_dir = unreal_settings["loaded_asset_dir"]
+        cls.show_dialog = unreal_settings["show_dialog"]
 
     @classmethod
     def get_task(cls, filename, asset_dir, asset_name, replace):
@@ -107,7 +101,8 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         container_name,
         asset_name,
         representation,
-        product_type
+        product_type,
+        project_name
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -122,7 +117,8 @@ class SkeletalMeshFBXLoader(plugin.Loader):
             "product_type": product_type,
             # TODO these should be probably removed
             "asset": folder_path,
-            "family": product_type
+            "family": product_type,
+            "project_name": project_name
         }
         imprint(f"{asset_dir}/{container_name}", data)
 
@@ -175,7 +171,8 @@ class SkeletalMeshFBXLoader(plugin.Loader):
             container_name,
             asset_name,
             context["representation"],
-            product_type
+            product_type,
+            context["project"]["name"]
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
@@ -212,7 +209,8 @@ class SkeletalMeshFBXLoader(plugin.Loader):
             container_name,
             asset_name,
             repre_entity,
-            product_type
+            product_type,
+            context["project"]["name"]
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(

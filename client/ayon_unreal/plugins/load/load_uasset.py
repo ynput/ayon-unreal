@@ -30,10 +30,11 @@ class UAssetLoader(plugin.Loader):
     def apply_settings(cls, project_settings):
         super(UAssetLoader, cls).apply_settings(project_settings)
         # Apply import settings
-        unreal_settings = project_settings.get("unreal", {})
-        if unreal_settings.get("loaded_asset_dir", cls.loaded_asset_dir):
-            cls.loaded_asset_dir = unreal_settings.get(
-                    "loaded_asset_dir", cls.loaded_asset_dir)
+        cls.loaded_asset_dir = (
+            project_settings["unreal"]
+                            ["import_settings"]
+                            ["loaded_asset_dir"]
+        )
 
     def load(self, context, name, namespace, options):
         """Load and containerise representation into Content Browser.
@@ -95,7 +96,8 @@ class UAssetLoader(plugin.Loader):
             # TODO these should be probably removed
             "asset": folder_path,
             "family": context["product"]["productType"],
-            "asset_path": asset_path
+            "asset_path": asset_path,
+            "project_name": context["project"]["name"]
         }
 
         if asset_path:
@@ -144,6 +146,7 @@ class UAssetLoader(plugin.Loader):
             {
                 "representation": repre_entity["id"],
                 "parent": repre_entity["versionId"],
+                "project_name": context["project"]["name"]
             }
         )
 

@@ -36,16 +36,10 @@ class StaticMeshAlembicLoader(plugin.Loader):
     def apply_settings(cls, project_settings):
         super(StaticMeshAlembicLoader, cls).apply_settings(project_settings)
         # Apply import settings
-        unreal_settings = project_settings.get("unreal", {})
-        if unreal_settings.get("abc_conversion_preset", cls.abc_conversion_preset):
-            cls.abc_conversion_preset = unreal_settings.get(
-                "abc_conversion_preset", cls.abc_conversion_preset)
-        if unreal_settings.get("loaded_asset_dir", cls.loaded_asset_dir):
-            cls.loaded_asset_dir = unreal_settings.get(
-                    "loaded_asset_dir", cls.loaded_asset_dir)
-        if unreal_settings.get("show_dialog", cls.show_dialog):
-            cls.show_dialog = unreal_settings.get(
-                "show_dialog", cls.show_dialog)
+        unreal_settings = project_settings["unreal"]["import_settings"]
+        cls.abc_conversion_preset = unreal_settings["abc_conversion_preset"]
+        cls.loaded_asset_dir = unreal_settings["loaded_asset_dir"]
+        cls.show_dialog = unreal_settings["show_dialog"]
 
     @classmethod
     def get_options(cls, contexts):
@@ -54,7 +48,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
                 "abc_conversion_preset",
                 label="Alembic Conversion Preset",
                 items={
-                    "custom": "custom",
+                    "3dsmax": "3dsmax",
                     "maya": "maya"
                 },
                 default=cls.abc_conversion_preset
@@ -124,12 +118,16 @@ class StaticMeshAlembicLoader(plugin.Loader):
                         flip_u=False, flip_v=True,
                         rotation=[90.0, 0.0, 0.0],
                         scale=[1.0, -1.0, 1.0])
-            else:
-                conversion_settings = unreal.AbcConversionSettings(
-                    preset=unreal.AbcConversionPreset.CUSTOM,
-                    flip_u=False, flip_v=False,
-                    rotation=[0.0, 0.0, 0.0],
-                    scale=[1.0, 1.0, 1.0])
+            elif abc_conversion_preset == "3dsmax":
+                if UNREAL_VERSION.major >= 5 and UNREAL_VERSION.minor >= 4:
+                    conversion_settings = unreal.AbcConversionSettings(
+                        preset=unreal.AbcConversionPreset.MAX)
+                else:
+                    conversion_settings = unreal.AbcConversionSettings(
+                        preset=unreal.AbcConversionPreset.CUSTOM,
+                        flip_u=False, flip_v=True,
+                        rotation=[0.0, 0.0, 0.0],
+                        scale=[1.0, -1.0, 1.0])
             options.conversion_settings = conversion_settings
 
         options.static_mesh_settings = sm_settings
@@ -166,7 +164,8 @@ class StaticMeshAlembicLoader(plugin.Loader):
         container_name,
         asset_name,
         representation,
-        product_type
+        product_type,
+        project_name
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -181,7 +180,8 @@ class StaticMeshAlembicLoader(plugin.Loader):
             "product_type": product_type,
             # TODO these should be probably removed
             "asset": folder_path,
-            "family": product_type
+            "family": product_type,
+            "project_name": project_name
         }
         imprint(f"{asset_dir}/{container_name}", data)
 
@@ -236,7 +236,8 @@ class StaticMeshAlembicLoader(plugin.Loader):
             container_name,
             asset_name,
             context["representation"],
-            product_type
+            product_type,
+            context["project"]["name"]
         )
         if asset_path:
             unreal.EditorAssetLibrary.rename_asset(
@@ -281,7 +282,8 @@ class StaticMeshAlembicLoader(plugin.Loader):
             container_name,
             asset_name,
             repre_entity,
-            product_type
+            product_type,
+            context["project"]["name"]
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(

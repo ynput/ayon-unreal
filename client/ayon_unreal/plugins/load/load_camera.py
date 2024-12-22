@@ -39,8 +39,9 @@ class CameraLoader(plugin.Loader):
             project_settings
         )
         cls.loaded_asset_dir = (
-            project_settings["unreal"].get(
-                "loaded_asset_dir", cls.loaded_asset_dir)
+            project_settings["unreal"]
+                            ["import_settings"]
+                            ["loaded_asset_dir"]
         )
 
     def _import_camera(
@@ -79,7 +80,9 @@ class CameraLoader(plugin.Loader):
         representation,
         folder_name,
         product_type,
-        folder_entity):
+        folder_entity,
+        project_name
+    ):
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
@@ -95,7 +98,8 @@ class CameraLoader(plugin.Loader):
             "asset": folder_name,
             "family": product_type,
             "frameStart": folder_entity["attrib"]["frameStart"],
-            "frameEnd": folder_entity["attrib"]["frameEnd"]
+            "frameEnd": folder_entity["attrib"]["frameEnd"],
+            "project_name": project_name
         }
         imprint(f"{asset_dir}/{container_name}", data)
 
@@ -214,7 +218,8 @@ class CameraLoader(plugin.Loader):
             context["representation"],
             folder_name,
             context["product"]["productType"],
-            folder_entity
+            folder_entity,
+            context["project"]["name"]
         )
 
         EditorLevelLibrary.save_all_dirty_levels()
@@ -269,7 +274,8 @@ class CameraLoader(plugin.Loader):
             context["representation"],
             folder_entity["name"],
             context["product"]["productType"],
-            folder_entity
+            folder_entity,
+            context["project"]["name"]
         )
 
         EditorLevelLibrary.save_all_dirty_levels()

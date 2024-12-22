@@ -33,16 +33,9 @@ class AnimationFBXLoader(plugin.Loader):
     def apply_settings(cls, project_settings):
         super(AnimationFBXLoader, cls).apply_settings(project_settings)
         # Apply import settings
-        unreal_settings = project_settings.get("unreal", {})
-        if unreal_settings.get("loaded_asset_dir", cls.loaded_asset_dir):
-            cls.loaded_asset_dir = unreal_settings.get(
-                    "loaded_asset_dir", cls.loaded_asset_dir)
-        # Apply import settings
-        import_settings = (
-            project_settings.get("unreal", {}).get("import_settings", {})
-        )
-
-        cls.show_dialog = import_settings.get("show_dialog", cls.show_dialog)
+        unreal_settings = project_settings["unreal"]["import_settings"]
+        cls.loaded_asset_dir = unreal_settings["loaded_asset_dir"]
+        cls.show_dialog = unreal_settings["show_dialog"]
 
     def _import_latest_skeleton(self, version_ids):
         version_ids = set(version_ids)
@@ -359,7 +352,8 @@ class AnimationFBXLoader(plugin.Loader):
         asset_name,
         representation,
         product_type,
-        folder_entity
+        folder_entity,
+        project_name
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -376,7 +370,8 @@ class AnimationFBXLoader(plugin.Loader):
             "asset": folder_path,
             "family": product_type,
             "frameStart": folder_entity["attrib"]["frameStart"],
-            "frameEnd": folder_entity["attrib"]["frameEnd"]
+            "frameEnd": folder_entity["attrib"]["frameEnd"],
+            "project_name": project_name
         }
         unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
 
@@ -448,7 +443,8 @@ class AnimationFBXLoader(plugin.Loader):
             asset_name,
             context["representation"],
             product_type,
-            folder_entity
+            folder_entity,
+            context["project"]["name"]
         )
 
         imported_content = EditorAssetLibrary.list_assets(
@@ -508,7 +504,8 @@ class AnimationFBXLoader(plugin.Loader):
             asset_name,
             repre_entity,
             product_type,
-            folder_entity
+            folder_entity,
+            context["project"]["name"]
         )
 
         asset_content = EditorAssetLibrary.list_assets(

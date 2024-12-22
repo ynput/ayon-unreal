@@ -26,3 +26,10 @@ class UnrealPreLaunchSetting(BaseSettingsModel):
                               "instead of installing them directly to "
                               "Unreal install location.")
     )
+
+
+DEFAULT_PRELAUNCH_SETTINGS = {
+    "use_dependency": False,
+    "dependency_path": "",
+    "arbitrary_site_package_location": False
+}

@@ -30,16 +30,10 @@ class AnimationAlembicLoader(plugin.Loader):
     def apply_settings(cls, project_settings):
         super(AnimationAlembicLoader, cls).apply_settings(project_settings)
         # Apply import settings
-        unreal_settings = project_settings.get("unreal", {})
-        if unreal_settings.get("abc_conversion_preset", cls.abc_conversion_preset):
-            cls.abc_conversion_preset = unreal_settings.get(
-                "abc_conversion_preset", cls.abc_conversion_preset)
-        if unreal_settings.get("loaded_asset_dir", cls.loaded_asset_dir):
-            cls.loaded_asset_dir = unreal_settings.get(
-                    "loaded_asset_dir", cls.loaded_asset_dir)
-        if unreal_settings.get("show_dialog", cls.show_dialog):
-            cls.show_dialog = unreal_settings.get(
-                "show_dialog", cls.show_dialog)
+        unreal_settings = project_settings["unreal"]["import_settings"]
+        cls.abc_conversion_preset = unreal_settings["abc_conversion_preset"]
+        cls.loaded_asset_dir = unreal_settings["loaded_asset_dir"]
+        cls.show_dialog = unreal_settings["show_dialog"]
 
     @classmethod
     def get_options(cls, contexts):
@@ -48,7 +42,7 @@ class AnimationAlembicLoader(plugin.Loader):
                 "abc_conversion_preset",
                 label="Alembic Conversion Preset",
                 items={
-                    "custom": "custom",
+                    "3dsmax": "3dsmax",
                     "maya": "maya"
                 },
                 default=cls.abc_conversion_preset
@@ -72,12 +66,17 @@ class AnimationAlembicLoader(plugin.Loader):
                     flip_u=False, flip_v=True,
                     rotation=[90.0, 0.0, 0.0],
                     scale=[1.0, -1.0, 1.0])
-        else:
-            conversion_settings = unreal.AbcConversionSettings(
-                preset=unreal.AbcConversionPreset.CUSTOM,
-                flip_u=False, flip_v=False,
-                rotation=[0.0, 0.0, 0.0],
-                scale=[1.0, 1.0, 1.0])
+        elif abc_conversion_preset == "3dsmax":
+            if unreal_pipeline.UNREAL_VERSION.major >= 5 and (
+                unreal_pipeline.UNREAL_VERSION.minor >= 4):
+                    conversion_settings = unreal.AbcConversionSettings(
+                        preset=unreal.AbcConversionPreset.MAX)
+            else:
+                conversion_settings = unreal.AbcConversionSettings(
+                    preset=unreal.AbcConversionPreset.CUSTOM,
+                    flip_u=False, flip_v=True,
+                    rotation=[0.0, 0.0, 0.0],
+                    scale=[1.0, -1.0, 1.0])
 
         options.sampling_settings.frame_start = loaded_options.get("frameStart")
         options.sampling_settings.frame_end = loaded_options.get("frameEnd")
@@ -131,7 +130,8 @@ class AnimationAlembicLoader(plugin.Loader):
         frameStart,
         frameEnd,
         representation,
-        product_type
+        product_type,
+        project_name
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -148,7 +148,8 @@ class AnimationAlembicLoader(plugin.Loader):
             "frameEnd": frameEnd,
             # TODO these should be probably removed
             "asset": folder_path,
-            "family": product_type
+            "family": product_type,
+            "project_name": project_name
         }
         unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
 
@@ -225,7 +226,8 @@ class AnimationAlembicLoader(plugin.Loader):
             folder_entity["attrib"]["frameStart"],
             folder_entity["attrib"]["frameEnd"],
             context["representation"],
-            product_type
+            product_type,
+            context["project"]["name"]
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
@@ -276,7 +278,8 @@ class AnimationAlembicLoader(plugin.Loader):
             container.get("frameStart", "1"),
             container.get("frameEnd", "1"),
             repre_entity,
-            product_type
+            product_type,
+            context["project"]["name"]
         )
         asset_content = unreal.EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=True

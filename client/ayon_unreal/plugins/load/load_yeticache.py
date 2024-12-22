@@ -25,10 +25,11 @@ class YetiLoader(plugin.Loader):
     def apply_settings(cls, project_settings):
         super(YetiLoader, cls).apply_settings(project_settings)
         # Apply import settings
-        unreal_settings = project_settings.get("unreal", {})
-        if unreal_settings.get("loaded_asset_dir", cls.loaded_asset_dir):
-            cls.loaded_asset_dir = unreal_settings.get(
-                    "loaded_asset_dir", cls.loaded_asset_dir)
+        cls.loaded_asset_dir = (
+            project_settings["unreal"]
+                            ["import_settings"]
+                            ["loaded_asset_dir"]
+        )
 
     @staticmethod
     def get_task(filename, asset_dir, asset_name, replace):
@@ -140,7 +141,8 @@ class YetiLoader(plugin.Loader):
             "product_type": context["product"]["productType"],
             # TODO these shold be probably removed
             "asset": folder_path,
-            "family": context["product"]["productType"]
+            "family": context["product"]["productType"],
+            "project_name": context["project"]["name"]
         }
 
         if asset_path:
@@ -176,7 +178,8 @@ class YetiLoader(plugin.Loader):
             container_path,
             {
                 "representation": repre_entity["id"],
-                "parent": repre_entity["versionId"]
+                "parent": repre_entity["versionId"],
+                "project_name": context["project"]["name"]
             }
         )
 

@@ -46,29 +46,16 @@ class LayoutLoader(plugin.LayoutLoader):
     def apply_settings(cls, project_settings):
         super(LayoutLoader, cls).apply_settings(project_settings)
         # Apply import settings
+        import_settings = project_settings["unreal"]["import_settings"]
         cls.folder_representation_type = (
-            project_settings["unreal"].get(
-                "folder_representation_type",
-                cls.folder_representation_type)
+            import_settings["folder_representation_type"]
         )
-        cls.use_force_loaded = (
-            project_settings["unreal"].get(
-                "force_loaded", cls.force_loaded)
-        )
+        cls.use_force_loaded = import_settings["force_loaded"]
         cls.level_sequences_for_layouts = (
-            project_settings["unreal"].get(
-                "level_sequences_for_layouts",
-                cls.level_sequences_for_layouts)
+            import_settings["level_sequences_for_layouts"]
         )
-        cls.loaded_layout_dir = (
-            project_settings["unreal"].get(
-                "loaded_layout_dir", cls.loaded_layout_dir)
-        )
-        cls.remove_loaded_assets = (
-            project_settings["unreal"].get(
-                "remove_loaded_assets",
-                cls.remove_loaded_assets)
-        )
+        cls.loaded_layout_dir = import_settings["loaded_layout_dir"]
+        cls.remove_loaded_assets = import_settings["remove_loaded_assets"]
 
     @classmethod
     def get_options(cls, contexts):
@@ -281,8 +268,9 @@ class LayoutLoader(plugin.LayoutLoader):
             list(str): list of container content
         """
         data = get_current_project_settings()
-        create_sequences = data["unreal"]["level_sequences_for_layouts"]
-
+        create_sequences = (
+            data["unreal"]["import_settings"]["level_sequences_for_layouts"]
+        )
         # Create directory for asset and Ayon container
         folder_entity = context["folder"]
         folder_path = folder_entity["path"]
@@ -300,6 +288,9 @@ class LayoutLoader(plugin.LayoutLoader):
         asset_level = f"{asset_dir}/{folder_name}_map.{folder_name}_map"
         if not EditorAssetLibrary.does_asset_exist(asset_level):
             EditorLevelLibrary.new_level(f"{asset_dir}/{folder_name}_map")
+
+        shot = None
+        sequences = []
         if create_sequences:
             shot, _, asset_level, sequences, frame_ranges = (
                 generate_master_level_sequence(
@@ -341,8 +332,6 @@ class LayoutLoader(plugin.LayoutLoader):
             path, project_name, asset_dir, shot,
             loaded_extension=extension,
             force_loaded=self.force_loaded)
-        unreal.log("loaded assets")
-        unreal.log(loaded_assets)
         for s in sequences:
             EditorAssetLibrary.save_asset(s.get_path_name())
 
@@ -360,6 +349,7 @@ class LayoutLoader(plugin.LayoutLoader):
             asset_dir,
             asset_name,
             container_name,
+            context["project"]["name"],
             hierarchy_dir=hierarchy_dir
         )
         save_dir = hierarchy_dir if create_sequences else asset_dir
@@ -373,9 +363,11 @@ class LayoutLoader(plugin.LayoutLoader):
         return asset_content
 
     def update(self, container, context):
+        project_name = context["project"]["name"]
         data = get_current_project_settings()
-        create_sequences = data["unreal"]["level_sequences_for_layouts"]
-
+        create_sequences = (
+            data["unreal"]["import_settings"]["level_sequences_for_layouts"]
+        )
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
         curr_level_sequence = LevelSequenceLib.get_current_level_sequence()
@@ -431,7 +423,6 @@ class LayoutLoader(plugin.LayoutLoader):
 
         if create_sequences:
             EditorLevelLibrary.save_current_level()
-        project_name = get_current_project_name()
         source_path = get_representation_path(repre_entity)
 
         loaded_assets = self._process(
@@ -439,7 +430,7 @@ class LayoutLoader(plugin.LayoutLoader):
             loaded_extension=self.folder_representation_type,
             force_loaded=self.force_loaded)
 
-        update_container(container, repre_entity, loaded_assets=loaded_assets)
+        update_container(container, project_name, repre_entity, loaded_assets=loaded_assets)
 
         EditorLevelLibrary.save_current_level()
 

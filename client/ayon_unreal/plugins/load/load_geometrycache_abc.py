@@ -36,16 +36,10 @@ class PointCacheAlembicLoader(plugin.Loader):
     def apply_settings(cls, project_settings):
         super(PointCacheAlembicLoader, cls).apply_settings(project_settings)
         # Apply import settings
-        unreal_settings = project_settings.get("unreal", {})
-        if unreal_settings.get("abc_conversion_preset", cls.abc_conversion_preset):
-            cls.abc_conversion_preset = unreal_settings.get(
-                "abc_conversion_preset", cls.abc_conversion_preset)
-        if unreal_settings.get("loaded_asset_dir", cls.loaded_asset_dir):
-            cls.loaded_asset_dir = unreal_settings.get(
-                    "loaded_asset_dir", cls.loaded_asset_dir)
-        if unreal_settings.get("show_dialog", cls.show_dialog):
-            cls.show_dialog = unreal_settings.get(
-                "show_dialog", cls.show_dialog)
+        unreal_settings = project_settings["unreal"]["import_settings"]
+        cls.abc_conversion_preset = unreal_settings["abc_conversion_preset"]
+        cls.loaded_asset_dir = unreal_settings["loaded_asset_dir"]
+        cls.show_dialog = unreal_settings["show_dialog"]
 
     @classmethod
     def get_options(cls, contexts):
@@ -54,7 +48,7 @@ class PointCacheAlembicLoader(plugin.Loader):
                 "abc_conversion_preset",
                 label="Alembic Conversion Preset",
                 items={
-                    "custom": "custom",
+                    "3dsmax": "3dsmax",
                     "maya": "maya"
                 },
                 default=cls.abc_conversion_preset
@@ -82,12 +76,16 @@ class PointCacheAlembicLoader(plugin.Loader):
                     flip_u=False, flip_v=True,
                     rotation=[90.0, 0.0, 0.0],
                     scale=[1.0, -1.0, 1.0])
-        else:
-            conversion_settings = unreal.AbcConversionSettings(
-                preset=unreal.AbcConversionPreset.CUSTOM,
-                flip_u=False, flip_v=True,
-                rotation=[-90.0, 0.0, 180.0],
-                scale=[100.0, 100.0, 100.0])
+        elif abc_conversion_preset == "3dsmax":
+            if UNREAL_VERSION.major >= 5 and UNREAL_VERSION.minor >= 4:
+                conversion_settings = unreal.AbcConversionSettings(
+                    preset=unreal.AbcConversionPreset.MAX)
+            else:
+                conversion_settings = unreal.AbcConversionSettings(
+                    preset=unreal.AbcConversionPreset.CUSTOM,
+                    flip_u=False, flip_v=True,
+                    rotation=[0.0, 0.0, 0.0],
+                    scale=[1.0, -1.0, 1.0])
 
         task.set_editor_property('filename', filename)
         task.set_editor_property('destination_path', asset_dir)
@@ -149,7 +147,8 @@ class PointCacheAlembicLoader(plugin.Loader):
         representation,
         frame_start,
         frame_end,
-        product_type
+        product_type,
+        project_name
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -166,7 +165,8 @@ class PointCacheAlembicLoader(plugin.Loader):
             "folder_path": folder_path,
             # TODO these should be probably removed
             "family": product_type,
-            "asset": folder_path
+            "asset": folder_path,
+            "project_name": project_name
         }
         imprint(f"{asset_dir}/{container_name}", data)
 
@@ -238,7 +238,8 @@ class PointCacheAlembicLoader(plugin.Loader):
             context["representation"],
             frame_start,
             frame_end,
-            context["product"]["productType"]
+            context["product"]["productType"],
+            context["project"]["name"]
         )
         asset_content = unreal.EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=True
@@ -286,7 +287,8 @@ class PointCacheAlembicLoader(plugin.Loader):
             repre_entity,
             frame_start,
             frame_end,
-            product_type
+            product_type,
+            context["project"]["name"]
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
