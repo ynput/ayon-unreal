@@ -138,7 +138,7 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
         fps = f"{output_fps.denominator}.{output_fps.numerator}"
 
         render_queue_path = (
-            project_settings["unreal"]["render_queue_path"]
+            render_settings["render_queue_path"]
         )
         self.log.debug(f"{render_queue_path = }")
         auto_handle_mrq = False
