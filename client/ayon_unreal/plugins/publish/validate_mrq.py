@@ -90,7 +90,9 @@ class ValidateMRQ(pyblish.api.InstancePlugin):
 
         # build output directory
         job_config = job.get_configuration()
-        exr_settings = job_config.find_setting_by_class(unreal.MoviePipelineImageSequenceOutput_EXR)
+        exr_settings = job_config.find_setting_by_class(
+            unreal.MoviePipelineImageSequenceOutput_EXR
+        )
         if not exr_settings:
             raise Exception("No EXR settings found in the job configuration.")
 
@@ -107,14 +109,20 @@ class ValidateMRQ(pyblish.api.InstancePlugin):
         )
         work_dir = Path(self.dir_template.format_strict(template_data))
         work_file = Path(self.file_template.format_strict(template_data))
-        output_settings = job_config.find_setting_by_class(unreal.MoviePipelineOutputSetting)
-        
+        output_settings = job_config.find_setting_by_class(
+            unreal.MoviePipelineOutputSetting
+        )
+
         output_dir_override = unreal.DirectoryPath()
         output_dir_override.path = work_dir.as_posix()
         output_file_override = work_file.stem + ".{frame_number}"
 
-        output_settings.set_editor_property("output_directory", output_dir_override)
-        output_settings.set_editor_property("file_name_format", output_file_override)
+        output_settings.set_editor_property(
+            "output_directory", output_dir_override
+        )
+        output_settings.set_editor_property(
+            "file_name_format", output_file_override
+        )
 
     def _get_work_file_template(self):
         # get work file template
@@ -123,11 +131,9 @@ class ValidateMRQ(pyblish.api.InstancePlugin):
         _dir_template = project_templates["work"]["default"][
             "directory"
         ].replace("@version", "version")
-        _file_template = project_templates["work"]["default"][
-            "file"
-        ].replace("@version", "version")
+        _file_template = project_templates["work"]["default"]["file"].replace(
+            "@version", "version"
+        )
 
         self.dir_template = StringTemplate(_dir_template)
         self.file_template = StringTemplate(_file_template)
-
-
