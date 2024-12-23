@@ -106,6 +106,12 @@ class YetiLoader(plugin.Loader):
         container_name = f"{container_name}_{suffix}"
         asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
             asset_name, asset_dir, name)
+
+        content_plugin_path = unreal_pipeline.get_target_content_plugin_path(
+            name, ext)
+        if content_plugin_path:
+            asset_dir = content_plugin_path
+
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
         task = None
@@ -154,9 +160,6 @@ class YetiLoader(plugin.Loader):
         for a in asset_content:
             unreal.EditorAssetLibrary.save_asset(a)
 
-        unreal_pipeline.add_assets_to_content_plugin(
-            name, ext, asset_content)
-
         return asset_content
 
     def update(self, container, context):
@@ -167,6 +170,11 @@ class YetiLoader(plugin.Loader):
         destination_path = container["namespace"]
         asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
             asset_name, destination_path, context["product"]["name"])
+        content_plugin_path = unreal_pipeline.get_target_content_plugin_path(
+            context["product"]["name"], ext)
+        if content_plugin_path:
+            destination_path = content_plugin_path
+
         task = None
         if asset_path:
             loaded_asset_dir = unreal.Paths.split(asset_path)[0]
@@ -199,9 +207,6 @@ class YetiLoader(plugin.Loader):
 
         for a in asset_content:
             unreal.EditorAssetLibrary.save_asset(a)
-
-        unreal_pipeline.add_assets_to_content_plugin(
-            context["product"]["name"], ext, asset_content)
 
     def remove(self, container):
         path = container["namespace"]

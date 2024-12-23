@@ -191,6 +191,10 @@ class AnimationAlembicLoader(plugin.Loader):
         asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
             asset_name, asset_dir, folder_name, extension=ext)
 
+        content_plugin_path = unreal_pipeline.get_target_content_plugin_path(name, ext)
+        if content_plugin_path:
+            asset_dir = content_plugin_path
+
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
 
@@ -234,9 +238,6 @@ class AnimationAlembicLoader(plugin.Loader):
         for a in asset_content:
             unreal.EditorAssetLibrary.save_asset(a)
 
-        unreal_pipeline.add_assets_to_content_plugin(
-            name, ext, asset_content)
-
         return asset_content
 
     def update(self, container, context):
@@ -260,6 +261,11 @@ class AnimationAlembicLoader(plugin.Loader):
         container_name += suffix
         asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
             asset_name, asset_dir, folder_name, extension=ext)
+
+        content_plugin_path = unreal_pipeline.get_target_content_plugin_path(folder_name, ext)
+        if content_plugin_path:
+            asset_dir = content_plugin_path
+
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
         loaded_options = {

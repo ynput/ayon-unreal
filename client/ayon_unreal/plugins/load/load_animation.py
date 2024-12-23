@@ -416,6 +416,11 @@ class AnimationFBXLoader(plugin.Loader):
 
         container_name += suffix
         asset_path = unreal_pipeline.has_asset_directory_pattern_matched(asset_name, asset_dir, name)
+
+        content_plugin_path = unreal_pipeline.get_target_content_plugin_path(name, ext)
+        if content_plugin_path:
+            asset_dir = content_plugin_path
+
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             EditorAssetLibrary.make_directory(asset_dir)
         loaded_options = {
@@ -465,9 +470,6 @@ class AnimationFBXLoader(plugin.Loader):
             unreal.EditorLevelLibrary.save_current_level()
             unreal.EditorLevelLibrary.load_level(master_level)
 
-        unreal_pipeline.add_assets_to_content_plugin(
-            name, ext, imported_content)
-
     def update(self, container, context):
         # Create directory for folder and Ayon container
         folder_path = context["folder"]["path"]
@@ -489,6 +491,13 @@ class AnimationFBXLoader(plugin.Loader):
         container_name += suffix
         asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
             asset_name, asset_dir, context["product"]["name"])
+
+        content_plugin_path = unreal_pipeline.get_target_content_plugin_path(
+            context["product"]["name"], ext
+        )
+        if content_plugin_path:
+            asset_dir = content_plugin_path
+
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             EditorAssetLibrary.make_directory(asset_dir)
 
@@ -532,9 +541,6 @@ class AnimationFBXLoader(plugin.Loader):
         if master_level:
             unreal.EditorLevelLibrary.save_current_level()
             unreal.EditorLevelLibrary.load_level(master_level)
-
-        unreal_pipeline.add_assets_to_content_plugin(
-            asset_name, ext, asset_content)
 
         return asset_content
 

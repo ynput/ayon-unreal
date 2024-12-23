@@ -1094,26 +1094,9 @@ def get_target_content_plugin_path(name, extension):
         if is_content_version_folder_matched and (
             package.package_path not in game_assets
             ):
+                unreal.log(f"asset_name: {asset_name}")
                 return unreal.Paths.split(package.package_path)[0]
     return None
-
-
-def add_assets_to_content_plugin(name, extension, asset):
-    """Migrate the assets to the content plugin
-
-    Args:
-        name (str): Product Name
-        extension (str): extension
-        asset (Array[Name]): Packages to be migrated
-
-    Returns:
-        unreal.Path: the directory of the related asset
-            in the content plugin
-    """
-    content_plugin_path = get_target_content_plugin_path(name, extension)
-    if content_plugin_path:
-        asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
-        asset_tools.migrate_packages(asset, content_plugin_path)
 
 
 def get_top_hierarchy_folder(path):

@@ -8,7 +8,7 @@ from ayon_unreal.api.pipeline import (
     imprint,
     has_asset_directory_pattern_matched,
     format_asset_directory,
-    add_assets_to_content_plugin
+    get_target_content_plugin_path
 )
 
 import unreal  # noqa
@@ -179,6 +179,11 @@ class TexturePNGLoader(plugin.Loader):
             has_asset_directory_pattern_matched(asset_name, asset_dir, name, extension=ext)
             if not self.use_interchange else None
         )
+
+        content_plugin_path = get_target_content_plugin_path(name, ext)
+        if content_plugin_path:
+            asset_dir = content_plugin_path
+
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
 
@@ -208,8 +213,6 @@ class TexturePNGLoader(plugin.Loader):
         for unreal_asset in asset_contents:
             unreal.EditorAssetLibrary.save_asset(unreal_asset)
 
-        add_assets_to_content_plugin(name, ext, asset_contents)
-
         return asset_contents
 
     def update(self, container, context):
@@ -233,6 +236,10 @@ class TexturePNGLoader(plugin.Loader):
             has_asset_directory_pattern_matched(asset_name, asset_dir, name, extension=ext)
             if not self.use_interchange else None
         )
+        content_plugin_path = get_target_content_plugin_path(name, ext)
+        if content_plugin_path:
+            asset_dir = content_plugin_path
+
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
 
@@ -260,8 +267,6 @@ class TexturePNGLoader(plugin.Loader):
         )
         for unreal_asset in asset_contents:
             unreal.EditorAssetLibrary.save_asset(unreal_asset)
-
-        add_assets_to_content_plugin(name, ext, asset_contents)
 
     def remove(self, container):
         path = container["namespace"]

@@ -59,6 +59,10 @@ class UAssetLoader(plugin.Loader):
             asset_root, suffix=""
         )
         container_name = f"{container_name}_{suffix}"
+        content_plugin_path = unreal_pipeline.get_target_content_plugin_path(name, "")
+        if content_plugin_path:
+            asset_dir = content_plugin_path
+
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
 
@@ -112,9 +116,6 @@ class UAssetLoader(plugin.Loader):
         for a in asset_content:
             unreal.EditorAssetLibrary.save_asset(a)
 
-        unreal_pipeline.add_assets_to_content_plugin(
-            name, "", asset_content)
-
         return asset_content
 
     def update(self, container, context):
@@ -140,9 +141,19 @@ class UAssetLoader(plugin.Loader):
         new_asset_name = os.path.basename(update_filepath)
         asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
             new_asset_name, asset_dir, name)
+
+        content_plugin_path = unreal_pipeline.get_target_content_plugin_path(name, "")
+        if content_plugin_path:
+            destination_path = content_plugin_path
+
         if asset_path:
-            destination_path = unreal.Paths.split(asset_path)[0]
-        shutil.copy(update_filepath, f"{destination_path}/{new_asset_name}")
+            unreal.EditorAssetLibrary.rename_asset(
+                f"{asset_path}",
+                f"{asset_dir}/{new_asset_name}.{new_asset_name}"
+            )
+        else:
+            shutil.copy(
+                update_filepath, f"{destination_path}/{new_asset_name}")
 
         container_path = f'{container["namespace"]}/{container["objectName"]}'
         # update metadata
@@ -155,20 +166,13 @@ class UAssetLoader(plugin.Loader):
                 "project_name": context["project"]["name"]
             }
         )
-        if asset_path:
-            unreal.EditorAssetLibrary.rename_asset(
-                f"{asset_path}",
-                f"{asset_dir}/{new_asset_name}.{new_asset_name}"
-            )
+
         asset_content = unreal.EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=True
         )
 
         for a in asset_content:
             unreal.EditorAssetLibrary.save_asset(a)
-
-        unreal_pipeline.add_assets_to_content_plugin(
-            name, "", asset_content)
 
     def remove(self, container):
         path = container["namespace"]

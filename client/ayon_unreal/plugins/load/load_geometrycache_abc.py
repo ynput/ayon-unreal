@@ -10,7 +10,7 @@ from ayon_unreal.api.pipeline import (
     imprint,
     has_asset_directory_pattern_matched,
     format_asset_directory,
-    add_assets_to_content_plugin,
+    get_target_content_plugin_path,
     UNREAL_VERSION
 )
 
@@ -209,6 +209,11 @@ class PointCacheAlembicLoader(plugin.Loader):
             frame_end += 1
         asset_path = has_asset_directory_pattern_matched(
             asset_name, asset_dir, name, extension=ext)
+
+        content_plugin_path = get_target_content_plugin_path(name, ext)
+        if content_plugin_path:
+            asset_dir = content_plugin_path
+
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
         loaded_options = {
@@ -246,8 +251,6 @@ class PointCacheAlembicLoader(plugin.Loader):
         for a in asset_content:
             unreal.EditorAssetLibrary.save_asset(a)
 
-        add_assets_to_content_plugin(name, ext, asset_content)
-
         return asset_content
 
     def update(self, container, context):
@@ -271,6 +274,11 @@ class PointCacheAlembicLoader(plugin.Loader):
 
         frame_start = int(container.get("frame_start"))
         frame_end = int(container.get("frame_end"))
+
+        content_plugin_path = get_target_content_plugin_path(name, ext)
+        if content_plugin_path:
+            asset_dir = content_plugin_path
+
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
         loaded_options = {
@@ -306,8 +314,6 @@ class PointCacheAlembicLoader(plugin.Loader):
 
         for a in asset_content:
             unreal.EditorAssetLibrary.save_asset(a)
-
-        add_assets_to_content_plugin(name, ext, asset_content)
 
     def remove(self, container):
         path = container["namespace"]
