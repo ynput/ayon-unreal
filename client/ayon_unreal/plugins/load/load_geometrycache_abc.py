@@ -69,15 +69,15 @@ class PointCacheAlembicLoader(plugin.Loader):
         sampling_settings = unreal.AbcSamplingSettings()
         abc_conversion_preset = loaded_options.get("abc_conversion_preset")
         if abc_conversion_preset == "maya":
-            if UNREAL_VERSION.major >= 5:
+            if UNREAL_VERSION.major >= 5 and UNREAL_VERSION.minor >= 2:
                 conversion_settings = unreal.AbcConversionSettings(
                     preset=unreal.AbcConversionPreset.MAYA)
             else:
                 conversion_settings = unreal.AbcConversionSettings(
                     preset=unreal.AbcConversionPreset.CUSTOM,
                     flip_u=False, flip_v=True,
-                    rotation=[90.0, 0.0, 0.0],
-                    scale=[1.0, -1.0, 1.0])
+                    rotation=[-90.0, 0.0, 180.0],
+                    scale=[100.0, 100.0, 100.0])
         elif abc_conversion_preset == "3dsmax":
             if UNREAL_VERSION.major >= 5:
                 conversion_settings = unreal.AbcConversionSettings(
