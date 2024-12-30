@@ -197,9 +197,6 @@ class PointCacheAlembicLoader(plugin.Loader):
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
 
-
-        container_name += suffix
-
         frame_start = folder_attributes.get("frameStart")
         frame_end = folder_attributes.get("frameEnd")
 
@@ -210,9 +207,11 @@ class PointCacheAlembicLoader(plugin.Loader):
         asset_path = has_asset_directory_pattern_matched(
             asset_name, asset_dir, name, extension=ext)
 
-        content_plugin_path = get_target_content_plugin_path(name, ext)
+        content_plugin_path = get_target_content_plugin_path(name, ext, container_name)
         if content_plugin_path:
             asset_dir = content_plugin_path
+
+        container_name += suffix
 
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
@@ -268,16 +267,17 @@ class PointCacheAlembicLoader(plugin.Loader):
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
 
-        container_name += suffix
         asset_path = has_asset_directory_pattern_matched(
             asset_name, asset_dir, name, extension=ext)
 
         frame_start = int(container.get("frame_start"))
         frame_end = int(container.get("frame_end"))
 
-        content_plugin_path = get_target_content_plugin_path(name, ext)
+        content_plugin_path = get_target_content_plugin_path(name, ext, container_name)
         if content_plugin_path:
             asset_dir = content_plugin_path
+
+        container_name += suffix
 
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)

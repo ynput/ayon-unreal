@@ -1065,12 +1065,13 @@ def has_asset_directory_pattern_matched(asset_name, asset_dir, name, extension=N
     return None
 
 
-def get_target_content_plugin_path(name, extension):
+def get_target_content_plugin_path(name, extension, container_name):
     """Get target content plugin path
 
     Args:
         name (str): Product Name
         extension (str): extension
+        container_name(str): container name
 
     Returns:
         unreal.Path: the directory of the related asset
@@ -1095,7 +1096,8 @@ def get_target_content_plugin_path(name, extension):
             package.package_path not in game_assets
             ):
                 unreal.log(f"asset_name: {asset_name}")
-                return unreal.Paths.split(package.package_path)[0]
+
+                return f"{unreal.Paths.split(package.package_path)[0]}/{container_name}"
     return None
 
 

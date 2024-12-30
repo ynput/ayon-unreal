@@ -102,16 +102,17 @@ class YetiLoader(plugin.Loader):
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
+        content_asset_name = container_name
 
-        container_name = f"{container_name}_{suffix}"
         asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
             asset_name, asset_dir, name)
 
         content_plugin_path = unreal_pipeline.get_target_content_plugin_path(
-            name, ext)
+            name, ext, content_asset_name)
         if content_plugin_path:
             asset_dir = content_plugin_path
 
+        container_name = f"{container_name}_{suffix}"
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
         task = None
@@ -133,6 +134,7 @@ class YetiLoader(plugin.Loader):
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
             "namespace": asset_dir,
+            "content_asset_name": content_asset_name,
             "container_name": container_name,
             "folder_path": folder_path,
             "asset_name": asset_name,
@@ -171,7 +173,7 @@ class YetiLoader(plugin.Loader):
         asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
             asset_name, destination_path, context["product"]["name"])
         content_plugin_path = unreal_pipeline.get_target_content_plugin_path(
-            context["product"]["name"], ext)
+            context["product"]["name"], ext, container["content_asset_name"])
         if content_plugin_path:
             destination_path = content_plugin_path
 
