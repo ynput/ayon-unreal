@@ -58,7 +58,6 @@ class UAssetLoader(plugin.Loader):
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=""
         )
-        content_asset_name = container_name
         content_plugin_path = unreal_pipeline.get_target_content_plugin_path(name, "", container_name)
         if content_plugin_path:
             asset_dir = content_plugin_path
@@ -89,7 +88,6 @@ class UAssetLoader(plugin.Loader):
             "id": AYON_CONTAINER_ID,
             "namespace": asset_dir,
             "folder_path": folder_path,
-            "content_asset_name": content_asset_name,
             "container_name": container_name,
             "asset_name": asset_name,
             "loader": str(self.__class__.__name__),
@@ -141,11 +139,12 @@ class UAssetLoader(plugin.Loader):
 
         update_filepath = self.filepath_from_context(context)
         new_asset_name = os.path.basename(update_filepath)
+        content_asset_name = os.path.splitext(new_asset_name)[0]
         asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
             new_asset_name, asset_dir, name)
 
         content_plugin_path = unreal_pipeline.get_target_content_plugin_path(
-            name, "", container["content_asset_name"])
+            name, "", content_asset_name)
         if content_plugin_path:
             destination_path = content_plugin_path
 
