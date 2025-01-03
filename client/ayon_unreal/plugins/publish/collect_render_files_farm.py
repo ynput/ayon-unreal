@@ -1,3 +1,4 @@
+import os
 import pyblish.api
 from pathlib import Path
 from copy import deepcopy
@@ -79,12 +80,14 @@ class CollectRemoteRenderFiles(pyblish.api.InstancePlugin):
         # get work file template
         #   how can i build a @token?
         project_templates = self.project_data["config"]["templates"]
-        _dir_template = project_templates["work"]["default"][
-            "directory"
-        ].replace("@version", "version")
-        _file_template = project_templates["work"]["default"]["file"].replace(
-            "@version", "version"
-        )
+        _dir_template = project_templates["work"]["default"]["directory"]
+        _dir_template_parts = []
+        for part in _dir_template.split(os.path.sep):
+            if "version" in part:
+                continue
+            _dir_template_parts.append(part)
 
-        self.dir_template = StringTemplate(_dir_template)
+        _file_template = project_templates["work"]["unreal"]["file"]
+
+        self.dir_template = StringTemplate(Path(*_dir_template_parts).as_posix())
         self.file_template = StringTemplate(_file_template)
