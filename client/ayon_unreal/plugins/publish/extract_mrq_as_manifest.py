@@ -29,12 +29,8 @@ class ExtractMRQAsManifest(publish.Extractor):
         # get work file template
         #   how can i build a @token?
         project_templates = self.project_data["config"]["templates"]
-        _dir_template = project_templates["publish"]["default"][
-            "directory"
-        ].replace("@version", "version")
-        _file_template = project_templates["publish"]["default"][
-            "file"
-        ].replace("@version", "version")
+        _dir_template = project_templates["work"]["default"]["directory"]
+        _file_template = project_templates["work"]["unreal"]["file"] + "_Manifest.{ext}"
 
         self.dir_template = StringTemplate(_dir_template)
         self.file_template = StringTemplate(_file_template)
@@ -73,19 +69,15 @@ class ExtractMRQAsManifest(publish.Extractor):
         template_data["product"]["name"] += "Manifest"
         template_data["ext"] = "utxt"
 
-        # format the publish path
-        project_templates = self.project_data["config"]["templates"]
-        template_data["version"] = (
-            f"v{template_data['version']:0{project_templates['common']['version_padding']}d}"
-        )
-        publish_dir = Path(self.dir_template.format_strict(template_data))
-        publish_file = Path(self.file_template.format_strict(template_data))
-        publish_manifest = publish_dir / publish_file
-        self.log.debug(f"{publish_manifest = }")
+        work_dir = Path(self.dir_template.format_strict(template_data))
+        work_file = Path(self.file_template.format_strict(template_data))
+        work_manifest = work_dir / work_file
+        self.log.debug(f"{work_manifest = }")
 
-        if not publish_dir.exists():
-            self.log.info(f"Creating publish directory: {publish_dir}")
-            publish_dir.mkdir(parents=True)
+        if not work_dir.exists():
+            self.log.info(f"Creating publish directory: {work_dir}")
+            work_dir.mkdir(parents=True)
         self.log.debug(f"{self.manifest_to_publish = }")
-        shutil.copyfile(self.manifest_to_publish, publish_manifest)
-        instance.data["publish_mrq"] = publish_manifest.as_posix()
+        shutil.copyfile(self.manifest_to_publish, work_manifest)
+        instance.data["work_mrq"] = work_manifest.as_posix()
+        self.log.info(f"Manifest extracted to: {work_manifest}")
