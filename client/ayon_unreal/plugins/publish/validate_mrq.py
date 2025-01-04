@@ -26,8 +26,6 @@ class ValidateMRQ(pyblish.api.InstancePlugin):
         self.validate_map()
         self.validate_instance_in_mrq(instance)
 
-        # TODO: implement p4 checks
-
     def validate_no_dirty_packages(self):
         # The user must save their work and check it in so that Deadline can sync it.
         # ? does this check for uncommited files in the default changelist

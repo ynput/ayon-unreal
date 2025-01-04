@@ -208,7 +208,6 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
                 job.sequence = unreal.SoftObjectPath(inst.data["sequence"])
 
                 # TODO: present render presets as combobox on ui item
-                # TODO: set output paths on config
                 job.set_configuration(config)
 
             # current frame range - might be different from created
