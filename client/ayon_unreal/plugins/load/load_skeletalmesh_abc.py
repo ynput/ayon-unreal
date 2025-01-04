@@ -108,7 +108,7 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
                     conversion_settings = unreal.AbcConversionSettings(
                         preset=unreal.AbcConversionPreset.CUSTOM,
                         flip_u=False, flip_v=True,
-                        rotation=[90.0, 0.0, 0.0],
+                        rotation=[0.0, 0.0, 0.0],
                         scale=[100.0, -100.0, 100.0])
             elif abc_conversion_preset == "3dsmax":
                 if UNREAL_VERSION.major >= 5:
@@ -118,7 +118,7 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
                     conversion_settings = unreal.AbcConversionSettings(
                         preset=unreal.AbcConversionPreset.CUSTOM,
                         flip_u=False, flip_v=True,
-                        rotation=[0.0, 0.0, 0.0],
+                        rotation=[90.0, 0.0, 0.0],
                         scale=[1.0, -1.0, 1.0])
             else:
                 data = get_current_project_settings()
