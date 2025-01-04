@@ -67,7 +67,7 @@ class AnimationAlembicLoader(plugin.Loader):
                     preset=unreal.AbcConversionPreset.CUSTOM,
                     flip_u=False, flip_v=True,
                     rotation=[90.0, 0.0, 0.0],
-                    scale=[100.0, -100.0, 100.0])
+                    scale=[1.0, -1.0, 1.0])
         elif abc_conversion_preset == "3dsmax":
             if unreal_pipeline.UNREAL_VERSION.major >= 5:
                     conversion_settings = unreal.AbcConversionSettings(
