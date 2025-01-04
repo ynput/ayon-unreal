@@ -1,11 +1,6 @@
 import pyblish.api
-from pathlib import Path
-from copy import deepcopy
 
 import unreal
-
-from ayon_core.pipeline import Anatomy
-from ayon_core.lib import StringTemplate
 
 
 class ValidateMRQ(pyblish.api.InstancePlugin):
@@ -15,11 +10,6 @@ class ValidateMRQ(pyblish.api.InstancePlugin):
     families = ["render", "render.farm"]
 
     def process(self, instance):
-        """
-        - checks for unsaved assets
-        - checks for filled mrq (should assume empty mrq since it will be auto-populated)
-        - checks if user has latest p4 changes synced
-        """
         self.curr_mrq = instance.context.data["mrq"]
 
         self.validate_no_dirty_packages()
@@ -28,7 +18,6 @@ class ValidateMRQ(pyblish.api.InstancePlugin):
 
     def validate_no_dirty_packages(self):
         # The user must save their work and check it in so that Deadline can sync it.
-        # ? does this check for uncommited files in the default changelist
         dirty_packages = []
         dirty_packages.extend(
             unreal.EditorLoadingAndSavingUtils.get_dirty_content_packages()
@@ -79,4 +68,3 @@ class ValidateMRQ(pyblish.api.InstancePlugin):
             raise Exception(
                 "Instance not found in Media Render Queue. Try to clear your current MRQ and try again."
             )
-

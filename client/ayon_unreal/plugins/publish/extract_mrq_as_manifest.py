@@ -77,7 +77,7 @@ class ExtractMRQAsManifest(publish.Extractor):
         if not work_dir.exists():
             self.log.info(f"Creating publish directory: {work_dir}")
             work_dir.mkdir(parents=True)
-        self.log.debug(f"{self.manifest_to_publish = }")
+
         shutil.copyfile(self.manifest_to_publish, work_manifest)
         instance.data["work_mrq"] = work_manifest.as_posix()
         self.log.info(f"Manifest extracted to: {work_manifest}")
