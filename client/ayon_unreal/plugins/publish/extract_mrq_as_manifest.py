@@ -30,7 +30,7 @@ class ExtractMRQAsManifest(publish.Extractor):
         #   how can i build a @token?
         project_templates = self.project_data["config"]["templates"]
         _dir_template = project_templates["work"]["default"]["directory"]
-        _file_template = project_templates["work"]["unreal"]["file"] + "_Manifest.{ext}"
+        _file_template = project_templates["work"]["unreal"]["file"]
 
         self.dir_template = StringTemplate(_dir_template)
         self.file_template = StringTemplate(_file_template)
