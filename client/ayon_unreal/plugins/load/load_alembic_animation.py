@@ -59,7 +59,7 @@ class AnimationAlembicLoader(plugin.Loader):
         abc_conversion_preset = loaded_options.get("abc_conversion_preset")
         if abc_conversion_preset == "maya":
             if unreal_pipeline.UNREAL_VERSION.major >= 5 and (
-                unreal_pipeline.UNREAL_VERSION.minor >= 2):
+                unreal_pipeline.UNREAL_VERSION.minor >= 3):
                     conversion_settings = unreal.AbcConversionSettings(
                         preset= unreal.AbcConversionPreset.MAYA)
             else:
