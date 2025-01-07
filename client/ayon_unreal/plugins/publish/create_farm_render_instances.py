@@ -207,7 +207,18 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
                 job.map = unreal.SoftObjectPath(inst.data["master_level"])
                 job.sequence = unreal.SoftObjectPath(inst.data["sequence"])
 
-                # TODO: present render presets as combobox on ui item
+                render_preset = inst.data['creator_attributes'].get("render_preset")
+                if render_preset:
+                    asset_filter = unreal.ARFilter(
+                        class_names=["MoviePipelinePrimaryConfig"],
+                        recursive_paths=True
+                    )
+                    render_presets = ar.get_assets(asset_filter)
+                    for preset in render_presets:
+                        if preset.asset_name == render_preset:
+                            config = preset.get_asset()
+                            break
+
                 job.set_configuration(config)
 
             # current frame range - might be different from created
