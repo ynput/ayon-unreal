@@ -35,8 +35,8 @@ class LayoutLoader(plugin.LayoutLoader):
     """Load Layout from a JSON file"""
 
     label = "Load Layout"
-    folder_representation_type = "json"
     force_loaded = False
+    folder_representation_type = "json"
     level_sequences_for_layouts = True
 
     @classmethod
@@ -44,10 +44,10 @@ class LayoutLoader(plugin.LayoutLoader):
         super(LayoutLoader, cls).apply_settings(project_settings)
         # Apply import settings
         import_settings = project_settings["unreal"]["import_settings"]
+        cls.force_loaded = import_settings["force_loaded"]
         cls.folder_representation_type = (
             import_settings["folder_representation_type"]
         )
-        cls.use_force_loaded = import_settings["force_loaded"]
         cls.level_sequences_for_layouts = (
             import_settings["level_sequences_for_layouts"]
         )
