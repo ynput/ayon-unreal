@@ -101,7 +101,7 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             conversion_settings = None
             abc_conversion_preset = loaded_options.get("abc_conversion_preset")
             if abc_conversion_preset == "maya":
-                if UNREAL_VERSION.major >= 5 and UNREAL_VERSION.minor >= 3:
+                if UNREAL_VERSION.major >= 5 and UNREAL_VERSION.minor >= 4:
                     conversion_settings = unreal.AbcConversionSettings(
                         preset=unreal.AbcConversionPreset.MAYA)
                 else:
