@@ -245,7 +245,7 @@ class CreateRender(UnrealAssetCreator):
 
     def get_render_presets(self):
         all_assets = unreal.EditorAssetLibrary.list_assets(
-            "/Game",
+            "/Game/Ayon",
             recursive=True,
             include_folder=True,
         )
