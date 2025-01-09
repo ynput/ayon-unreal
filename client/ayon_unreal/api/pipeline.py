@@ -1098,6 +1098,9 @@ def get_target_content_plugin_path(name, extension, container_name):
                 unreal.log(f"asset_name: {asset_name}")
 
                 return f"{unreal.Paths.split(package.package_path)[0]}/{container_name}"
+        else:
+            unreal.log(f"No related content plugin path found for {asset_name}.")
+
     return None
 
 
