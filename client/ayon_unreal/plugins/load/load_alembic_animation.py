@@ -6,6 +6,7 @@ from ayon_core.lib import EnumDef
 from ayon_core.pipeline import AYON_CONTAINER_ID
 from ayon_unreal.api import plugin
 from ayon_unreal.api import pipeline as unreal_pipeline
+from ayon_core.settings import get_current_project_settings
 import unreal  # noqa
 
 
@@ -40,7 +41,8 @@ class AnimationAlembicLoader(plugin.Loader):
                 label="Alembic Conversion Preset",
                 items={
                     "3dsmax": "3dsmax",
-                    "maya": "maya"
+                    "maya": "maya",
+                    "custom": "custom"
                 },
                 default=cls.abc_conversion_preset
             )
@@ -64,8 +66,7 @@ class AnimationAlembicLoader(plugin.Loader):
                     rotation=[90.0, 0.0, 0.0],
                     scale=[1.0, -1.0, 1.0])
         elif abc_conversion_preset == "3dsmax":
-            if unreal_pipeline.UNREAL_VERSION.major >= 5 and (
-                unreal_pipeline.UNREAL_VERSION.minor >= 4):
+            if unreal_pipeline.UNREAL_VERSION.major >= 5:
                     conversion_settings = unreal.AbcConversionSettings(
                         preset=unreal.AbcConversionPreset.MAX)
             else:
@@ -74,6 +75,26 @@ class AnimationAlembicLoader(plugin.Loader):
                     flip_u=False, flip_v=True,
                     rotation=[0.0, 0.0, 0.0],
                     scale=[1.0, -1.0, 1.0])
+        else:
+            data = get_current_project_settings()
+            preset = (
+                data["unreal"]["import_settings"]["custom"]
+            )
+            conversion_settings = unreal.AbcConversionSettings(
+                preset=unreal.AbcConversionPreset.CUSTOM,
+                flip_u=preset["flip_u"],
+                flip_v=preset["flip_v"],
+                rotation=[
+                    preset["rot_x"],
+                    preset["rot_y"],
+                    preset["rot_z"]
+                ],
+                scale=[
+                    preset["scl_x"],
+                    preset["scl_y"],
+                    preset["scl_z"]
+                ]
+            )
 
         options.sampling_settings.frame_start = loaded_options.get("frameStart")
         options.sampling_settings.frame_end = loaded_options.get("frameEnd")

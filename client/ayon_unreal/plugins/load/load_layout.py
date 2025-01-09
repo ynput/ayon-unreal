@@ -379,8 +379,8 @@ class LayoutLoader(plugin.LayoutLoader):
         sequence = None
         master_level = None
         hierarchy_dir = container.get("master_directory", "")
+        master_dir_name = get_top_hierarchy_folder(asset_dir)
         if not hierarchy_dir:
-            master_dir_name = get_top_hierarchy_folder(asset_dir)
             hierarchy_dir = f"{AYON_ROOT_DIR}/{master_dir_name}"
         if create_sequences:
             master_level = f"{hierarchy_dir}/{master_dir_name}_map.{master_dir_name}_map"

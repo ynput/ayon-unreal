@@ -12,7 +12,8 @@ def _loaded_asset_enum():
 def _abc_conversion_presets_enum():
     return [
         {"value": "maya", "label": "maya"},
-        {"value": "3dsmax", "label": "3dsmax"}
+        {"value": "3dsmax", "label": "3dsmax"},
+        {"value": "custom", "label": "custom"},
     ]
 
 
@@ -29,6 +30,17 @@ class UnrealInterchangeModel(BaseSettingsModel):
         title="path to texture pipeline",
         description="Path to the Interchange pipeline asset."
                     "Right-click asset and copy reference path.")
+
+
+class CustomAlembicPresetsModel(BaseSettingsModel):
+    flip_u: bool = SettingsField(False, title="Flip U")
+    flip_v: bool = SettingsField(True, title="Flip V")
+    rot_x: float = SettingsField(90.0, title="Rotation X")
+    rot_y: float = SettingsField(0.0, title="Rotation Y")
+    rot_z: float = SettingsField(0.0, title="Rotation Z")
+    scl_x: float = SettingsField(1.0, title="Scale X")
+    scl_y: float = SettingsField(-1.0, title="Scale Y")
+    scl_z: float = SettingsField(1.0, title="Scale Z")
 
 
 class UnrealImportModel(BaseSettingsModel):
@@ -62,12 +74,17 @@ class UnrealImportModel(BaseSettingsModel):
     abc_conversion_preset: str = SettingsField(
         "maya",
         title="Alembic Conversion Setting Presets",
-        enum_resolver=_abc_conversion_presets_enum,
         description="Presets for converting the loaded alembic "
                     "with correct UV and transform",
+        enum_resolver=_abc_conversion_presets_enum,
+        conditionalEnum=True,
         section="Load Alembic Settings"
     )
-
+    custom: CustomAlembicPresetsModel = SettingsField(
+        title="Custom Alembic Conversion Setting Presets",
+        description="Custom Presets for converting the loaded alembic",
+        default_factory=CustomAlembicPresetsModel,
+    )
     loaded_layout_dir: str = SettingsField(
         "{folder[path]}/{product[name]}",
         title="Directories for loaded layouts",
