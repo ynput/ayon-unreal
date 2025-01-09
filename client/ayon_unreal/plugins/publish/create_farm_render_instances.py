@@ -135,7 +135,7 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
         resolution_height = resolution.y
 
         output_fps = output_settings.output_frame_rate
-        fps = f"{output_fps.denominator}.{output_fps.numerator}"
+        fps = round(output_fps.numerator / output_fps.denominator, 3)
 
         render_queue_path = (
             render_settings["render_queue_path"]
@@ -206,6 +206,9 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
                 job = mrq.allocate_new_job()
                 job.map = unreal.SoftObjectPath(inst.data["master_level"])
                 job.sequence = unreal.SoftObjectPath(inst.data["sequence"])
+                sequence_uasset = unreal.EditorAssetLibrary.load_asset(inst.data["sequence"])
+                display_rate = sequence_uasset.get_display_rate()
+                fps = round(display_rate.numerator / display_rate.denominator, 3)
 
                 render_preset = inst.data['creator_attributes'].get("render_preset")
                 if render_preset:
