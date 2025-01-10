@@ -23,6 +23,8 @@ class AnimationAlembicLoader(plugin.Loader):
     # check frame padding
     loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
     show_dialog = False
+    content_plugin_enabled = False
+    content_plugin_path = []
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -32,10 +34,29 @@ class AnimationAlembicLoader(plugin.Loader):
         cls.abc_conversion_preset = unreal_settings["abc_conversion_preset"]
         cls.loaded_asset_dir = unreal_settings["loaded_asset_dir"]
         cls.show_dialog = unreal_settings["show_dialog"]
+        if unreal_settings.get("content_plugin", {}):
+            cls.content_plugin_enabled = (
+                unreal_settings["content_plugin"]["enabled"]
+            )
+            cls.content_plugin_path = (
+                unreal_settings["content_plugin"]["content_plugin_name"]
+            )
+
 
     @classmethod
     def get_options(cls, contexts):
-        return [
+        content_plugin_defs = []
+        plugin_path = cls.content_plugin_path
+        if cls.content_plugin_enabled:
+            content_plugin_defs = [
+                EnumDef(
+                    "content_plugin_name",
+                    label="Content Plugin Name",
+                    items=[path for path in plugin_path],
+                    default=plugin_path[0]
+                )
+            ]
+        return content_plugin_defs + [
             EnumDef(
                 "abc_conversion_preset",
                 label="Alembic Conversion Preset",
@@ -202,7 +223,9 @@ class AnimationAlembicLoader(plugin.Loader):
         suffix = "_CON"
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        asset_root, asset_name = unreal_pipeline.format_asset_directory(context, self.loaded_asset_dir)
+        content_plugin_name = options.get("content_plugin_name", "")
+        asset_root, asset_name = unreal_pipeline.format_asset_directory(
+            context, self.loaded_asset_dir, content_plugin_name)
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
@@ -210,10 +233,6 @@ class AnimationAlembicLoader(plugin.Loader):
 
         asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
             asset_name, asset_dir, folder_name, extension=ext)
-
-        content_plugin_path = unreal_pipeline.get_target_content_plugin_path(name, ext, container_name)
-        if content_plugin_path:
-            asset_dir = content_plugin_path
 
         container_name += suffix
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):

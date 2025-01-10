@@ -5,6 +5,7 @@ import os
 import shutil
 
 from ayon_core.pipeline import AYON_CONTAINER_ID
+from ayon_core.lib import EnumDef
 from ayon_unreal.api import plugin
 from ayon_unreal.api import pipeline as unreal_pipeline
 import unreal  # noqa
@@ -22,16 +23,37 @@ class UAssetLoader(plugin.Loader):
     extension = "uasset"
 
     loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
+    content_plugin_enabled = False
+    content_plugin_path = []
 
     @classmethod
     def apply_settings(cls, project_settings):
         super(UAssetLoader, cls).apply_settings(project_settings)
         # Apply import settings
-        cls.loaded_asset_dir = (
-            project_settings["unreal"]
-                            ["import_settings"]
-                            ["loaded_asset_dir"]
-        )
+        unreal_settings = project_settings["unreal"]["import_settings"]
+        cls.loaded_asset_dir = unreal_settings["loaded_asset_dir"]
+        if unreal_settings.get("content_plugin", {}):
+            cls.content_plugin_enabled = (
+                unreal_settings["content_plugin"]["enabled"]
+            )
+            cls.content_plugin_path = (
+                unreal_settings["content_plugin"]["content_plugin_name"]
+            )
+
+    @classmethod
+    def get_options(cls, contexts):
+        content_plugin_defs = []
+        plugin_path = cls.content_plugin_path
+        if cls.content_plugin_enabled:
+            content_plugin_defs = [
+                EnumDef(
+                    "content_plugin_name",
+                    label="Content Plugin Name",
+                    items=[path for path in plugin_path],
+                    default=plugin_path[0]
+                )
+            ]
+        return content_plugin_defs
 
     def load(self, context, name, namespace, options):
         """Load and containerise representation into Content Browser.
@@ -53,15 +75,13 @@ class UAssetLoader(plugin.Loader):
         # Create directory for asset and Ayon container
         folder_path = context["folder"]["path"]
         suffix = "_CON"
-        asset_root, asset_name = unreal_pipeline.format_asset_directory(context, self.loaded_asset_dir)
+        content_plugin_name = options.get("content_plugin_name", "")
+        asset_root, asset_name = unreal_pipeline.format_asset_directory(
+            context, self.loaded_asset_dir, content_plugin_name)
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=""
         )
-        content_plugin_path = unreal_pipeline.get_target_content_plugin_path(name, "", container_name)
-        if content_plugin_path:
-            asset_dir = content_plugin_path
-
         container_name = f"{container_name}_{suffix}"
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)

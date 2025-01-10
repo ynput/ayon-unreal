@@ -17,6 +17,14 @@ def _abc_conversion_presets_enum():
     ]
 
 
+class UnrealContentPluginModel(BaseSettingsModel):
+    enabled: bool = SettingsField(False, title="enabled")
+    content_plugin_name: list[str] = SettingsField(
+        default_factory=list,
+        title="Content Plugin Name"
+    )
+
+
 class UnrealInterchangeModel(BaseSettingsModel):
     """Define Interchange Pipeline Asset Paths"""
     enabled: bool = SettingsField(False, title="enabled")
@@ -52,6 +60,12 @@ class UnrealImportModel(BaseSettingsModel):
         title="Asset directories for loaded assets",
         description="Asset directories to store the loaded assets",
 
+    )
+
+    content_plugin: UnrealContentPluginModel = SettingsField(
+        default_factory=UnrealContentPluginModel,
+        title="Content Plugin",
+        section="Content Plugin"
     )
 
     interchange: UnrealInterchangeModel = SettingsField(
@@ -123,6 +137,10 @@ class UnrealImportModel(BaseSettingsModel):
 
 DEFAULT_IMPORT_SETTINGS = {
     "loaded_asset_dir": "{folder[path]}/{product[name]}_{version[version]}",
+    "content_plugin": {
+        "enabled": False,
+        "content_plugin_name": []
+    },
     "interchange": {
         "enabled": False,
         "pipeline_path_static_mesh": "/Game/Interchange/CustomPipeline.CustomPipeline",

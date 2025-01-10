@@ -837,7 +837,7 @@ def select_camera(sequence):
                 actor_subsys.set_actor_selection_state(actor, False)
 
 
-def format_asset_directory(context, directory_template):
+def format_asset_directory(context, directory_template, content_plugin_name=""):
     """Setting up the asset directory path and name.
     Args:
         name (str): Instance name
@@ -880,7 +880,10 @@ def format_asset_directory(context, directory_template):
         data["version"]["version"] = f"v{version:03d}"
     asset_name_with_version = set_asset_name(data)
     asset_dir = StringTemplate(directory_template).format_strict(data)
-    return f"{AYON_ROOT_DIR}/{asset_dir}", asset_name_with_version
+    root_dir = AYON_ROOT_DIR
+    if content_plugin_name:
+        root_dir = root_dir.replace("Game", content_plugin_name)
+    return f"{root_dir}/{asset_dir}", asset_name_with_version
 
 
 def set_asset_name(data):
