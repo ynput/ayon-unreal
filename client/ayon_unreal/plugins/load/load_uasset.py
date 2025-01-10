@@ -36,21 +36,22 @@ class UAssetLoader(plugin.Loader):
             cls.content_plugin_enabled = (
                 unreal_settings["content_plugin"]["enabled"]
             )
-            cls.content_plugin_path = (
-                unreal_settings["content_plugin"]["content_plugin_name"]
-            )
+            if cls.content_plugin_enabled:
+                cls.content_plugin_path = (
+                    unreal_settings["content_plugin"]["content_plugin_name"]
+                )
 
     @classmethod
     def get_options(cls, contexts):
         content_plugin_defs = []
-        plugin_path = cls.content_plugin_path
         if cls.content_plugin_enabled:
+            default_plugin = next((path for path in cls.content_plugin_path), "")
             content_plugin_defs = [
                 EnumDef(
                     "content_plugin_name",
                     label="Content Plugin Name",
-                    items=[path for path in plugin_path],
-                    default=plugin_path[0]
+                    items=[path for path in cls.content_plugin_path],
+                    default=default_plugin
                 )
             ]
         return content_plugin_defs
@@ -75,7 +76,10 @@ class UAssetLoader(plugin.Loader):
         # Create directory for asset and Ayon container
         folder_path = context["folder"]["path"]
         suffix = "_CON"
-        content_plugin_name = options.get("content_plugin_name", "")
+        content_plugin_name = options.get(
+            "content_plugin_name",
+            next((path for path in self.content_plugin_path), "")
+        )
         asset_root, asset_name = unreal_pipeline.format_asset_directory(
             context, self.loaded_asset_dir, content_plugin_name)
         tools = unreal.AssetToolsHelpers().get_asset_tools()

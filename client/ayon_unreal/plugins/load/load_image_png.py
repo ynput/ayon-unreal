@@ -52,21 +52,21 @@ class TexturePNGLoader(plugin.Loader):
             cls.content_plugin_enabled = (
                 import_settings["content_plugin"]["enabled"]
             )
-            cls.content_plugin_path = (
-                import_settings["content_plugin"]["content_plugin_name"]
-            )
-
+            if cls.content_plugin_enabled:
+                cls.content_plugin_path = (
+                    unreal_settings["content_plugin"]["content_plugin_name"]
+                )
     @classmethod
     def get_options(cls, contexts):
         content_plugin_defs = []
-        plugin_path = cls.content_plugin_path
         if cls.content_plugin_enabled:
+            default_plugin = next((path for path in cls.content_plugin_path), "")
             content_plugin_defs = [
                 EnumDef(
                     "content_plugin_name",
                     label="Content Plugin Name",
-                    items=[path for path in plugin_path],
-                    default=plugin_path[0]
+                    items=[path for path in cls.content_plugin_path],
+                    default=default_plugin
                 )
             ]
         return content_plugin_defs
@@ -193,7 +193,10 @@ class TexturePNGLoader(plugin.Loader):
         suffix = "_CON"
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        content_plugin_name = options.get("content_plugin_name", "")
+        content_plugin_name = options.get(
+            "content_plugin_name",
+            next((path for path in self.content_plugin_path), "")
+        )
         asset_root, asset_name = format_asset_directory(
             context, self.loaded_asset_dir, content_plugin_name)
 
