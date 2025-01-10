@@ -881,7 +881,7 @@ def format_asset_directory(context, directory_template, content_plugin_name=""):
     asset_name_with_version = set_asset_name(data)
     asset_dir = StringTemplate(directory_template).format_strict(data)
     root_dir = AYON_ROOT_DIR
-    if content_plugin_name:
+    if content_plugin_name and has_content_plugin_path(content_plugin_name):
         root_dir = root_dir.replace("Game", content_plugin_name)
     return f"{root_dir}/{asset_dir}", asset_name_with_version
 
@@ -1105,6 +1105,25 @@ def get_target_content_plugin_path(name, extension, container_name):
             unreal.log(f"No related content plugin path found for {asset_name}.")
 
     return None
+
+
+def has_content_plugin_path(content_plugin_name):
+    """Search if the content plugin from the ayon settings exist in
+    the Unreal project
+
+    Args:
+        content_plugin_name (str): Content plugin name
+
+    Returns:
+        str: content plugin name
+    """
+    asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
+
+    # Get all assets
+    asset_list = asset_registry.get_all_assets()
+    for package in asset_list:
+        if unreal.Paths.split(package.package_path)[0].startswith(f"/{content_plugin_name}"):
+            return content_plugin_name
 
 
 def get_top_hierarchy_folder(path):
