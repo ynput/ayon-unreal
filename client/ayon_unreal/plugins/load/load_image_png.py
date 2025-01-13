@@ -55,7 +55,7 @@ class TexturePNGLoader(plugin.Loader):
             )
             if cls.content_plugin_enabled:
                 cls.content_plugin_path = (
-                    unreal_settings["content_plugin"]["content_plugin_name"]
+                    import_settings["content_plugin"]["content_plugin_name"]
                 )
     @classmethod
     def get_options(cls, contexts):
