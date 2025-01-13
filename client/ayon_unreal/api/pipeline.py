@@ -883,8 +883,7 @@ def format_asset_directory(context, directory_template, content_plugin_name=""):
     root_dir = AYON_ROOT_DIR
     if content_plugin_name:
         root_dir = root_dir.replace("Game", content_plugin_name)
-    unreal.log("root_dir")
-    unreal.log(root_dir)
+
     return f"{root_dir}/{asset_dir}", asset_name_with_version
 
 
@@ -1304,3 +1303,24 @@ def add_track(sequence, track):
         return sequence.add_track(track)
     else:
         return sequence.add_master_track(track)
+
+
+def remove_asset_from_content_plugin(container):
+    """Remove the AYON-loaded asset from content plugin
+    (Only valid when users manually migrates the asset)
+
+    Args:
+        container (dict): container data
+    """
+    path = container["namespace"]
+    content_plugin_path = container.get("content_plugin_path", "")
+    if content_plugin_path:
+        path = path.replace(AYON_ROOT_DIR, f"/{content_plugin_path}/Ayon")
+        if unreal.EditorAssetLibrary.does_directory_exist(path):
+            container_name = container["container_name"]
+            container_path = f"{path}/{container_name}"
+            if unreal.EditorAssetLibrary.does_asset_exist(container_path):
+                container = unreal.EditorAssetLibrary.load_asset(container_path)
+                data = unreal.EditorAssetLibrary.get_metadata_tag_values(container)
+                if data["namespace"] == container["namespace"]:
+                    unreal.EditorAssetLibrary.delete_directory(path)

@@ -166,6 +166,8 @@ class YetiLoader(plugin.Loader):
             "family": context["product"]["productType"],
             "project_name": context["project"]["name"]
         }
+        if content_plugin_name:
+            data["content_plugin_name"] = content_plugin_name
 
         if asset_path:
             unreal.EditorAssetLibrary.rename_asset(
@@ -234,3 +236,4 @@ class YetiLoader(plugin.Loader):
         path = container["namespace"]
         if unreal.EditorAssetLibrary.does_directory_exist(path):
             unreal.EditorAssetLibrary.delete_directory(path)
+        unreal_pipeline.remove_asset_from_content_plugin(container)

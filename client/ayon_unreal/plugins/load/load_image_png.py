@@ -9,7 +9,8 @@ from ayon_unreal.api.pipeline import (
     imprint,
     has_asset_directory_pattern_matched,
     format_asset_directory,
-    get_target_content_plugin_path
+    get_target_content_plugin_path,
+    remove_asset_from_content_plugin
 )
 
 import unreal  # noqa
@@ -153,7 +154,8 @@ class TexturePNGLoader(plugin.Loader):
         asset_name,
         repre_entity,
         product_type,
-        project_name
+        project_name,
+        content_plugin_name=None
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -171,6 +173,8 @@ class TexturePNGLoader(plugin.Loader):
             "family": product_type,
             "project_name": project_name
         }
+        if content_plugin_name:
+            data["content_plugin_name"] = content_plugin_name
         imprint(f"{asset_dir}/{container_name}", data)
 
     def load(self, context, name, namespace, options):
@@ -231,7 +235,8 @@ class TexturePNGLoader(plugin.Loader):
             asset_name,
             context["representation"],
             context["product"]["productType"],
-            context["project"]["name"]
+            context["project"]["name"],
+            content_plugin_name
         )
 
         asset_contents = unreal.EditorAssetLibrary.list_assets(
@@ -299,3 +304,5 @@ class TexturePNGLoader(plugin.Loader):
         path = container["namespace"]
         if unreal.EditorAssetLibrary.does_directory_exist(path):
             unreal.EditorAssetLibrary.delete_directory(path)
+
+        remove_asset_from_content_plugin(container)

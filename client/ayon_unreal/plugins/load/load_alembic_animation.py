@@ -170,7 +170,8 @@ class AnimationAlembicLoader(plugin.Loader):
         frameEnd,
         representation,
         product_type,
-        project_name
+        project_name,
+        content_plugin_name=None
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -190,6 +191,8 @@ class AnimationAlembicLoader(plugin.Loader):
             "family": product_type,
             "project_name": project_name
         }
+        if content_plugin_name:
+            data["content_plugin_name"] = content_plugin_name
         unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
 
     def load(self, context, name, namespace, options):
@@ -271,7 +274,8 @@ class AnimationAlembicLoader(plugin.Loader):
             folder_entity["attrib"]["frameEnd"],
             context["representation"],
             product_type,
-            context["project"]["name"]
+            context["project"]["name"],
+            content_plugin_name
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
@@ -354,3 +358,4 @@ class AnimationAlembicLoader(plugin.Loader):
         path = container["namespace"]
         if unreal.EditorAssetLibrary.does_directory_exist(path):
             unreal.EditorAssetLibrary.delete_directory(path)
+        unreal_pipeline.remove_asset_from_content_plugin(container)

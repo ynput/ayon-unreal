@@ -10,7 +10,8 @@ from ayon_unreal.api.pipeline import (
     has_asset_directory_pattern_matched,
     format_asset_directory,
     get_target_content_plugin_path,
-    UNREAL_VERSION
+    UNREAL_VERSION,
+    remove_asset_from_content_plugin
 )
 from ayon_core.settings import get_current_project_settings
 from ayon_core.lib import EnumDef, BoolDef
@@ -205,7 +206,8 @@ class StaticMeshAlembicLoader(plugin.Loader):
         asset_name,
         representation,
         product_type,
-        project_name
+        project_name,
+        content_plugin_name=None
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -223,6 +225,8 @@ class StaticMeshAlembicLoader(plugin.Loader):
             "family": product_type,
             "project_name": project_name
         }
+        if content_plugin_name:
+            data["content_plugin_name"] = content_plugin_name
         imprint(f"{asset_dir}/{container_name}", data)
 
     def load(self, context, name, namespace, options):
@@ -284,7 +288,8 @@ class StaticMeshAlembicLoader(plugin.Loader):
             asset_name,
             context["representation"],
             product_type,
-            context["project"]["name"]
+            context["project"]["name"],
+            content_plugin_name
         )
         if asset_path:
             unreal.EditorAssetLibrary.rename_asset(
@@ -358,3 +363,4 @@ class StaticMeshAlembicLoader(plugin.Loader):
         path = container["namespace"]
         if unreal.EditorAssetLibrary.does_directory_exist(path):
             unreal.EditorAssetLibrary.delete_directory(path)
+        remove_asset_from_content_plugin(container)
