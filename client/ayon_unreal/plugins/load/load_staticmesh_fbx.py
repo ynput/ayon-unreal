@@ -49,12 +49,12 @@ class StaticMeshFBXLoader(plugin.Loader):
         )
         cls.loaded_asset_dir = import_settings.get(
             "loaded_asset_dir", cls.loaded_asset_dir)
-        if unreal_settings.get("content_plugin", {}):
+        if import_settings.get("content_plugin", {}):
             cls.content_plugin_enabled = (
-                unreal_settings["content_plugin"]["enabled"]
+                import_settings["content_plugin"]["enabled"]
             )
             cls.content_plugin_path = (
-                unreal_settings["content_plugin"]["content_plugin_name"]
+                import_settings["content_plugin"]["content_plugin_name"]
             )
 
     @classmethod
