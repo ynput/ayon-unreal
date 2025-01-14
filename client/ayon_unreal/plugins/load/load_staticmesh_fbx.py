@@ -4,14 +4,13 @@ import os
 
 from ayon_core.pipeline import AYON_CONTAINER_ID
 
-from ayon_core.lib import EnumDef
+from ayon_core.lib import BoolDef, EnumDef
 from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
     create_container,
     imprint,
     has_asset_directory_pattern_matched,
     format_asset_directory,
-    get_target_content_plugin_path,
     remove_asset_from_content_plugin
 )
 import unreal  # noqa
@@ -54,25 +53,27 @@ class StaticMeshFBXLoader(plugin.Loader):
             cls.content_plugin_enabled = (
                 unreal_settings["content_plugin"]["enabled"]
             )
-            if cls.content_plugin_enabled:
-                cls.content_plugin_path = (
-                    unreal_settings["content_plugin"]["content_plugin_name"]
-                )
+            cls.content_plugin_path = (
+                unreal_settings["content_plugin"]["content_plugin_name"]
+            )
 
     @classmethod
     def get_options(cls, contexts):
-        content_plugin_defs = []
-        if cls.content_plugin_enabled:
-            default_plugin = next((path for path in cls.content_plugin_path), "")
-            content_plugin_defs = [
-                EnumDef(
-                    "content_plugin_name",
-                    label="Content Plugin Name",
-                    items=[path for path in cls.content_plugin_path],
-                    default=default_plugin
-                )
-            ]
-        return content_plugin_defs
+        default_content_plugin = next(
+            (path for path in cls.content_plugin_path), "")
+        return [
+            BoolDef(
+                "content_plugin_enabled",
+                label="Content Plugin",
+                default=cls.content_plugin_enabled
+            ),
+            EnumDef(
+                "content_plugin_name",
+                label="Content Plugin Name",
+                items=[path for path in cls.content_plugin_path],
+                default=default_content_plugin
+            )
+        ]
 
     @classmethod
     def get_task(cls, filename, asset_dir, asset_name, replace):
@@ -201,12 +202,15 @@ class StaticMeshFBXLoader(plugin.Loader):
         suffix = "_CON"
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
+        use_content_plugin = options.get("content_plugin_enabled", False)
         content_plugin_name = options.get(
             "content_plugin_name",
             next((path for path in self.content_plugin_path), "")
         )
         asset_root, asset_name = format_asset_directory(
-            context, self.loaded_asset_dir, content_plugin_name)
+            context, self.loaded_asset_dir,
+            use_content_plugin, content_plugin_name
+        )
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
@@ -260,7 +264,13 @@ class StaticMeshFBXLoader(plugin.Loader):
         suffix = "_CON"
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        asset_root, asset_name = format_asset_directory(context, self.loaded_asset_dir)
+        content_plugin_name = container.get("content_plugin_name", "")
+
+        asset_root, asset_name = format_asset_directory(
+            context, self.loaded_asset_dir,
+            use_content_plugin=bool(content_plugin_name),
+            content_plugin_name=content_plugin_name
+        )
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
@@ -269,10 +279,6 @@ class StaticMeshFBXLoader(plugin.Loader):
             has_asset_directory_pattern_matched(asset_name, asset_dir, name, extension=ext)
             if not self.use_interchange else None
         )
-
-        content_plugin_path = get_target_content_plugin_path(name, ext, container_name)
-        if content_plugin_path:
-            asset_dir = content_plugin_path
 
         container_name += suffix
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):

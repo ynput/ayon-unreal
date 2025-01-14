@@ -837,13 +837,14 @@ def select_camera(sequence):
                 actor_subsys.set_actor_selection_state(actor, False)
 
 
-def format_asset_directory(context, directory_template, content_plugin_name=""):
+def format_asset_directory(context, directory_template,
+                           use_content_plugin=False, content_plugin_name=""):
     """Setting up the asset directory path and name.
     Args:
-        name (str): Instance name
         context (dict): context
         directory_template (str): directory template path
-        extension (str, optional): file extension. Defaults to "abc".
+        use_content_plugin (bool): whether content plugin is used for the asset directory
+        content_plugin_name (str, optional): content plugin name.
     Returns:
         tuple[str, str]: asset directory, asset name
     """
@@ -881,7 +882,7 @@ def format_asset_directory(context, directory_template, content_plugin_name=""):
     asset_name_with_version = set_asset_name(data)
     asset_dir = StringTemplate(directory_template).format_strict(data)
     root_dir = AYON_ROOT_DIR
-    if content_plugin_name:
+    if use_content_plugin and content_plugin_name:
         root_dir = root_dir.replace("Game", content_plugin_name)
 
     return f"{root_dir}/{asset_dir}", asset_name_with_version
@@ -1065,45 +1066,6 @@ def has_asset_directory_pattern_matched(asset_name, asset_dir, name, extension=N
     is_existing_version_folder_matched = re.match(pattern, existing_version_folder)
     if not is_version_folder_matched or not is_existing_version_folder_matched:
         return asset_path
-
-    return None
-
-
-def get_target_content_plugin_path(name, extension, container_name):
-    """Get target content plugin path
-
-    Args:
-        name (str): Product Name
-        extension (str): extension
-        container_name(str): container name
-
-    Returns:
-        unreal.Path: the directory of the related asset
-            in the content plugin
-    """
-    # Get the Asset Registry
-    asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
-
-    # Get all assets
-    asset_list = asset_registry.get_all_assets()
-    game_assets = [
-        asset.package_path for asset
-        in asset_registry.get_assets_by_path('/Game', recursive=True)
-    ]
-    pattern = rf"{name}_\d{{3}}"
-    if extension:
-        pattern = rf"{name}_v\d{{3}}_{extension}"
-    for package in asset_list:
-        asset_name = str(package.asset_name)
-        is_content_version_folder_matched = re.match(pattern, asset_name)
-        if is_content_version_folder_matched and (
-            package.package_path not in game_assets
-            ):
-                unreal.log(f"asset_name: {asset_name}")
-
-                return f"{unreal.Paths.split(package.package_path)[0]}/{container_name}"
-        else:
-            unreal.log(f"No related content plugin path found for {asset_name}.")
 
     return None
 

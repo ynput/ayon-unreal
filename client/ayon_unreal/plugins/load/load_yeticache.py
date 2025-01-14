@@ -3,7 +3,7 @@
 import json
 import os
 from ayon_core.pipeline import AYON_CONTAINER_ID
-from ayon_core.lib import EnumDef
+from ayon_core.lib import BoolDef, EnumDef
 from ayon_unreal.api import plugin
 from ayon_unreal.api import pipeline as unreal_pipeline
 import unreal  # noqa
@@ -29,25 +29,27 @@ class YetiLoader(plugin.Loader):
             cls.content_plugin_enabled = (
                 unreal_settings["content_plugin"]["enabled"]
             )
-            if cls.content_plugin_enabled:
-                cls.content_plugin_path = (
-                    unreal_settings["content_plugin"]["content_plugin_name"]
-                )
+            cls.content_plugin_path = (
+                unreal_settings["content_plugin"]["content_plugin_name"]
+            )
 
     @classmethod
     def get_options(cls, contexts):
-        content_plugin_defs = []
-        if cls.content_plugin_enabled:
-            default_plugin = next((path for path in cls.content_plugin_path), "")
-            content_plugin_defs = [
-                EnumDef(
-                    "content_plugin_name",
-                    label="Content Plugin Name",
-                    items=[path for path in cls.content_plugin_path],
-                    default=default_plugin
-                )
-            ]
-        return content_plugin_defs
+        default_content_plugin = next(
+            (path for path in cls.content_plugin_path), "")
+        return [
+            BoolDef(
+                "content_plugin_enabled",
+                label="Content Plugin",
+                default=cls.content_plugin_enabled
+            ),
+            EnumDef(
+                "content_plugin_name",
+                label="Content Plugin Name",
+                items=[path for path in cls.content_plugin_path],
+                default=default_content_plugin
+            )
+        ]
 
     @staticmethod
     def get_task(filename, asset_dir, asset_name, replace):
@@ -118,12 +120,15 @@ class YetiLoader(plugin.Loader):
         suffix = "_CON"
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
+        use_content_plugin = options.get("content_plugin_enabled", False)
         content_plugin_name = options.get(
             "content_plugin_name",
             next((path for path in self.content_plugin_path), "")
         )
         asset_root, asset_name = unreal_pipeline.format_asset_directory(
-            context, self.loaded_asset_dir, content_plugin_name)
+            context, self.loaded_asset_dir,
+            use_content_plugin, content_plugin_name
+        )
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
@@ -189,15 +194,9 @@ class YetiLoader(plugin.Loader):
         repre_entity = context["representation"]
         asset_name = container["asset_name"]
         source_path = self.filepath_from_context(context)
-        content_asset_name, ext = os.path.splitext(os.path.basename(source_path))
-        ext = ext.lstrip(".")
         destination_path = container["namespace"]
         asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
             asset_name, destination_path, context["product"]["name"])
-        content_plugin_path = unreal_pipeline.get_target_content_plugin_path(
-            context["product"]["name"], ext, content_asset_name)
-        if content_plugin_path:
-            destination_path = content_plugin_path
 
         task = None
         if asset_path:

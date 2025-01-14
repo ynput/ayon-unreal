@@ -4,7 +4,7 @@ import json
 import os
 import ayon_api
 import unreal
-from ayon_core.lib import EnumDef
+from ayon_core.lib import BoolDef, EnumDef
 from ayon_core.pipeline import (AYON_CONTAINER_ID,
                                 get_current_project_name,
                                 load_container,
@@ -44,25 +44,27 @@ class AnimationFBXLoader(plugin.Loader):
             cls.content_plugin_enabled = (
                 unreal_settings["content_plugin"]["enabled"]
             )
-            if cls.content_plugin_enabled:
-                cls.content_plugin_path = (
-                    unreal_settings["content_plugin"]["content_plugin_name"]
-                )
+            cls.content_plugin_path = (
+                unreal_settings["content_plugin"]["content_plugin_name"]
+            )
 
     @classmethod
     def get_options(cls, contexts):
-        content_plugin_defs = []
-        if cls.content_plugin_enabled:
-            default_plugin = next((path for path in cls.content_plugin_path), "")
-            content_plugin_defs = [
-                EnumDef(
-                    "content_plugin_name",
-                    label="Content Plugin Name",
-                    items=[path for path in cls.content_plugin_path],
-                    default=default_plugin
-                )
-            ]
-        return content_plugin_defs
+        default_content_plugin = next(
+            (path for path in cls.content_plugin_path), "")
+        return [
+            BoolDef(
+                "content_plugin_enabled",
+                label="Content Plugin",
+                default=cls.content_plugin_enabled
+            ),
+            EnumDef(
+                "content_plugin_name",
+                label="Content Plugin Name",
+                items=[path for path in cls.content_plugin_path],
+                default=default_content_plugin
+            )
+        ]
 
     def _import_latest_skeleton(self, version_ids):
         version_ids = set(version_ids)
@@ -438,12 +440,15 @@ class AnimationFBXLoader(plugin.Loader):
 
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
+        use_content_plugin = options.get("content_plugin_enabled", False)
         content_plugin_name = options.get(
             "content_plugin_name",
             next((path for path in self.content_plugin_path), "")
         )
         asset_root, asset_name = unreal_pipeline.format_asset_directory(
-            context, self.loaded_asset_dir, content_plugin_name)
+            context, self.loaded_asset_dir,
+            use_content_plugin, content_plugin_name
+        )
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
@@ -514,7 +519,13 @@ class AnimationFBXLoader(plugin.Loader):
         suffix = "_CON"
         source_path = self.filepath_from_context(context)
         ext = os.path.splitext(source_path)[-1].lstrip(".")
-        asset_root, asset_name = unreal_pipeline.format_asset_directory(context, self.loaded_asset_dir)
+        content_plugin_name = container.get("content_plugin_name", "")
+
+        asset_root, asset_name = unreal_pipeline.format_asset_directory(
+            context, self.loaded_asset_dir,
+            use_content_plugin=bool(content_plugin_name),
+            content_plugin_name=content_plugin_name
+        )
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
@@ -522,12 +533,6 @@ class AnimationFBXLoader(plugin.Loader):
         container_name += suffix
         asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
             asset_name, asset_dir, context["product"]["name"])
-
-        content_plugin_path = unreal_pipeline.get_target_content_plugin_path(
-            context["product"]["name"], ext
-        )
-        if content_plugin_path:
-            asset_dir = content_plugin_path
 
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             EditorAssetLibrary.make_directory(asset_dir)
