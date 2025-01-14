@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Loader for Yeti Cache."""
 import json
-
+import os
 from ayon_core.pipeline import (
     get_representation_path,
     AYON_CONTAINER_ID
@@ -19,6 +19,17 @@ class YetiLoader(plugin.Loader):
     representations = {"abc"}
     icon = "pagelines"
     color = "orange"
+
+    loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
+    @classmethod
+    def apply_settings(cls, project_settings):
+        super(YetiLoader, cls).apply_settings(project_settings)
+        # Apply import settings
+        cls.loaded_asset_dir = (
+            project_settings["unreal"]
+                            ["import_settings"]
+                            ["loaded_asset_dir"]
+        )
 
     @staticmethod
     def get_task(filename, asset_dir, asset_name, replace):
@@ -85,30 +96,22 @@ class YetiLoader(plugin.Loader):
             raise RuntimeError("Groom plugin is not activated.")
 
         # Create directory for asset and Ayon container
-        root = unreal_pipeline.AYON_ASSET_DIR
         folder_path = context["folder"]["path"]
-        folder_name = context["folder"]["name"]
         suffix = "_CON"
-        asset_name = f"{folder_name}_{name}" if folder_name else f"{name}"
+        path = self.filepath_from_context(context)
+        ext = os.path.splitext(path)[-1].lstrip(".")
+        asset_root, asset_name = unreal_pipeline.format_asset_directory(context, self.loaded_asset_dir)
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{root}/{folder_name}/{name}", suffix="")
+            asset_root, suffix=f"_{ext}")
 
-        unique_number = 1
-        while unreal.EditorAssetLibrary.does_directory_exist(
-            f"{asset_dir}_{unique_number:02}"
-        ):
-            unique_number += 1
-
-        asset_dir = f"{asset_dir}_{unique_number:02}"
-        container_name = f"{container_name}_{unique_number:02}{suffix}"
+        container_name = f"{container_name}_{suffix}"
         asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
             asset_name, asset_dir, name)
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
         task = None
-        path = self.filepath_from_context(context)
         if asset_path:
             loaded_asset_dir = unreal.Paths.split(asset_path)[0]
             task = self.get_task(path, loaded_asset_dir, asset_name, True)
@@ -138,7 +141,8 @@ class YetiLoader(plugin.Loader):
             "product_type": context["product"]["productType"],
             # TODO these shold be probably removed
             "asset": folder_path,
-            "family": context["product"]["productType"]
+            "family": context["product"]["productType"],
+            "project_name": context["project"]["name"]
         }
 
         if asset_path:
@@ -174,7 +178,8 @@ class YetiLoader(plugin.Loader):
             container_path,
             {
                 "representation": repre_entity["id"],
-                "parent": repre_entity["versionId"]
+                "parent": repre_entity["versionId"],
+                "project_name": context["project"]["name"]
             }
         )
 

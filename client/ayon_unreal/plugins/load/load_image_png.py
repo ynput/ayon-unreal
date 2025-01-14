@@ -7,10 +7,10 @@ from ayon_core.pipeline import (
 )
 from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
-    AYON_ASSET_DIR,
     create_container,
     imprint,
-    has_asset_directory_pattern_matched
+    has_asset_directory_pattern_matched,
+    format_asset_directory
 )
 
 import unreal  # noqa
@@ -22,32 +22,31 @@ class TexturePNGLoader(plugin.Loader):
     product_types = {"image", "texture", "render"}
     label = "Import image texture 2d"
     representations = {"*"}
-    extensions = {"png", "jpg", "tiff"}
+    extensions = {"png", "jpg", "tiff", "exr"}
     icon = "wallpaper"
     color = "orange"
-
-    root = AYON_ASSET_DIR
 
     # Defined by settings
     use_interchange = False
     show_dialog = False
     pipeline_path = ""
+    loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
 
-    @classmethod  
-    def apply_settings(cls, project_settings):  
-        super(TexturePNGLoader, cls).apply_settings(project_settings)  
-        
-        # Apply import settings  
-        import_settings = (  
-            project_settings.get("unreal", {}).get("import_settings", {})  
-        )  
-        cls.use_interchange = import_settings.get("use_interchange", 
-                                                  cls.use_interchange)  
+    @classmethod
+    def apply_settings(cls, project_settings):
+        super(TexturePNGLoader, cls).apply_settings(project_settings)
+        unreal_settings = project_settings.get("unreal", {})
+        # Apply import settings
+        import_settings = unreal_settings.get("import_settings", {})
+        cls.use_interchange = import_settings.get("interchange", {}).get(
+            "enabled", cls.use_interchange
+        )
         cls.show_dialog = import_settings.get("show_dialog", cls.show_dialog)
-        cls.pipeline_path = import_settings.get("interchange", {}).get(  
-            "pipeline_path_static_mesh", cls.pipeline_path  
-        )  
-
+        cls.pipeline_path = import_settings.get("interchange", {}).get(
+            "pipeline_path_static_mesh", cls.pipeline_path
+        )
+        cls.loaded_asset_dir = import_settings.get(
+            "loaded_asset_dir", cls.loaded_asset_dir)
 
     @classmethod
     def get_task(cls, filename, asset_dir, asset_name, replace):
@@ -65,11 +64,11 @@ class TexturePNGLoader(plugin.Loader):
         return task
 
     @classmethod
-    def import_and_containerize(  
+    def import_and_containerize(
         self, filepath, asset_dir, asset_name, container_name, asset_path=None
-    ):  
-        if self.use_interchange:  
-            print("Import using interchange method")  
+    ):
+        if self.use_interchange:
+            print("Import using interchange method")
 
             unreal.SystemLibrary.execute_console_command(
                 None, "Interchange.FeatureFlags.Import.PNG 1")
@@ -77,6 +76,8 @@ class TexturePNGLoader(plugin.Loader):
                 None, "Interchange.FeatureFlags.Import.JPG 1")
             unreal.SystemLibrary.execute_console_command(
                 None, "Interchange.FeatureFlags.Import.TIFF 1")
+            unreal.SystemLibrary.execute_console_command(
+                None, "Interchange.FeatureFlags.Import.EXR 1")
 
             import_assetparameters = unreal.ImportAssetParameters()
             editor_asset_subsystem = unreal.EditorAssetSubsystem()
@@ -85,11 +86,11 @@ class TexturePNGLoader(plugin.Loader):
 
             # The path to the Interchange asset
             tmp_pipeline_path = "/Game/tmp"
-            pipeline = editor_asset_subsystem.duplicate_asset(
-                self.pipeline_path, tmp_pipeline_path)
-
-            # Interchange settings here
-            pipeline.asset_name = asset_name
+            # interchange settings here
+            unreal.EditorAssetLibrary.rename_asset(
+                f"{self.pipeline_path}",
+                f"{tmp_pipeline_path}/{asset_name}.{asset_name}"
+            )
 
             import_assetparameters.override_pipelines.append(
                 unreal.SoftObjectPath(f"{tmp_pipeline_path}.tmp"))
@@ -122,13 +123,14 @@ class TexturePNGLoader(plugin.Loader):
                 create_container(container=container_name, path=asset_dir)
 
     def imprint(
-            self,
-            folder_path,
-            asset_dir,
-            container_name,
-            asset_name,
-            repre_entity,
-            product_type
+        self,
+        folder_path,
+        asset_dir,
+        container_name,
+        asset_name,
+        repre_entity,
+        product_type,
+        project_name
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -143,7 +145,8 @@ class TexturePNGLoader(plugin.Loader):
             "product_type": product_type,
             # TODO these shold be probably removed
             "asset": folder_path,
-            "family": product_type
+            "family": product_type,
+            "project_name": project_name
         }
         imprint(f"{asset_dir}/{container_name}", data)
 
@@ -164,22 +167,14 @@ class TexturePNGLoader(plugin.Loader):
         """
         # Create directory for asset and Ayon container
         folder_path = context["folder"]["path"]
-        folder_name = context["folder"]["name"]
         suffix = "_CON"
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        asset_name = f"{folder_name}_{name}_{ext}" if folder_name else f"{name}_{ext}"
-        version = context["version"]["version"]
-        # Check if version is hero version and use different name
-        if version < 0:
-            name_version = f"{name}_hero"
-        else:
-            name_version = f"{name}_v{version:03d}"
+        asset_root, asset_name = format_asset_directory(context, self.loaded_asset_dir)
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{self.root}/{folder_name}/{name_version}", suffix=f"_{ext}"
-        )
+            asset_root, suffix=f"_{ext}")
 
         container_name += suffix
         asset_path = (
@@ -205,7 +200,8 @@ class TexturePNGLoader(plugin.Loader):
             container_name,
             asset_name,
             context["representation"],
-            context["product"]["productType"]
+            context["product"]["productType"],
+            context["project"]["name"]
         )
 
         asset_contents = unreal.EditorAssetLibrary.list_assets(
@@ -218,30 +214,22 @@ class TexturePNGLoader(plugin.Loader):
 
     def update(self, container, context):
         folder_path = context["folder"]["path"]
-        folder_name = context["folder"]["name"]
-        product_name = context["product"]["name"]
         product_type = context["product"]["productType"]
-        version = context["version"]["version"]
         repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
+        ext = os.path.splitext(path)[-1].lstrip(".")
 
         # Create directory for asset and Ayon container
         suffix = "_CON"
-        asset_name = product_name
-        if folder_name:
-            asset_name = f"{folder_name}_{product_name}"
-        # Check if version is hero version and use different name
-        if version < 0:
-            name_version = f"{product_name}_hero"
-        else:
-            name_version = f"{product_name}_v{version:03d}"
+        asset_root, asset_name = format_asset_directory(context, self.loaded_asset_dir)
+
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{self.root}/{folder_name}/{name_version}", suffix="")
+            asset_root, suffix=f"_{ext}")
 
         container_name += suffix
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
-        path = get_representation_path(repre_entity)
 
         self.import_and_containerize(path, asset_dir, asset_name, container_name)
 
@@ -251,7 +239,8 @@ class TexturePNGLoader(plugin.Loader):
             container_name,
             asset_name,
             repre_entity,
-            product_type
+            product_type,
+            context["project"]["name"]
         )
 
         asset_contents = unreal.EditorAssetLibrary.list_assets(

@@ -37,28 +37,29 @@ def _job_finish_callback(job, success):
     unreal.log("Individual job completed.")
 
 
-def get_render_config(project_name, project_settings=None):
+def get_render_config(project_name, project_render_settings=None):
     """Returns Unreal asset from render config.
 
     Expects configured location of render config set in Settings. This path
     must contain stored render config in Unreal project
     Args:
         project_name (str):
-        project_settings (dict): Settings from get_project_settings
+        project_settings (dict): Project render settings from get_project_settings
     Returns
         (str, uasset): path and UAsset
     Raises:
         RuntimeError if no path to config is set
     """
-    if not project_settings:
+    if not project_render_settings:
         project_settings = get_project_settings(project_name)
+        project_render_settings = project_settings["unreal"]["unreal_setup"]
 
     ar = unreal.AssetRegistryHelpers.get_asset_registry()
-    config_path = project_settings["unreal"]["render_config_path"]
+    config_path = project_render_settings["render_config_path"]
 
     if not config_path:
         raise RuntimeError("Please provide location for stored render "
-            "config in `ayon+settings://unreal/render_config_path`")
+            "config in `ayon+settings://unreal/render_setup/render_config_path`")
 
     unreal.log(f"Configured config path {config_path}")
     if not unreal.EditorAssetLibrary.does_asset_exist(config_path):
@@ -152,7 +153,8 @@ def start_rendering():
     ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
     project_settings = get_project_settings(project_name)
-    _, config = get_render_config(project_name, project_settings)
+    render_settings = project_settings["unreal"]["render_setup"]
+    _, config = get_render_config(project_name, render_settings)
 
     les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
     current_level = les.get_current_level()
@@ -229,8 +231,8 @@ def start_rendering():
             job_config.find_or_add_setting_by_class(
                 unreal.MoviePipelineDeferredPassBase)
 
-            render_format = project_settings.get("unreal").get("render_format",
-                                                               "png")
+            render_format = render_settings.get("render_format",
+                                                "png")
 
             set_output_extension_from_settings(render_format,
                                                job_config)
@@ -239,9 +241,7 @@ def start_rendering():
     if queue.get_jobs():
         global executor
         executor = unreal.MoviePipelinePIEExecutor()
-
-        preroll_frames = project_settings.get("unreal").get("preroll_frames",
-                                                            0)
+        preroll_frames = render_settings.get("preroll_frames", 0)
 
         settings = unreal.MoviePipelinePIEExecutorSettings()
         settings.set_editor_property(

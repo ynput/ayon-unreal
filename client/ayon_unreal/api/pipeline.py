@@ -3,6 +3,7 @@ import os
 import re
 import json
 import clique
+import copy
 import logging
 from typing import List, Any
 from contextlib import contextmanager
@@ -22,6 +23,7 @@ from ayon_core.pipeline import (
     AYON_CONTAINER_ID,
     get_current_project_name,
 )
+from ayon_core.lib import StringTemplate
 from ayon_core.pipeline.context_tools import (
     get_current_folder_entity
 )
@@ -35,6 +37,7 @@ import unreal  # noqa
 logger = logging.getLogger("ayon_core.hosts.unreal")
 
 AYON_CONTAINERS = "AyonContainers"
+AYON_ROOT_DIR = "/Game/Ayon"
 AYON_ASSET_DIR = "/Game/Ayon/Assets"
 CONTEXT_CONTAINER = "Ayon/context.json"
 UNREAL_VERSION = semver.VersionInfo(
@@ -509,7 +512,7 @@ def get_subsequences(sequence: unreal.LevelSequence):
         list(unreal.LevelSequence): List of subsequences
 
     """
-    tracks = sequence.get_master_tracks()
+    tracks = get_tracks(sequence)
     subscene_track = next(
         (
             t
@@ -527,7 +530,7 @@ def set_sequence_hierarchy(
     seq_i, seq_j, max_frame_i, min_frame_j, max_frame_j, map_paths
 ):
     # Get existing sequencer tracks or create them if they don't exist
-    tracks = seq_i.get_master_tracks()
+    tracks = get_tracks(seq_i)
     subscene_track = None
     visibility_track = None
     for t in tracks:
@@ -537,10 +540,10 @@ def set_sequence_hierarchy(
                 unreal.MovieSceneLevelVisibilityTrack.static_class()):
             visibility_track = t
     if not subscene_track:
-        subscene_track = seq_i.add_master_track(unreal.MovieSceneSubTrack)
+        subscene_track = add_track(seq_i, unreal.MovieSceneSubTrack)
     if not visibility_track:
-        visibility_track = seq_i.add_master_track(
-            unreal.MovieSceneLevelVisibilityTrack)
+        visibility_track = add_track(
+            seq_i, unreal.MovieSceneLevelVisibilityTrack)
 
     # Create the sub-scene section
     subscenes = subscene_track.get_sections()
@@ -640,7 +643,7 @@ def generate_sequence(h, h_dir):
     sequence.set_view_range_start(min_frame / fps)
     sequence.set_view_range_end(max_frame / fps)
 
-    tracks = sequence.get_master_tracks()
+    tracks = get_tracks(sequence)
     track = None
     for t in tracks:
         if (t.get_class() ==
@@ -648,10 +651,18 @@ def generate_sequence(h, h_dir):
             track = t
             break
     if not track:
-        track = sequence.add_master_track(
-            unreal.MovieSceneCameraCutTrack)
+        track = add_track(sequence, unreal.MovieSceneCameraCutTrack)
 
     return sequence, (min_frame, max_frame)
+
+
+def find_common_name(asset_name):
+    # Find the common prefix
+    prefix_match = re.match(r"^(.*?)(\d+)(.*?)$", asset_name)
+    if not prefix_match:
+        return
+    name, _, ext = prefix_match.groups()
+    return f"{name}_{ext}"
 
 
 def _get_comps_and_assets(
@@ -677,7 +688,8 @@ def _get_comps_and_assets(
     for a in old_assets:
         asset = unreal.EditorAssetLibrary.load_asset(a)
         if isinstance(asset, asset_class):
-            selected_old_assets[asset.get_name()] = asset
+            asset_name = find_common_name(asset.get_name())
+            selected_old_assets[asset_name] = asset
 
     # Get all the static meshes among the new assets in a dictionary with
     # the name as key
@@ -685,7 +697,8 @@ def _get_comps_and_assets(
     for a in new_assets:
         asset = unreal.EditorAssetLibrary.load_asset(a)
         if isinstance(asset, asset_class):
-            selected_new_assets[asset.get_name()] = asset
+            asset_name = find_common_name(asset.get_name())
+            selected_new_assets[asset_name] = asset
 
     return components, selected_old_assets, selected_new_assets
 
@@ -700,6 +713,15 @@ def replace_static_mesh_actors(old_assets, new_assets, selected):
         new_assets,
         selected
     )
+    unreal.log("static_mesh_comps")
+    unreal.log(static_mesh_comps)
+
+    unreal.log("old_meshes")
+    unreal.log(old_meshes)
+
+    unreal.log("new_meshes")
+    unreal.log(old_meshes)
+
 
     for old_name, old_mesh in old_meshes.items():
         new_mesh = new_meshes.get(old_name)
@@ -824,6 +846,78 @@ def select_camera(sequence):
                 actor_subsys.set_actor_selection_state(actor, False)
 
 
+def format_asset_directory(context, directory_template):
+    """Setting up the asset directory path and name.
+    Args:
+        name (str): Instance name
+        context (dict): context
+        directory_template (str): directory template path
+        extension (str, optional): file extension. Defaults to "abc".
+    Returns:
+        tuple[str, str]: asset directory, asset name
+    """
+
+    data = copy.deepcopy(context)
+    if "{product[type]}" in directory_template:
+        unreal.warning(
+            "Deprecated settings: AYON is using settings "
+            "that won't work in future releases. "
+            "Details: {product[type]} in the template should "
+            "be replaced with {product[productType]}."
+        )
+        directory_template = directory_template.replace(
+            "{product[type]}", "{product[productType]}")
+
+    if "{folder[type]}" in directory_template:
+        unreal.warning(
+            "Deprecated settings: AYON is using settings "
+            "that won't work in future releases. "
+            "Details: {folder[type]} in the template should "
+            "be replaced with {folder[folderType]}."
+        )
+        directory_template = directory_template.replace(
+            "{folder[type]}", "{folder[folderType]}")
+
+    version = data["version"]["version"]
+
+    # if user set {version[version]},
+    # the copied data from data["version"]["version"] convert
+    # to set the version of the exclusive version folder
+    if version < 0:
+        data["version"]["version"] = "hero"
+    else:
+        data["version"]["version"] = f"v{version:03d}"
+    asset_name_with_version = set_asset_name(data)
+    asset_dir = StringTemplate(directory_template).format_strict(data)
+    return f"{AYON_ROOT_DIR}/{asset_dir}", asset_name_with_version
+
+
+def set_asset_name(data):
+    """Set the name of the asset during loading
+
+    Args:
+        folder_name (str): folder name
+        name (str): instance name
+        extension (str): extension
+
+    Returns:
+        str: asset name
+    """
+    asset_name = None,
+    name = data["product"]["name"]
+    version = data["version"]["version"]
+    folder_name = data["folder"]["name"]
+    extension = data["representation"]["name"]
+    if not extension:
+        asset_name = name
+    elif folder_name:
+        asset_name = "{}_{}_{}_{}".format(
+            folder_name, name, version, extension)
+    else:
+        asset_name = "{}_{}_{}".format(name, version, extension)
+    return asset_name
+
+
 def get_sequence(files):
     """Get sequence from filename.
 
@@ -911,7 +1005,7 @@ def get_camera_tracks(sequence):
         list: list of movie scene camera cut tracks
     """
     camera_tracks = []
-    tracks = sequence.get_master_tracks()
+    tracks = get_tracks(sequence)
     for track in tracks:
         if str(track).count("MovieSceneCameraCutTrack"):
             camera_tracks.append(track)
@@ -929,7 +1023,15 @@ def get_frame_range_from_folder_attributes(folder_entity=None):
     if folder_entity is None:
         folder_entity = get_current_folder_entity(fields={"attrib"})
     folder_attributes = folder_entity["attrib"]
-    return int(folder_attributes["clipIn"]), int(folder_attributes["clipOut"])
+    frame_start = (
+        int(folder_attributes.get("frameStart"))
+        if folder_attributes.get("frameStart") else 1
+    )
+    frame_end = (
+        int(folder_attributes.get("frameEnd"))
+        if folder_attributes.get("frameEnd") else 1
+    )
+    return frame_start, frame_end
 
 
 def has_asset_existing_directory(asset_name, asset_dir):
@@ -961,12 +1063,190 @@ def has_asset_directory_pattern_matched(asset_name, asset_dir, name, extension=N
     existing_asset_dir = unreal.Paths.split(asset_path)[0]
     existing_version_folder = existing_asset_dir.split("/")[-1]
     # TODO: make it not hardcoded
-    pattern = f"{name}_\d{{3}}"
+    pattern = rf"{name}_\d{{3}}"
     if extension:
-        pattern = f"{name}_v\d{{3}}_{extension}"
+        pattern = rf"{name}_v\d{{3}}_{extension}"
     is_version_folder_matched = re.match(pattern, version_folder)
     is_existing_version_folder_matched = re.match(pattern, existing_version_folder)
     if not is_version_folder_matched or not is_existing_version_folder_matched:
         return asset_path
 
     return None
+
+
+def get_top_hierarchy_folder(path):
+    """Get top hierarchy of the path
+
+    Args:
+        path (str): path
+
+    Returns:
+        str: top hierarchy directory
+    """
+    # Split the path by the directory separator '/'
+    path = path.replace(f"{AYON_ROOT_DIR}/", "")
+    # Return the first part
+    parts = [part for part in path.split('/') if part]
+    return parts[0]
+
+
+def generate_hierarchy_path(name, folder_name, asset_root, master_dir_name, suffix=""):
+    asset_name = f"{folder_name}_{name}" if folder_name else name
+    hierarchy_dir = f"{AYON_ROOT_DIR}/{master_dir_name}"
+    tools = unreal.AssetToolsHelpers().get_asset_tools()
+    asset_dir, container_name = tools.create_unique_asset_name(asset_root, suffix=suffix)
+    suffix = "_CON"
+    container_name += suffix
+    if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+        unreal.EditorAssetLibrary.make_directory(asset_dir)
+
+    return asset_dir, hierarchy_dir, container_name, asset_name
+
+
+def remove_map_and_sequence(container):
+    asset_dir = container.get('namespace')
+    # Create a temporary level to delete the layout level.
+    unreal.EditorLevelLibrary.save_all_dirty_levels()
+    unreal.EditorAssetLibrary.make_directory(f"{AYON_ROOT_DIR}/tmp")
+    tmp_level = f"{AYON_ROOT_DIR}/tmp/temp_map"
+    if not unreal.EditorAssetLibrary.does_asset_exist(f"{tmp_level}.temp_map"):
+        unreal.EditorLevelLibrary.new_level(tmp_level)
+    else:
+        unreal.EditorLevelLibrary.load_level(tmp_level)
+    unreal.EditorLevelLibrary.save_all_dirty_levels()
+    # Delete the camera directory.
+    if unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+        unreal.EditorAssetLibrary.delete_directory(asset_dir)
+    # Load the default level
+    default_level_path = "/Engine/Maps/Templates/OpenWorld"
+    unreal.EditorLevelLibrary.load_level(default_level_path)
+    unreal.EditorAssetLibrary.delete_directory(f"{AYON_ROOT_DIR}/tmp")
+
+
+def update_container(container, project_name, repre_entity, loaded_assets=None):
+    asset_dir = container.get('namespace')
+    data = {
+        "representation": repre_entity["id"],
+        "parent": repre_entity["versionId"],
+        "project_name": project_name
+    }
+    if loaded_assets is not None:
+        data["loaded_assets"] = loaded_assets
+    imprint(
+        "{}/{}".format(
+            asset_dir,
+            container.get('container_name')),
+            data
+    )
+
+
+def generate_master_level_sequence(tools, asset_dir, asset_name,
+                                   hierarchy_dir, master_dir_name,
+                                   suffix=""):
+    # Create map for the shot, and create hierarchy of map. If the maps
+    # already exist, we will use them.
+    master_level = f"{hierarchy_dir}/{master_dir_name}_map.{master_dir_name}_map"
+    if not unreal.EditorAssetLibrary.does_asset_exist(master_level):
+        unreal.EditorLevelLibrary.new_level(f"{hierarchy_dir}/{master_dir_name}_map")
+
+    asset_level = f"{asset_dir}/{asset_name}_map.{asset_name}_map"
+    if suffix:
+        asset_level = (
+            f"{asset_dir}/{asset_name}_map_{suffix}.{asset_name}_map_{suffix}"
+        )
+
+    unreal.log(f"asset_level: {asset_level}")
+    if not unreal.EditorAssetLibrary.does_asset_exist(asset_level):
+        unreal.EditorLevelLibrary.new_level(asset_level)
+        unreal.EditorLevelLibrary.load_level(master_level)
+        unreal.EditorLevelUtils.add_level_to_world(
+            unreal.EditorLevelLibrary.get_editor_world(),
+            asset_level,
+            unreal.LevelStreamingDynamic
+        )
+    sequences = []
+    frame_ranges = []
+    root_content = unreal.EditorAssetLibrary.list_assets(
+        hierarchy_dir, recursive=False, include_folder=False)
+
+    existing_sequences = [
+        unreal.EditorAssetLibrary.find_asset_data(asset)
+        for asset in root_content
+        if unreal.EditorAssetLibrary.find_asset_data(
+            asset).get_class().get_name() == 'LevelSequence'
+    ]
+
+    if not existing_sequences:
+        sequence, frame_range = generate_sequence(master_dir_name, hierarchy_dir)
+
+        sequences.append(sequence)
+        frame_ranges.append(frame_range)
+    else:
+        for e in existing_sequences:
+            sequences.append(e.get_asset())
+            frame_ranges.append((
+                e.get_asset().get_playback_start(),
+                e.get_asset().get_playback_end()))
+
+    shot_name = f"{asset_dir}/{asset_name}.{asset_name}"
+    if suffix:
+        shot_name = (
+            f"{asset_dir}/{asset_name}_{suffix}.{asset_name}_{suffix}"
+        )
+
+    shot = None
+    if not unreal.EditorAssetLibrary.does_asset_exist(shot_name):
+        shot = tools.create_asset(
+            asset_name=asset_name if not suffix else f"{asset_name}_{suffix}",
+            package_path=asset_dir,
+            asset_class=unreal.LevelSequence,
+            factory=unreal.LevelSequenceFactoryNew()
+        )
+    else:
+        shot = unreal.load_asset(shot_name)
+
+    # sequences and frame_ranges have the same length
+    for i in range(0, len(sequences) - 1):
+        set_sequence_hierarchy(
+            sequences[i], sequences[i + 1],
+            frame_ranges[i][1],
+            frame_ranges[i + 1][0], frame_ranges[i + 1][1],
+            [asset_level])
+
+    return shot, master_level, asset_level, sequences, frame_ranges
+
+
+def get_tracks(sequence):
+    """Backward compatibility for deprecated function of get_master_tracks() in UE 5.5
+
+    Args:
+        sequence (unreal.LevelSequence): Level Sequence
+
+    Returns:
+        Array(MovieSceneTracks): Movie scene tracks
+    """
+    if (
+        UNREAL_VERSION.major == 5
+        and UNREAL_VERSION.minor > 4
+    ):
+        return sequence.get_tracks()
+    else:
+        return sequence.get_master_tracks()
+
+
+def add_track(sequence, track):
+    """Backward compatibility for deprecated function of add_master_track() in UE 5.5
+
+    Args:
+        sequence (unreal.LevelSequence): Level Sequence
+
+    Returns:
+        MovieSceneTrack: Any tracks inherited from unreal.MovieSceneTrack
+    """
+    if (
+        UNREAL_VERSION.major == 5
+        and UNREAL_VERSION.minor > 4
+    ):
+        return sequence.add_track(track)
+    else:
+        return sequence.add_master_track(track)

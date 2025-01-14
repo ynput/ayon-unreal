@@ -7,7 +7,8 @@ import unreal
 from ayon_core.pipeline import publish
 from ayon_unreal.api.pipeline import (
     UNREAL_VERSION,
-    select_camera
+    select_camera,
+    get_tracks
 )
 
 
@@ -64,7 +65,7 @@ class ExtractCamera(publish.Extractor):
                                 root_sequence=sequence,
                                 sequence=sequence,
                                 bindings=sequence.get_bindings(),
-                                master_tracks=sequence.get_master_tracks(),
+                                master_tracks=get_tracks(sequence),
                                 fbx_file_name=os.path.join(staging_dir, fbx_filename)
                             )
                         unreal.SequencerTools.export_level_sequence_fbx(params)

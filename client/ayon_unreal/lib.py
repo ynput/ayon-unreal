@@ -308,27 +308,6 @@ def create_unreal_project(project_name: str,
 
         subprocess.run(command2)
 
-    # ensure we have PySide2 installed in engine
-    python_path = None
-    if platform.system().lower() == "windows":
-        python_path = engine_path / ("Engine/Binaries/ThirdParty/"
-                                     "Python3/Win64/python.exe")
-
-    if platform.system().lower() == "linux":
-        python_path = engine_path / ("Engine/Binaries/ThirdParty/"
-                                     "Python3/Linux/bin/python3")
-
-    if platform.system().lower() == "darwin":
-        python_path = engine_path / ("Engine/Binaries/ThirdParty/"
-                                     "Python3/Mac/bin/python3")
-
-    if not python_path:
-        raise NotImplementedError("Unsupported platform")
-    if not python_path.exists():
-        raise RuntimeError(f"Unreal Python not found at {python_path}")
-    subprocess.check_call(
-        [python_path.as_posix(), "-m", "pip", "install", "pyside2"])
-
 
 def get_path_to_uat(engine_path: Path) -> Path:
     if platform.system().lower() == "windows":
