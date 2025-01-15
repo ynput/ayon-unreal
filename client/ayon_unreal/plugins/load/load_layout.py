@@ -28,7 +28,7 @@ from ayon_unreal.api.pipeline import (
 from ayon_unreal.api.lib import (
     import_animation
 )
-from ayon_core.lib import BoolDef, EnumDef
+from ayon_core.lib import EnumDef
 
 
 class LayoutLoader(plugin.LayoutLoader):
