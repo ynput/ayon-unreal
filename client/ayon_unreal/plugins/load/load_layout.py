@@ -28,7 +28,7 @@ from ayon_unreal.api.pipeline import (
 from ayon_unreal.api.lib import (
     import_animation
 )
-from ayon_core.lib import EnumDef
+from ayon_core.lib import BoolDef, EnumDef
 
 
 class LayoutLoader(plugin.LayoutLoader):
@@ -53,10 +53,17 @@ class LayoutLoader(plugin.LayoutLoader):
         )
         cls.loaded_layout_dir = import_settings["loaded_layout_dir"]
         cls.remove_loaded_assets = import_settings["remove_loaded_assets"]
+        if import_settings.get("content_plugin", {}):
+            cls.content_plugin_enabled = (
+                import_settings["content_plugin"]["enabled"]
+            )
+            cls.content_plugin_path = (
+                import_settings["content_plugin"]["content_plugin_name"]
+            )
 
     @classmethod
     def get_options(cls, contexts):
-        defs = []
+        defs = super().get_options(contexts)
         if cls.force_loaded:
             defs.append(
                 EnumDef(
@@ -120,7 +127,7 @@ class LayoutLoader(plugin.LayoutLoader):
 
     def _process(self, lib_path, project_name, asset_dir, sequence,
                  repr_loaded=None, loaded_extension=None,
-                 force_loaded=False):
+                 force_loaded=False, options={}):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
         with open(lib_path, "r") as fp:
@@ -185,7 +192,7 @@ class LayoutLoader(plugin.LayoutLoader):
 
                 assets = self._load_assets(
                     instance_name, repre_id,
-                    product_type, repr_format)
+                    product_type, repr_format, options)
 
                 container = None
 
@@ -324,11 +331,21 @@ class LayoutLoader(plugin.LayoutLoader):
         project_name = get_current_project_name()
         extension = options.get(
             "folder_representation_type", self.folder_representation_type)
+        import_options = {
+            "content_plugin_enabled": options.get(
+                "content_plugin_enabled", self.content_plugin_enabled),
+            "content_plugin_name": options.get(
+                "content_plugin_name", "")
+        }
+
         path = self.filepath_from_context(context)
         loaded_assets = self._process(
             path, project_name, asset_dir, shot,
             loaded_extension=extension,
-            force_loaded=self.force_loaded)
+            force_loaded=self.force_loaded,
+            options=import_options
+        )
+
         for s in sequences:
             EditorAssetLibrary.save_asset(s.get_path_name())
 
@@ -347,7 +364,8 @@ class LayoutLoader(plugin.LayoutLoader):
             asset_name,
             container_name,
             context["project"]["name"],
-            hierarchy_dir=hierarchy_dir
+            hierarchy_dir=hierarchy_dir,
+            content_plugin_name=import_options["content_plugin_name"]
         )
         save_dir = hierarchy_dir if create_sequences else asset_dir
 
@@ -422,10 +440,17 @@ class LayoutLoader(plugin.LayoutLoader):
             EditorLevelLibrary.save_current_level()
         source_path = self.filepath_from_context(context)
 
+        content_plugin = container.get("content_plugin", "")
+        import_options = {
+            "content_plugin_enabled": bool(content_plugin),
+            "content_plugin_name": content_plugin
+        }
         loaded_assets = self._process(
             source_path, project_name, asset_dir, sequence,
             loaded_extension=self.folder_representation_type,
-            force_loaded=self.force_loaded)
+            force_loaded=self.force_loaded,
+            options=import_options
+        )
 
         update_container(container, project_name, repre_entity, loaded_assets=loaded_assets)
 

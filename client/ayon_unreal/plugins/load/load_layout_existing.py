@@ -28,6 +28,13 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
         )
         cls.loaded_layout_dir = import_settings["loaded_layout_dir"]
         cls.remove_loaded_assets = import_settings["remove_loaded_assets"]
+        if import_settings.get("content_plugin", {}):
+            cls.content_plugin_enabled = (
+                import_settings["content_plugin"]["enabled"]
+            )
+            cls.content_plugin_path = (
+                import_settings["content_plugin"]["content_plugin_name"]
+            )
 
     def _spawn_actor(self, obj, lasset, sequence):
         actor = EditorLevelLibrary.spawn_actor_from_object(
@@ -58,7 +65,7 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
                 "Skipping to add spawned actor into the sequence."
             )
 
-    def _load_asset(self, repr_data, instance_name, family, extension):
+    def _load_asset(self, repr_data, instance_name, family, extension, options):
         repre_entity = next((repre_entity for repre_entity in repr_data
                              if repre_entity["name"] == extension), None)
         if not repre_entity or extension == "ma":
@@ -67,10 +74,10 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
         repr_format = repre_entity.get('name')
         representation = repre_entity.get('id')
         assets = self._load_assets(
-            instance_name, representation, family, repr_format)
+            instance_name, representation, family, repr_format, options)
         return assets
 
-    def _process(self, lib_path, project_name, sequence):
+    def _process(self, lib_path, project_name, sequence, options):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
         actors = EditorLevelLibrary.get_all_level_actors()
@@ -229,7 +236,8 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
                 repre_entities,
                 lasset.get('instance_name'),
                 product_type,
-                extension
+                extension,
+                options
             )
             con = None
             for asset in assets:
@@ -293,7 +301,14 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
 
         project_name = context["project"]["name"]
         path = self.filepath_from_context(context)
-        loaded_assets = self._process(path, project_name, sequence)
+
+        import_options = {
+            "content_plugin_enabled": options.get(
+                "content_plugin_enabled", self.content_plugin_enabled),
+            "content_plugin_name": options.get(
+                "content_plugin_name", "")
+        }
+        loaded_assets = self._process(path, project_name, sequence, import_options)
 
         container_name += suffix
         if not unreal.EditorAssetLibrary.does_asset_exist(
@@ -309,7 +324,8 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
             curr_asset_dir,
             asset_name,
             container_name,
-            context["project"]["name"]
+            context["project"]["name"],
+            content_plugin_name=import_options["content_plugin_name"]
         )
 
     def update(self, container, context):
@@ -325,7 +341,12 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
         sequence = next((asset for asset in ar.get_assets(level_seq_filter)), None)
         source_path = self.filepath_from_context(context)
-        loaded_assets = self._process(source_path, project_name, sequence)
+        content_plugin = container.get("content_plugin", "")
+        import_options = {
+            "content_plugin_enabled": bool(content_plugin),
+            "content_plugin_name": content_plugin
+        }
+        loaded_assets = self._process(source_path, project_name, sequence, import_options)
 
         upipeline.update_container(
             container, repre_entity, loaded_assets=loaded_assets)

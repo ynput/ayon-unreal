@@ -20,7 +20,8 @@ from .pipeline import (
 from .lib import remove_loaded_asset
 from ayon_core.lib import (
     BoolDef,
-    UILabelDef
+    UILabelDef,
+    EnumDef
 )
 from ayon_core.pipeline import (
     AutoCreator,
@@ -300,6 +301,26 @@ class LayoutLoader(Loader):
     color = "orange"
     loaded_layout_dir = "{folder[path]}/{product[name]}"
     remove_loaded_assets = False
+    content_plugin_enabled = False
+    content_plugin_path = []
+
+    @classmethod
+    def get_options(cls, contexts):
+        default_content_plugin = next(
+            (path for path in cls.content_plugin_path), "")
+        return [
+            BoolDef(
+                "content_plugin_enabled",
+                label="Content Plugin",
+                default=cls.content_plugin_enabled
+            ),
+            EnumDef(
+                    "content_plugin_name",
+                    label="Content Plugin Name",
+                    items=[path for path in cls.content_plugin_path],
+                    default=default_content_plugin
+            )
+        ]
 
     @staticmethod
     def _get_fbx_loader(loaders, family):
@@ -413,7 +434,8 @@ class LayoutLoader(Loader):
         asset_name,
         container_name,
         project_name,
-        hierarchy_dir=None
+        hierarchy_dir=None,
+        content_plugin_name=None
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -432,10 +454,12 @@ class LayoutLoader(Loader):
         }
         if hierarchy_dir is not None:
             data["master_directory"] = hierarchy_dir
+        if content_plugin_name:
+            data["content_plugin_name"] = content_plugin_name
         imprint(
             "{}/{}".format(asset_dir, container_name), data)
 
-    def _load_assets(self, instance_name, repre_id, product_type, repr_format):
+    def _load_assets(self, instance_name, repre_id, product_type, repr_format, options):
         all_loaders = discover_loader_plugins()
         loaders = loaders_from_representation(
             all_loaders, repre_id)
@@ -462,7 +486,8 @@ class LayoutLoader(Loader):
             return
 
         options = {
-            # "asset_dir": asset_dir
+            "content_plugin_enabled": True,
+            "content_plugin_name": "Content_Plugin_test"
         }
 
         assets = load_container(
