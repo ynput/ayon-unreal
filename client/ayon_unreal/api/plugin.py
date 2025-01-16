@@ -485,16 +485,16 @@ class LayoutLoader(Loader):
                     f"{product_type}")
             return
 
-        options = {
-            "content_plugin_enabled": True,
-            "content_plugin_name": "Content_Plugin_test"
+        import_options = {
+            "content_plugin_enabled": options["content_plugin_enabled"],
+            "content_plugin_name": options.get("content_plugin_name", "")
         }
 
         assets = load_container(
             loader,
             repre_id,
             namespace=instance_name,
-            options=options
+            options=import_options
         )
         return assets
 
