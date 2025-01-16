@@ -190,7 +190,8 @@ class PointCacheAlembicLoader(plugin.Loader):
         frame_end,
         product_type,
         project_name,
-        content_plugin_name=None
+        content_plugin_name=None,
+        content_plugin_enabled=False
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -210,7 +211,7 @@ class PointCacheAlembicLoader(plugin.Loader):
             "asset": folder_path,
             "project_name": project_name
         }
-        if content_plugin_name:
+        if content_plugin_enabled and content_plugin_name:
             data["content_plugin_name"] = content_plugin_name
         imprint(f"{asset_dir}/{container_name}", data)
 
@@ -292,7 +293,8 @@ class PointCacheAlembicLoader(plugin.Loader):
             frame_end,
             context["product"]["productType"],
             context["project"]["name"],
-            content_plugin_name
+            content_plugin_name,
+            use_content_plugin
         )
         asset_content = unreal.EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=True

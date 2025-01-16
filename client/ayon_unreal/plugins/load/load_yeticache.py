@@ -171,7 +171,7 @@ class YetiLoader(plugin.Loader):
             "family": context["product"]["productType"],
             "project_name": context["project"]["name"]
         }
-        if content_plugin_name:
+        if use_content_plugin and content_plugin_name:
             data["content_plugin_name"] = content_plugin_name
 
         if asset_path:

@@ -172,7 +172,8 @@ class AnimationAlembicLoader(plugin.Loader):
         representation,
         product_type,
         project_name,
-        content_plugin_name=None
+        content_plugin_name=None,
+        content_plugin_enabled=False
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -192,7 +193,7 @@ class AnimationAlembicLoader(plugin.Loader):
             "family": product_type,
             "project_name": project_name
         }
-        if content_plugin_name:
+        if content_plugin_enabled and content_plugin_name:
             data["content_plugin_name"] = content_plugin_name
         unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
 
@@ -279,7 +280,8 @@ class AnimationAlembicLoader(plugin.Loader):
             context["representation"],
             product_type,
             context["project"]["name"],
-            content_plugin_name
+            content_plugin_name,
+            use_content_plugin
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(

@@ -207,7 +207,8 @@ class StaticMeshAlembicLoader(plugin.Loader):
         representation,
         product_type,
         project_name,
-        content_plugin_name=None
+        content_plugin_name=None,
+        content_plugin_enabled=False
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -225,7 +226,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
             "family": product_type,
             "project_name": project_name
         }
-        if content_plugin_name:
+        if content_plugin_enabled and content_plugin_name:
             data["content_plugin_name"] = content_plugin_name
         imprint(f"{asset_dir}/{container_name}", data)
 
@@ -292,7 +293,8 @@ class StaticMeshAlembicLoader(plugin.Loader):
             context["representation"],
             product_type,
             context["project"]["name"],
-            content_plugin_name
+            content_plugin_name,
+            use_content_plugin
         )
         if asset_path:
             unreal.EditorAssetLibrary.rename_asset(
