@@ -218,7 +218,11 @@ class StaticMeshFBXLoader(plugin.Loader):
             asset_root, suffix=f"_{ext}")
 
         asset_path = (
-            has_asset_directory_pattern_matched(asset_name, asset_dir, name, extension=ext)
+            has_asset_directory_pattern_matched(
+                asset_name, asset_dir, name, extension=ext,
+                use_content_plugin=use_content_plugin,
+                content_plugin_name=content_plugin_name
+            )
             if not self.use_interchange else None
         )
 
@@ -278,7 +282,11 @@ class StaticMeshFBXLoader(plugin.Loader):
             asset_root, suffix=f"_{ext}")
 
         asset_path = (
-            has_asset_directory_pattern_matched(asset_name, asset_dir, name, extension=ext)
+            has_asset_directory_pattern_matched(
+                asset_name, asset_dir, name, extension=ext,
+                use_content_plugin=bool(content_plugin_name),
+                content_plugin_name=content_plugin_name
+            )
             if not self.use_interchange else None
         )
 

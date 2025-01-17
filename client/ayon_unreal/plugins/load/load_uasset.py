@@ -108,7 +108,10 @@ class UAssetLoader(plugin.Loader):
         path = self.filepath_from_context(context)
         asset_name = os.path.basename(path)
         asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
-            asset_name, asset_dir, name)
+            asset_name, asset_dir, name,
+            use_content_plugin=use_content_plugin,
+            content_plugin_name=content_plugin_name
+        )
         if asset_path:
             destination_path = unreal.Paths.split(asset_path)[0]
         shutil.copy(path, f"{destination_path}/{asset_name}")
@@ -165,12 +168,12 @@ class UAssetLoader(plugin.Loader):
 
         destination_path = asset_dir.replace(
             "/Game", Path(unreal.Paths.project_content_dir()).as_posix(), 1)
-        if container.get("content_plugin_path", ""):
-            plugin_path = container["content_plugin_path"]
+        content_plugin_path = container.get("content_plugin_path", "")
+        if content_plugin_path:
             abs_content_plugin_path = os.path.join(
-                unreal.Paths.project_plugins_dir(), plugin_path)
+                unreal.Paths.project_plugins_dir(), content_plugin_path)
             destination_path = asset_dir.replace(
-                f"/{plugin_path}",
+                f"/{content_plugin_path}",
                 Path(abs_content_plugin_path).as_posix(), 1
             )
 
@@ -186,7 +189,9 @@ class UAssetLoader(plugin.Loader):
         update_filepath = self.filepath_from_context(context)
         new_asset_name = os.path.basename(update_filepath)
         asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
-            new_asset_name, asset_dir, name)
+            new_asset_name, asset_dir, name,
+            use_content_plugin=bool(content_plugin_path),
+            content_plugin_name=content_plugin_path)
 
 
         if asset_path:

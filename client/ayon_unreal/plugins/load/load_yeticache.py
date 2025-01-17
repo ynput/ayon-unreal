@@ -135,7 +135,10 @@ class YetiLoader(plugin.Loader):
             asset_root, suffix=f"_{ext}")
 
         asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
-            asset_name, asset_dir, name)
+            asset_name, asset_dir, name, extension=ext,
+            use_content_plugin=use_content_plugin,
+            content_plugin_name=content_plugin_name
+        )
 
         container_name = f"{container_name}_{suffix}"
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
@@ -194,9 +197,15 @@ class YetiLoader(plugin.Loader):
         repre_entity = context["representation"]
         asset_name = container["asset_name"]
         source_path = self.filepath_from_context(context)
+        ext = os.path.splitext(source_path)[-1].lstrip(".")
         destination_path = container["namespace"]
+        content_plugin_path = container.get("content_plugin_path", "")
         asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
-            asset_name, destination_path, context["product"]["name"])
+            asset_name, destination_path,
+            context["product"]["name"], extension=ext,
+            use_content_plugin=bool(content_plugin_path),
+            content_plugin_name=content_plugin_path
+        )
 
         task = None
         if asset_path:

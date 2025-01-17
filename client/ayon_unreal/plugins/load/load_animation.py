@@ -454,7 +454,11 @@ class AnimationFBXLoader(plugin.Loader):
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
 
-        asset_path = unreal_pipeline.has_asset_directory_pattern_matched(asset_name, asset_dir, name)
+        asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
+            asset_name, asset_dir, name, extension=ext,
+            use_content_plugin=use_content_plugin,
+            content_plugin_name=content_plugin_name
+        )
 
         container_name += suffix
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
@@ -534,7 +538,11 @@ class AnimationFBXLoader(plugin.Loader):
 
         container_name += suffix
         asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
-            asset_name, asset_dir, context["product"]["name"])
+            asset_name, asset_dir,
+            context["product"]["name"], extension=ext,
+            use_content_plugin=bool(content_plugin_name),
+            content_plugin_name=content_plugin_name
+        )
 
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             EditorAssetLibrary.make_directory(asset_dir)

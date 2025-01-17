@@ -243,7 +243,10 @@ class AnimationAlembicLoader(plugin.Loader):
             asset_root, suffix=f"_{ext}")
 
         asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
-            asset_name, asset_dir, folder_name, extension=ext)
+            asset_name, asset_dir, folder_name, extension=ext,
+            use_content_plugin=use_content_plugin,
+            content_plugin_name=content_plugin_name
+        )
 
         container_name += suffix
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
@@ -317,7 +320,9 @@ class AnimationAlembicLoader(plugin.Loader):
         asset_dir, container_name = asset_tools.create_unique_asset_name(
              asset_root, suffix=f"_{ext}")
         asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
-            asset_name, asset_dir, folder_name, extension=ext)
+            asset_name, asset_dir, folder_name, extension=ext,
+            use_content_plugin=bool(content_plugin_name),
+            content_plugin_name=content_plugin_name)
 
         container_name += suffix
 
@@ -358,9 +363,6 @@ class AnimationAlembicLoader(plugin.Loader):
 
         for a in asset_content:
             unreal.EditorAssetLibrary.save_asset(a)
-
-        unreal_pipeline.add_assets_to_content_plugin(
-            asset_name, ext, asset_content)
 
     def remove(self, container):
         path = container["namespace"]

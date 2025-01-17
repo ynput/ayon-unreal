@@ -260,7 +260,10 @@ class PointCacheAlembicLoader(plugin.Loader):
         if frame_start == frame_end:
             frame_end += 1
         asset_path = has_asset_directory_pattern_matched(
-            asset_name, asset_dir, name, extension=ext)
+            asset_name, asset_dir, name, extension=ext,
+            use_content_plugin=use_content_plugin,
+            content_plugin_name=content_plugin_name
+        )
 
         container_name += suffix
 
@@ -327,7 +330,10 @@ class PointCacheAlembicLoader(plugin.Loader):
             asset_root, suffix=f"_{ext}")
 
         asset_path = has_asset_directory_pattern_matched(
-            asset_name, asset_dir, name, extension=ext)
+            asset_name, asset_dir, name, extension=ext,
+            use_content_plugin=bool(content_plugin_name),
+            content_plugin_name=content_plugin_name
+        )
 
         frame_start = int(container.get("frame_start"))
         frame_end = int(container.get("frame_end"))

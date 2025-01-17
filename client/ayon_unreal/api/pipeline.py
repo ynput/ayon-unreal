@@ -1030,16 +1030,25 @@ def get_frame_range_from_folder_attributes(folder_entity=None):
     return frame_start, frame_end
 
 
-def has_asset_existing_directory(asset_name, asset_dir):
+def has_asset_existing_directory(asset_name, asset_dir,
+                                 use_content_plugin, content_plugin_name):
     """Check if the asset already existed
     Args:
         asset_name (str): asset name
+        asset_dir (str): asset directory
+        use_content_plugin (bool): whether content plugin is used
+        content_plugin_name (str): name of the content plugin
 
     Returns:
         str: package path
     """
     asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
     all_assets = asset_registry.get_assets_by_path('/Game', recursive=True)
+    if use_content_plugin and content_plugin_name:
+        content_plugin_asset = asset_registry.get_assets_by_path(
+            f'/{content_plugin_name}', recursive=True)
+        all_assets.extend(content_plugin_asset)
+
     for game_asset in all_assets:
         if game_asset.asset_name == asset_name:
             asset_path = game_asset.get_asset().get_path_name()
@@ -1050,10 +1059,13 @@ def has_asset_existing_directory(asset_name, asset_dir):
                 return asset_path
     return None
 
-def has_asset_directory_pattern_matched(asset_name, asset_dir, name, extension=None):
+def has_asset_directory_pattern_matched(asset_name, asset_dir, name, extension=None,
+                                        use_content_plugin=False, content_plugin_name=""):
     version_folder = asset_dir.split("/")[-1]
     target_asset_dir = asset_dir.replace(version_folder, "")
-    asset_path = has_asset_existing_directory(asset_name, target_asset_dir)
+    asset_path = has_asset_existing_directory(
+        asset_name, target_asset_dir, use_content_plugin, content_plugin_name
+    )
     if not asset_path:
         return None
     existing_asset_dir = unreal.Paths.split(asset_path)[0]
