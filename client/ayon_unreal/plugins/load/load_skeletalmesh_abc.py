@@ -271,7 +271,7 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             asset_root, suffix=f"_{ext}")
 
         asset_path = has_asset_directory_pattern_matched(
-            asset_name, asset_dir, name, extension=ext
+            asset_name, asset_dir, name, extension=ext,
             use_content_plugin=use_content_plugin,
             content_plugin_name=content_plugin_name
         )
