@@ -7,7 +7,8 @@ import unreal
 from ayon_core.pipeline import (AYON_CONTAINER_ID, get_current_project_name,
                                 get_representation_path, load_container,
                                 discover_loader_plugins,
-                                loaders_from_representation)
+                                loaders_from_representation,
+                                UNREAL_VERSION)
 from ayon_core.pipeline.context_tools import get_current_folder_entity
 from ayon_core.pipeline.load import LoadError
 from ayon_unreal.api import pipeline as unreal_pipeline
@@ -124,8 +125,11 @@ class AnimationFBXLoader(plugin.Loader):
             'convert_scene', True)
         task.options.anim_sequence_import_data.set_editor_property(
             'force_front_x_axis', False)
-        task.options.anim_sequence_import_data.set_editor_property(
-            'import_rotation', unreal.Rotator(roll=90.0, pitch=0.0, yaw=0.0))
+        if UNREAL_VERSION.major == 5 and UNREAL_VERSION.minor <=4 :
+            task.options.anim_sequence_import_data.set_editor_property(
+                'import_rotation',
+                unreal.Rotator(roll=90.0, pitch=0.0, yaw=0.0)
+        )
 
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
 
