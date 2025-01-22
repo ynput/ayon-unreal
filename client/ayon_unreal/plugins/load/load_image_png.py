@@ -43,7 +43,7 @@ class TexturePNGLoader(plugin.Loader):
         )
         cls.show_dialog = import_settings.get("show_dialog", cls.show_dialog)
         cls.pipeline_path = import_settings.get("interchange", {}).get(
-            "pipeline_path_static_mesh", cls.pipeline_path
+            "pipeline_path_textures", cls.pipeline_path
         )
         cls.loaded_asset_dir = import_settings.get(
             "loaded_asset_dir", cls.loaded_asset_dir)
@@ -79,30 +79,21 @@ class TexturePNGLoader(plugin.Loader):
             unreal.SystemLibrary.execute_console_command(
                 None, "Interchange.FeatureFlags.Import.EXR 1")
 
-            import_assetparameters = unreal.ImportAssetParameters()
+            import_asset_parameters = unreal.ImportAssetParameters()
             editor_asset_subsystem = unreal.EditorAssetSubsystem()
-            import_assetparameters.is_automated = bool(not self.show_dialog)
-            import_assetparameters.is_automated = bool(not self.show_dialog)
-
-            # The path to the Interchange asset
-            tmp_pipeline_path = "/Game/tmp"
-            # interchange settings here
-            unreal.EditorAssetLibrary.rename_asset(
-                f"{self.pipeline_path}",
-                f"{tmp_pipeline_path}/{asset_name}.{asset_name}"
-            )
-
-            import_assetparameters.override_pipelines.append(
-                unreal.SoftObjectPath(f"{tmp_pipeline_path}.tmp"))
+            import_asset_parameters.is_automated = bool(not self.show_dialog)
+            if not unreal.EditorAssetLibrary.does_directory_exist(self.pipeline_path):
+                import_asset_parameters.override_pipelines.append(
+                    unreal.SoftObjectPath(f"{self.pipeline_path}"))
 
             source_data = unreal.InterchangeManager.create_source_data(
                 filepath)
             interchange_manager = unreal.InterchangeManager.get_interchange_manager_scripted()  # noqa
             interchange_manager.import_asset(asset_dir, source_data,
-                                             import_assetparameters)
+                                             import_asset_parameters)
 
-            # remove temp file
-            editor_asset_subsystem.delete_asset(tmp_pipeline_path)
+            if not unreal.EditorAssetLibrary.does_directory_exist(self.pipeline_path):
+                editor_asset_subsystem.delete_asset(self.pipeline_path)
 
         else:
             self.log.info("Import using deferred method")

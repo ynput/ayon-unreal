@@ -83,28 +83,21 @@ class StaticMeshFBXLoader(plugin.Loader):
             unreal.log("Import using interchange method")
             unreal.SystemLibrary.execute_console_command(None, "Interchange.FeatureFlags.Import.FBX 1")
 
-            import_assetparameters = unreal.ImportAssetParameters()
+            import_asset_parameters = unreal.ImportAssetParameters()
             editor_asset_subsystem = unreal.EditorAssetSubsystem()
-            import_assetparameters.is_automated = not cls.show_dialog
+            import_asset_parameters.is_automated = not cls.show_dialog
 
-            # The path to the Interchange asset
-            tmp_pipeline_path = "/Game/tmp"
-            # interchange settings here
-            unreal.EditorAssetLibrary.rename_asset(
-                f"{cls.pipeline_path}",
-                f"{tmp_pipeline_path}/{asset_name}.{asset_name}"
-            )
-
-            import_assetparameters.override_pipelines.append(
-                unreal.SoftObjectPath(f"{tmp_pipeline_path}.tmp"))
+            if not unreal.EditorAssetLibrary.does_directory_exist(cls.pipeline_path):
+                import_asset_parameters.override_pipelines.append(
+                    unreal.SoftObjectPath(f"{cls.pipeline_path}"))
 
             source_data = unreal.InterchangeManager.create_source_data(filepath)
             interchange_manager = unreal.InterchangeManager.get_interchange_manager_scripted()
             interchange_manager.import_asset(asset_dir, source_data,
-                                            import_assetparameters)
+                                             import_asset_parameters)
 
-
-            editor_asset_subsystem.delete_asset(tmp_pipeline_path) # remove temp file
+            if not unreal.EditorAssetLibrary.does_directory_exist(cls.pipeline_path):
+                editor_asset_subsystem.delete_directory(cls.pipeline_path) # remove temp file
 
         else:
             unreal.log("Import using deferred method")
