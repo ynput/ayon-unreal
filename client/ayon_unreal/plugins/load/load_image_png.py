@@ -93,7 +93,7 @@ class TexturePNGLoader(plugin.Loader):
                                              import_asset_parameters)
 
             if not unreal.EditorAssetLibrary.does_directory_exist(self.pipeline_path):
-                editor_asset_subsystem.delete_asset(self.pipeline_path)
+                editor_asset_subsystem.delete_directory(self.pipeline_path)
 
         else:
             self.log.info("Import using deferred method")
