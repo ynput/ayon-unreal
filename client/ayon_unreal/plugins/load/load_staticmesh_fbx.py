@@ -88,8 +88,9 @@ class StaticMeshFBXLoader(plugin.Loader):
             import_asset_parameters.is_automated = not cls.show_dialog
 
             if not unreal.EditorAssetLibrary.does_directory_exist(cls.pipeline_path):
+                transient_obj_path = cls.pipeline_path.split("/")[-1]
                 import_asset_parameters.override_pipelines.append(
-                    unreal.SoftObjectPath(f"{cls.pipeline_path}"))
+                    unreal.SoftObjectPath(f"{cls.pipeline_path}.{transient_obj_path}"))
 
             source_data = unreal.InterchangeManager.create_source_data(filepath)
             interchange_manager = unreal.InterchangeManager.get_interchange_manager_scripted()

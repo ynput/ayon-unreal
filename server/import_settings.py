@@ -125,8 +125,8 @@ DEFAULT_IMPORT_SETTINGS = {
     "loaded_asset_dir": "{folder[path]}/{product[name]}_{version[version]}",
     "interchange": {
         "enabled": False,
-        "pipeline_path_static_mesh": "/Game/Interchange/CustomPipeline.CustomPipeline",
-        "pipeline_path_textures": "/Game/Interchange/CustomPipeline.CustomPipeline",
+        "pipeline_path_static_mesh": "/Game/Interchange/CustomPipeline",
+        "pipeline_path_textures": "/Game/Interchange/CustomPipeline",
     },
     "use_nanite": True,
     "show_dialog": False,

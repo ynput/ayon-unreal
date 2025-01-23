@@ -83,8 +83,9 @@ class TexturePNGLoader(plugin.Loader):
             editor_asset_subsystem = unreal.EditorAssetSubsystem()
             import_asset_parameters.is_automated = bool(not self.show_dialog)
             if not unreal.EditorAssetLibrary.does_directory_exist(self.pipeline_path):
+                transient_obj_path = self.pipeline_path.split("/")[-1]
                 import_asset_parameters.override_pipelines.append(
-                    unreal.SoftObjectPath(f"{self.pipeline_path}"))
+                    unreal.SoftObjectPath(f"{self.pipeline_path}.{transient_obj_path}"))
 
             source_data = unreal.InterchangeManager.create_source_data(
                 filepath)
