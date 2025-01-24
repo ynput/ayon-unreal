@@ -28,7 +28,6 @@ class StaticMeshFBXLoader(plugin.Loader):
     use_interchange = False
     use_nanite = True
     show_dialog = False
-    pipeline_path = ""
     loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
 
     @classmethod
@@ -42,9 +41,6 @@ class StaticMeshFBXLoader(plugin.Loader):
         )
         cls.show_dialog = import_settings.get("show_dialog", cls.show_dialog)
         cls.use_nanite = import_settings.get("use_nanite", cls.use_nanite)
-        cls.pipeline_path = import_settings.get("interchange", {}).get(
-            "pipeline_path_static_mesh", cls.pipeline_path
-        )
         cls.loaded_asset_dir = import_settings.get(
             "loaded_asset_dir", cls.loaded_asset_dir)
 
@@ -84,22 +80,12 @@ class StaticMeshFBXLoader(plugin.Loader):
             unreal.SystemLibrary.execute_console_command(None, "Interchange.FeatureFlags.Import.FBX 1")
 
             import_asset_parameters = unreal.ImportAssetParameters()
-            editor_asset_subsystem = unreal.EditorAssetSubsystem()
             import_asset_parameters.is_automated = not cls.show_dialog
-
-            if not unreal.EditorAssetLibrary.does_directory_exist(cls.pipeline_path):
-                transient_obj_path = cls.pipeline_path.split("/")[-1]
-                import_asset_parameters.override_pipelines.append(
-                    unreal.SoftObjectPath(f"{cls.pipeline_path}.{transient_obj_path}"))
 
             source_data = unreal.InterchangeManager.create_source_data(filepath)
             interchange_manager = unreal.InterchangeManager.get_interchange_manager_scripted()
             interchange_manager.import_asset(asset_dir, source_data,
                                              import_asset_parameters)
-
-            if not unreal.EditorAssetLibrary.does_directory_exist(cls.pipeline_path):
-                editor_asset_subsystem.delete_directory(cls.pipeline_path) # remove temp file
-
         else:
             unreal.log("Import using deferred method")
             task = None

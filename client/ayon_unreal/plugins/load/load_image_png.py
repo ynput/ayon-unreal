@@ -29,7 +29,6 @@ class TexturePNGLoader(plugin.Loader):
     # Defined by settings
     use_interchange = False
     show_dialog = False
-    pipeline_path = ""
     loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
 
     @classmethod
@@ -42,9 +41,6 @@ class TexturePNGLoader(plugin.Loader):
             "enabled", cls.use_interchange
         )
         cls.show_dialog = import_settings.get("show_dialog", cls.show_dialog)
-        cls.pipeline_path = import_settings.get("interchange", {}).get(
-            "pipeline_path_textures", cls.pipeline_path
-        )
         cls.loaded_asset_dir = import_settings.get(
             "loaded_asset_dir", cls.loaded_asset_dir)
 
@@ -80,22 +76,13 @@ class TexturePNGLoader(plugin.Loader):
                 None, "Interchange.FeatureFlags.Import.EXR 1")
 
             import_asset_parameters = unreal.ImportAssetParameters()
-            editor_asset_subsystem = unreal.EditorAssetSubsystem()
             import_asset_parameters.is_automated = bool(not self.show_dialog)
-            if not unreal.EditorAssetLibrary.does_directory_exist(self.pipeline_path):
-                transient_obj_path = self.pipeline_path.split("/")[-1]
-                import_asset_parameters.override_pipelines.append(
-                    unreal.SoftObjectPath(f"{self.pipeline_path}.{transient_obj_path}"))
 
             source_data = unreal.InterchangeManager.create_source_data(
                 filepath)
             interchange_manager = unreal.InterchangeManager.get_interchange_manager_scripted()  # noqa
             interchange_manager.import_asset(asset_dir, source_data,
                                              import_asset_parameters)
-
-            if not unreal.EditorAssetLibrary.does_directory_exist(self.pipeline_path):
-                editor_asset_subsystem.delete_directory(self.pipeline_path)
-
         else:
             self.log.info("Import using deferred method")
             task = None

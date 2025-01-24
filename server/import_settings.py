@@ -20,16 +20,6 @@ def _abc_conversion_presets_enum():
 class UnrealInterchangeModel(BaseSettingsModel):
     """Define Interchange Pipeline Asset Paths"""
     enabled: bool = SettingsField(False, title="enabled")
-    pipeline_path_static_mesh: str = SettingsField(
-        "/Game/Interchange/CustomPipeline.CustomPipeline",
-        title="path to static mesh pipeline",
-        description="Path to the Interchange pipeline asset."
-                    "Right-click asset and copy reference path.")
-    pipeline_path_textures: str = SettingsField(
-        "/Game/Interchange/CustomPipeline.CustomPipeline",
-        title="path to texture pipeline",
-        description="Path to the Interchange pipeline asset."
-                    "Right-click asset and copy reference path.")
 
 
 class CustomAlembicPresetsModel(BaseSettingsModel):
@@ -124,9 +114,7 @@ class UnrealImportModel(BaseSettingsModel):
 DEFAULT_IMPORT_SETTINGS = {
     "loaded_asset_dir": "{folder[path]}/{product[name]}_{version[version]}",
     "interchange": {
-        "enabled": False,
-        "pipeline_path_static_mesh": "/Game/Interchange/CustomPipeline",
-        "pipeline_path_textures": "/Game/Interchange/CustomPipeline",
+        "enabled": False
     },
     "use_nanite": True,
     "show_dialog": False,
