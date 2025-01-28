@@ -837,14 +837,12 @@ def select_camera(sequence):
                 actor_subsys.set_actor_selection_state(actor, False)
 
 
-def format_asset_directory(context, directory_template,
-                           use_content_plugin=False, content_plugin_name=""):
+def format_asset_directory(context, directory_template):
     """Setting up the asset directory path and name.
     Args:
         context (dict): context
         directory_template (str): directory template path
-        use_content_plugin (bool): whether content plugin is used for the asset directory
-        content_plugin_name (str, optional): content plugin name.
+
     Returns:
         tuple[str, str]: asset directory, asset name
     """
@@ -881,11 +879,8 @@ def format_asset_directory(context, directory_template,
         data["version"]["version"] = f"v{version:03d}"
     asset_name_with_version = set_asset_name(data)
     asset_dir = StringTemplate(directory_template).format_strict(data)
-    root_dir = AYON_ROOT_DIR
-    if use_content_plugin and content_plugin_name:
-        root_dir = root_dir.replace("Game", content_plugin_name)
 
-    return f"{root_dir}/{asset_dir}", asset_name_with_version
+    return f"{AYON_ROOT_DIR}/{asset_dir}", asset_name_with_version
 
 
 def set_asset_name(data):
@@ -912,6 +907,17 @@ def set_asset_name(data):
     else:
         asset_name = "{}_{}_{}".format(name, version, extension)
     return asset_name
+
+
+def show_audit_dialog(missing_assets):
+    """
+    Show a dialog to inform the user about missing assets.
+    """
+    message = "The following assets were missing in the content plugin:\n"
+    message += "\n".join(missing_assets)
+    unreal.EditorDialog.show_message(
+        "Missing Assets", message, unreal.AppMsgType.OK
+    )
 
 
 def get_sequence(files):
@@ -1030,75 +1036,42 @@ def get_frame_range_from_folder_attributes(folder_entity=None):
     return frame_start, frame_end
 
 
-def has_asset_existing_directory(asset_name, asset_dir,
-                                 use_content_plugin, content_plugin_name):
-    """Check if the asset already existed
-    Args:
-        asset_name (str): asset name
-        asset_dir (str): asset directory
-        use_content_plugin (bool): whether content plugin is used
-        content_plugin_name (str): name of the content plugin
-
-    Returns:
-        str: package path
+def find_existing_asset(asset_name, search_dir=None, pattern_regex=None):
     """
-    asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
-    all_assets = asset_registry.get_assets_by_path('/Game', recursive=True)
-    if use_content_plugin and content_plugin_name:
-        content_plugin_asset = asset_registry.get_assets_by_path(
-            f'/{content_plugin_name}', recursive=True)
-        all_assets.extend(content_plugin_asset)
+    Search for an existing asset in a specified directory or default directories.
 
-    for game_asset in all_assets:
-        if game_asset.asset_name == asset_name:
-            asset_path = game_asset.get_asset().get_path_name()
-            existing_asset_dir = unreal.Paths.split(asset_path)[0]
-            existing_version_folder = existing_asset_dir.split("/")[-1]
-            existing_asset_dir = existing_asset_dir.replace(existing_version_folder, "")
-            if existing_asset_dir != asset_dir:
-                return asset_path
-    return None
-
-def has_asset_directory_pattern_matched(asset_name, asset_dir, name, extension=None,
-                                        use_content_plugin=False, content_plugin_name=""):
-    version_folder = asset_dir.split("/")[-1]
-    target_asset_dir = asset_dir.replace(version_folder, "")
-    asset_path = has_asset_existing_directory(
-        asset_name, target_asset_dir, use_content_plugin, content_plugin_name
-    )
-    if not asset_path:
-        return None
-    existing_asset_dir = unreal.Paths.split(asset_path)[0]
-    existing_version_folder = existing_asset_dir.split("/")[-1]
-    # TODO: make it not hardcoded
-    pattern = rf"{name}_\d{{3}}"
-    if extension:
-        pattern = rf"{name}_v\d{{3}}_{extension}"
-    is_version_folder_matched = re.match(pattern, version_folder)
-    is_existing_version_folder_matched = re.match(pattern, existing_version_folder)
-    if not is_version_folder_matched or not is_existing_version_folder_matched:
-        return asset_path
-
-    return None
-
-
-def has_content_plugin_path(content_plugin_name):
-    """Search if the content plugin from the ayon settings exist in
-    the Unreal project
 
     Args:
-        content_plugin_name (str): Content plugin name
+        asset_name (str): The name of the asset to search for.
+        search_dir (str, optional): The directory to search (e.g., "/Game/Characters").
+                                    If None, defaults to ["/Game", "/Plugins"].
+        pattern_regex (dict, optional): A dictionary of regex patterns to filter assets.
+                                        Keys are attribute names, and values are regex patterns.
 
     Returns:
-        str: content plugin name
+        str: The full path of the asset if found, otherwise None.
     """
+    # List all assets in the project content folder
     asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
 
     # Get all assets
     asset_list = asset_registry.get_all_assets()
-    for package in asset_list:
-        if unreal.Paths.split(package.package_path)[0].startswith(f"/{content_plugin_name}"):
-            return content_plugin_name
+    # Search for the asset by name
+    if search_dir and pattern_regex:
+        name = pattern_regex["name"]
+        extension = pattern_regex["extension"]
+        pattern = rf"{name}_\d{{3}}"
+        if extension:
+            pattern = rf"{name}_v\d{{3}}_{extension}"
+        is_version_folder_matched = re.match(pattern, search_dir)
+        if is_version_folder_matched:
+            return search_dir
+    else:
+        for package in asset_list:
+            if asset_name in package.asset_name:
+                return unreal.Paths.split(package.package_path)[0]
+
+    return None
 
 
 def get_top_hierarchy_folder(path):
@@ -1277,24 +1250,3 @@ def add_track(sequence, track):
         return sequence.add_track(track)
     else:
         return sequence.add_master_track(track)
-
-
-def remove_asset_from_content_plugin(container):
-    """Remove the AYON-loaded asset from content plugin
-    (Only valid when users manually migrates the asset)
-
-    Args:
-        container (dict): container data
-    """
-    path = container["namespace"]
-    content_plugin_path = container.get("content_plugin_path", "")
-    if content_plugin_path:
-        path = path.replace(AYON_ROOT_DIR, f"/{content_plugin_path}/Ayon")
-        if unreal.EditorAssetLibrary.does_directory_exist(path):
-            container_name = container["container_name"]
-            container_path = f"{path}/{container_name}"
-            if unreal.EditorAssetLibrary.does_asset_exist(container_path):
-                container = unreal.EditorAssetLibrary.load_asset(container_path)
-                data = unreal.EditorAssetLibrary.get_metadata_tag_values(container)
-                if data["namespace"] == container["namespace"]:
-                    unreal.EditorAssetLibrary.delete_directory(path)

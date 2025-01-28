@@ -5,10 +5,21 @@ import os
 import shutil
 
 from ayon_core.pipeline import AYON_CONTAINER_ID
-from ayon_core.lib import BoolDef, EnumDef
+from ayon_core.lib import EnumDef
 from ayon_unreal.api import plugin
 from ayon_unreal.api import pipeline as unreal_pipeline
 import unreal  # noqa
+
+
+def parsing_to_absolute_directory(asset_dir):
+    if unreal_pipeline.AYON_ROOT_DIR in asset_dir:
+        return asset_dir.replace(
+            "/Game", Path(unreal.Paths.project_content_dir()).as_posix(),
+        1)
+    else:
+        absolute_path = os.path.join(
+            unreal.Paths.project_plugins_dir(), asset_dir)
+        return os.path.normpath(absolute_path)
 
 
 class UAssetLoader(plugin.Loader):
@@ -23,8 +34,7 @@ class UAssetLoader(plugin.Loader):
     extension = "uasset"
 
     loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
-    content_plugin_enabled = False
-    content_plugin_path = []
+    asset_loading_location = "project"
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -32,30 +42,22 @@ class UAssetLoader(plugin.Loader):
         # Apply import settings
         unreal_settings = project_settings["unreal"]["import_settings"]
         cls.loaded_asset_dir = unreal_settings["loaded_asset_dir"]
-        if unreal_settings.get("content_plugin", {}):
-            cls.content_plugin_enabled = (
-                unreal_settings["content_plugin"]["enabled"]
-            )
-            cls.content_plugin_path = (
-                unreal_settings["content_plugin"]["content_plugin_name"]
-            )
+        cls.asset_loading_location = unreal_settings.get(
+            "asset_loading_location", cls.asset_loading_location)
+
 
     @classmethod
     def get_options(cls, contexts):
-        default_content_plugin = next(
-            (path for path in cls.content_plugin_path), "")
         return [
-            BoolDef(
-                "content_plugin_enabled",
-                label="Content Plugin",
-                default=cls.content_plugin_enabled
-            ),
             EnumDef(
-                "content_plugin_name",
-                label="Content Plugin Name",
-                items=[path for path in cls.content_plugin_path],
-                default=default_content_plugin
-            )
+                "asset_loading_location",
+                label="Asset Loading Location",
+                items={
+                "project": "Load in Project",
+                "follow_existing": "Load in where the asset already exists",
+                },
+                default=cls.asset_loading_location
+            ),
         ]
 
     def load(self, context, name, namespace, options):
@@ -78,42 +80,35 @@ class UAssetLoader(plugin.Loader):
         # Create directory for asset and Ayon container
         folder_path = context["folder"]["path"]
         suffix = "_CON"
-        use_content_plugin = options.get("content_plugin_enabled", False)
-        content_plugin_name = options.get(
-            "content_plugin_name",
-            next((path for path in self.content_plugin_path), "")
-        )
         asset_root, asset_name = unreal_pipeline.format_asset_directory(
-            context, self.loaded_asset_dir,
-            use_content_plugin, content_plugin_name
+            context, self.loaded_asset_dir
         )
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=""
         )
+        pattern_regex = {
+            "name": name,
+            "extension": ""
+        }
         container_name = f"{container_name}_{suffix}"
+        if self.asset_loading_location == "follow_existing":
+            # Follow the existing version's location
+            existing_asset_path = unreal_pipeline.find_existing_asset(
+                asset_name, asset_dir, pattern_regex)
+            if existing_asset_path:
+                asset_dir = unreal.Paths.get_path(existing_asset_path)
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
-        if use_content_plugin:
-            abs_content_plugin_path = os.path.join(
-                unreal.Paths.project_plugins_dir(), content_plugin_name)
-            destination_path = asset_dir.replace(
-                f"/{content_plugin_name}",
-                Path(abs_content_plugin_path).as_posix(), 1
-            )
+        # Check if the asset already exists
+        existing_asset_path =  unreal_pipeline.find_existing_asset(asset_name)
+        if existing_asset_path:
+            destination_path = parsing_to_absolute_directory(existing_asset_path)
         else:
-            destination_path = asset_dir.replace(
-                "/Game", Path(unreal.Paths.project_content_dir()).as_posix(), 1)
+            destination_path = parsing_to_absolute_directory(asset_dir)
 
         path = self.filepath_from_context(context)
-        asset_name = os.path.basename(path)
-        asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
-            asset_name, asset_dir, name,
-            use_content_plugin=use_content_plugin,
-            content_plugin_name=content_plugin_name
-        )
-        if asset_path:
-            destination_path = unreal.Paths.split(asset_path)[0]
+
         shutil.copy(path, f"{destination_path}/{asset_name}")
 
         if not unreal.EditorAssetLibrary.does_asset_exist(
@@ -136,17 +131,8 @@ class UAssetLoader(plugin.Loader):
             # TODO these should be probably removed
             "asset": folder_path,
             "family": context["product"]["productType"],
-            "asset_path": asset_path,
             "project_name": context["project"]["name"]
         }
-        if use_content_plugin and content_plugin_name:
-            data["content_plugin_name"] = content_plugin_name
-
-        if asset_path:
-            unreal.EditorAssetLibrary.rename_asset(
-                f"{asset_path}",
-                f"{asset_dir}/{asset_name}.{asset_name}"
-            )
 
         unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
 
@@ -164,18 +150,6 @@ class UAssetLoader(plugin.Loader):
 
         asset_dir = container["namespace"]
         repre_entity = context["representation"]
-        name = context["product"]["name"]
-
-        destination_path = asset_dir.replace(
-            "/Game", Path(unreal.Paths.project_content_dir()).as_posix(), 1)
-        content_plugin_path = container.get("content_plugin_path", "")
-        if content_plugin_path:
-            abs_content_plugin_path = os.path.join(
-                unreal.Paths.project_plugins_dir(), content_plugin_path)
-            destination_path = asset_dir.replace(
-                f"/{content_plugin_path}",
-                Path(abs_content_plugin_path).as_posix(), 1
-            )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
             asset_dir, recursive=False, include_folder=True
@@ -188,20 +162,27 @@ class UAssetLoader(plugin.Loader):
 
         update_filepath = self.filepath_from_context(context)
         new_asset_name = os.path.basename(update_filepath)
-        asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
-            new_asset_name, asset_dir, name,
-            use_content_plugin=bool(content_plugin_path),
-            content_plugin_name=content_plugin_path)
-
-
-        if asset_path:
-            unreal.EditorAssetLibrary.rename_asset(
-                f"{asset_path}",
-                f"{asset_dir}/{new_asset_name}.{new_asset_name}"
-            )
+        pattern_regex = {
+            "name": context["product"]["name"],
+            "extension": ""
+        }
+        if self.asset_loading_location == "follow_existing":
+            # Follow the existing version's location
+            existing_asset_path = unreal_pipeline.find_existing_asset(
+                new_asset_name, asset_dir, pattern_regex)
+            if existing_asset_path:
+                asset_dir = unreal.Paths.get_path(existing_asset_path)
+        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+            unreal.EditorAssetLibrary.make_directory(asset_dir)
+        # Check if the asset already exists
+        existing_asset_path =  unreal_pipeline.find_existing_asset(new_asset_name)
+        if existing_asset_path:
+            destination_path = parsing_to_absolute_directory(existing_asset_path)
         else:
-            shutil.copy(
-                update_filepath, f"{destination_path}/{new_asset_name}")
+            destination_path = parsing_to_absolute_directory(asset_dir)
+
+        shutil.copy(
+            update_filepath, f"{destination_path}/{new_asset_name}")
 
         container_path = f'{container["namespace"]}/{container["objectName"]}'
         # update metadata
@@ -226,7 +207,6 @@ class UAssetLoader(plugin.Loader):
         path = container["namespace"]
         if unreal.EditorAssetLibrary.does_directory_exist(path):
             unreal.EditorAssetLibrary.delete_directory(path)
-        unreal_pipeline.remove_asset_from_content_plugin(container)
 
 
 class UMapLoader(UAssetLoader):

@@ -30,8 +30,7 @@ class AnimationFBXLoader(plugin.Loader):
     root = unreal_pipeline.AYON_ROOT_DIR
     loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
     show_dialog = False
-    content_plugin_enabled = False
-    content_plugin_path = []
+    asset_loading_location = "project"
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -40,29 +39,20 @@ class AnimationFBXLoader(plugin.Loader):
         unreal_settings = project_settings["unreal"]["import_settings"]
         cls.loaded_asset_dir = unreal_settings["loaded_asset_dir"]
         cls.show_dialog = unreal_settings["show_dialog"]
-        if unreal_settings.get("content_plugin", {}):
-            cls.content_plugin_enabled = (
-                unreal_settings["content_plugin"]["enabled"]
-            )
-            cls.content_plugin_path = (
-                unreal_settings["content_plugin"]["content_plugin_name"]
-            )
+        cls.asset_loading_location = unreal_settings.get(
+            "asset_loading_location", cls.asset_loading_location)
 
     @classmethod
     def get_options(cls, contexts):
-        default_content_plugin = next(
-            (path for path in cls.content_plugin_path), "")
         return [
-            BoolDef(
-                "content_plugin_enabled",
-                label="Content Plugin",
-                default=cls.content_plugin_enabled
-            ),
             EnumDef(
-                "content_plugin_name",
-                label="Content Plugin Name",
-                items=[path for path in cls.content_plugin_path],
-                default=default_content_plugin
+                "asset_loading_location",
+                label="Asset Loading Location",
+                items={
+                "project": "Load in Project",
+                "follow_existing": "Load in where the asset already exists",
+                },
+                default=cls.asset_loading_location
             )
         ]
 
@@ -322,19 +312,32 @@ class AnimationFBXLoader(plugin.Loader):
             raise LoadError("Selected asset is not a skeleton.")
 
         self.log.info(f"Using skeleton: {skeleton.get_name()}")
-        self._import_animation(
-            path, asset_dir, asset_name,
-            skeleton, True, loaded_options=loaded_options)
+        existing_asset_path = unreal_pipeline.find_existing_asset(asset_name)
+        if existing_asset_path:
+            self._import_animation(
+                path, existing_asset_path, asset_name,
+                skeleton, True, loaded_options=loaded_options)
+        else:
+            self._import_animation(
+                path, asset_dir, asset_name,
+                skeleton, True, loaded_options=loaded_options)
 
     def _import_animation_with_json(self, path, context, hierarchy,
                                     asset_dir, folder_name,
-                                    asset_name, asset_path=None,
+                                    asset_name, pattern_regex,
                                     loaded_options=None):
             libpath = path.replace(".fbx", ".json")
 
             master_level = None
-            if asset_path:
-                asset_dir = unreal.Paths.split(asset_path)[0]
+            if self.asset_loading_location == "follow_existing":
+                # Follow the existing version's location
+                existing_asset_path = unreal_pipeline.find_existing_asset(
+                    asset_name, asset_dir, pattern_regex)
+                if existing_asset_path:
+                    asset_dir = unreal.Paths.get_path(existing_asset_path)
+
+            if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+                EditorAssetLibrary.make_directory(asset_dir)
             # check if json file exists.
             if os.path.exists(libpath):
                 ar = unreal.AssetRegistryHelpers.get_asset_registry()
@@ -369,9 +372,9 @@ class AnimationFBXLoader(plugin.Loader):
                     f"{asset_dir}/{asset_name}"):
                         self._load_standalone_animation(
                             path, asset_dir, asset_name,
-                            version_id, loaded_options=loaded_options)
+                            version_id, loaded_options)
 
-            return master_level
+            return master_level, asset_dir
 
     def imprint(
         self,
@@ -382,9 +385,7 @@ class AnimationFBXLoader(plugin.Loader):
         representation,
         product_type,
         folder_entity,
-        project_name,
-        content_plugin_name=None,
-        content_plugin_enabled=False
+        project_name
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -404,8 +405,7 @@ class AnimationFBXLoader(plugin.Loader):
             "frameEnd": folder_entity["attrib"]["frameEnd"],
             "project_name": project_name
         }
-        if content_plugin_enabled and content_plugin_name:
-            data["content_plugin_name"] = content_plugin_name
+
         unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
 
     def load(self, context, name, namespace, options):
@@ -441,47 +441,34 @@ class AnimationFBXLoader(plugin.Loader):
 
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        use_content_plugin = options.get("content_plugin_enabled", False)
-        content_plugin_name = options.get(
-            "content_plugin_name",
-            next((path for path in self.content_plugin_path), "")
-        )
+
         asset_root, asset_name = unreal_pipeline.format_asset_directory(
-            context, self.loaded_asset_dir,
-            use_content_plugin, content_plugin_name
+            context, self.loaded_asset_dir
         )
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
 
-        asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
-            asset_name, asset_dir, name, extension=ext,
-            use_content_plugin=use_content_plugin,
-            content_plugin_name=content_plugin_name
-        )
-
         container_name += suffix
-        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            EditorAssetLibrary.make_directory(asset_dir)
         loaded_options = {
             "frameStart": folder_entity["attrib"]["frameStart"],
             "frameEnd": folder_entity["attrib"]["frameEnd"]
         }
-        master_level = self._import_animation_with_json(
+        pattern_regex = {
+            "name": name,
+            "extension": ext
+        }
+        master_level, asset_dir = self._import_animation_with_json(
             path, context, hierarchy,
             asset_dir, folder_name,
-            asset_name, asset_path=asset_path,
+            asset_name, pattern_regex,
             loaded_options=loaded_options
         )
         if not unreal.EditorAssetLibrary.does_asset_exist(
             f"{asset_dir}/{container_name}"):
                 unreal_pipeline.create_container(
                     container=container_name, path=asset_dir)
-        if asset_path:
-            unreal.EditorAssetLibrary.rename_asset(
-                f"{asset_path}",
-                f"{asset_dir}/{asset_name}.{asset_name}"
-            )
+
         self.imprint(
             folder_path,
             asset_dir,
@@ -490,9 +477,7 @@ class AnimationFBXLoader(plugin.Loader):
             context["representation"],
             product_type,
             folder_entity,
-            context["project"]["name"],
-            content_plugin_name,
-            use_content_plugin
+            context["project"]["name"]
         )
 
         imported_content = EditorAssetLibrary.list_assets(
@@ -525,32 +510,22 @@ class AnimationFBXLoader(plugin.Loader):
         suffix = "_CON"
         source_path = self.filepath_from_context(context)
         ext = os.path.splitext(source_path)[-1].lstrip(".")
-        content_plugin_name = container.get("content_plugin_name", "")
-
         asset_root, asset_name = unreal_pipeline.format_asset_directory(
-            context, self.loaded_asset_dir,
-            use_content_plugin=bool(content_plugin_name),
-            content_plugin_name=content_plugin_name
+            context, self.loaded_asset_dir
         )
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
 
         container_name += suffix
-        asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
-            asset_name, asset_dir,
-            context["product"]["name"], extension=ext,
-            use_content_plugin=bool(content_plugin_name),
-            content_plugin_name=content_plugin_name
-        )
-
-        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            EditorAssetLibrary.make_directory(asset_dir)
-
-        master_level = self._import_animation_with_json(
+        pattern_regex = {
+            "name": context["product"]["name"],
+            "extension": ext
+        }
+        master_level, asset_dir = self._import_animation_with_json(
             source_path, context, hierarchy,
             asset_dir, folder_name, asset_name,
-            asset_path=asset_path
+            pattern_regex
         )
         if not unreal.EditorAssetLibrary.does_asset_exist(
             f"{asset_dir}/{container_name}"):
@@ -558,12 +533,6 @@ class AnimationFBXLoader(plugin.Loader):
                 unreal_pipeline.create_container(
                     container=container_name, path=asset_dir
                 )
-
-        if asset_path:
-            unreal.EditorAssetLibrary.rename_asset(
-                f"{asset_path}",
-                f"{asset_dir}/{asset_name}.{asset_name}"
-            )
 
         # update metadata
         self.imprint(
@@ -594,4 +563,3 @@ class AnimationFBXLoader(plugin.Loader):
         path = container["namespace"]
         if unreal.EditorAssetLibrary.does_directory_exist(path):
             unreal.EditorAssetLibrary.delete_directory(path)
-        unreal_pipeline.remove_asset_from_content_plugin(container)

@@ -4,15 +4,14 @@ import os
 
 from ayon_core.pipeline import AYON_CONTAINER_ID
 
-from ayon_core.lib import BoolDef, EnumDef
+from ayon_core.lib import EnumDef
 from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
     create_container,
     imprint,
-    has_asset_directory_pattern_matched,
     format_asset_directory,
     UNREAL_VERSION,
-    remove_asset_from_content_plugin
+    find_existing_asset
 )
 from ayon_core.settings import get_current_project_settings
 import unreal  # noqa
@@ -30,8 +29,7 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
     abc_conversion_preset = "maya"
     loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
     show_dialog = False
-    content_plugin_enabled = False
-    content_plugin_path = []
+    asset_loading_location = "project"
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -41,29 +39,21 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
         cls.abc_conversion_preset = unreal_settings["abc_conversion_preset"]
         cls.loaded_asset_dir = unreal_settings["loaded_asset_dir"]
         cls.show_dialog = unreal_settings["show_dialog"]
-        if unreal_settings.get("content_plugin", {}):
-            cls.content_plugin_enabled = (
-                unreal_settings["content_plugin"]["enabled"]
-            )
-            cls.content_plugin_path = (
-                unreal_settings["content_plugin"]["content_plugin_name"]
-            )
+        cls.asset_loading_location = unreal_settings.get(
+            "asset_loading_location", cls.asset_loading_location)
 
     @classmethod
     def get_options(cls, contexts):
-        default_content_plugin = next(
-            (path for path in cls.content_plugin_path), "")
+
         return [
-            BoolDef(
-                "content_plugin_enabled",
-                label="Content Plugin",
-                default=cls.content_plugin_enabled
-            ),
             EnumDef(
-                    "content_plugin_name",
-                    label="Content Plugin Name",
-                    items=[path for path in cls.content_plugin_path],
-                    default=default_content_plugin
+                "asset_loading_location",
+                label="Asset Loading Location",
+                items={
+                "project": "Load in Project",
+                "follow_existing": "Load in where the asset already exists",
+                },
+                default=cls.asset_loading_location
             ),
             EnumDef(
                 "abc_conversion_preset",
@@ -171,13 +161,24 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
 
     def import_and_containerize(
         self, filepath, asset_dir, asset_name, container_name,
-        loaded_options, asset_path=None
+        loaded_options, pattern_regex
     ):
         task = None
-        if asset_path:
-            loaded_asset_dir = unreal.Paths.split(asset_path)[0]
+        # Determine where to load the asset based on settings
+        if self.asset_loading_location == "follow_existing":
+            # Follow the existing version's location
+            existing_asset_path = find_existing_asset(asset_name, asset_dir, pattern_regex)
+            if existing_asset_path:
+                asset_dir = unreal.Paths.get_path(existing_asset_path)
+        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+            unreal.EditorAssetLibrary.make_directory(asset_dir)
+        # Check if the asset already exists
+        existing_asset_path = find_existing_asset(asset_name)
+        if existing_asset_path:
+            # If the asset exists, reuse it
             task = self.get_task(
-                filepath, loaded_asset_dir, asset_name, True, loaded_options)
+                filepath, existing_asset_path, asset_name, True, loaded_options
+            )
         else:
             if not unreal.EditorAssetLibrary.does_asset_exist(
                 f"{asset_dir}/{asset_name}"):
@@ -191,6 +192,8 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
                 # Create Asset Container
                 create_container(container=container_name, path=asset_dir)
 
+        return asset_dir
+
     def imprint(
         self,
         folder_path,
@@ -201,9 +204,7 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
         product_type,
         frameStart,
         frameEnd,
-        project_name,
-        content_plugin_name=None,
-        content_plugin_enabled=False
+        project_name
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -223,8 +224,7 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             "family": product_type,
             "project_name": project_name
         }
-        if content_plugin_enabled and content_plugin_name:
-            data["content_plugin_name"] = content_plugin_name
+
         imprint(f"{asset_dir}/{container_name}", data)
 
     def load(self, context, name, namespace, options):
@@ -248,14 +248,8 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
         suffix = "_CON"
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        use_content_plugin = options.get("content_plugin_enabled", False)
-        content_plugin_name = options.get(
-            "content_plugin_name",
-            next((path for path in self.content_plugin_path), "")
-        )
         asset_root, asset_name = format_asset_directory(
-            context, self.loaded_asset_dir,
-            use_content_plugin, content_plugin_name
+            context, self.loaded_asset_dir
         )
         loaded_options = {
             "default_conversion": options.get("default_conversion", False),
@@ -266,42 +260,30 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             "frameEnd": folder_entity["attrib"]["frameEnd"]
         }
 
+        pattern_regex = {
+            "name": name,
+            "extension": ext
+        }
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
-
-        asset_path = has_asset_directory_pattern_matched(
-            asset_name, asset_dir, name, extension=ext,
-            use_content_plugin=use_content_plugin,
-            content_plugin_name=content_plugin_name
+        container_name += suffix
+        asset_dir = self.import_and_containerize(
+            path, asset_dir, asset_name,
+            container_name, loaded_options,
+            pattern_regex
         )
 
-        container_name += suffix
-        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            unreal.EditorAssetLibrary.make_directory(asset_dir)
-        self.import_and_containerize(path, asset_dir, asset_name,
-                                     container_name, loaded_options,
-                                     asset_path=asset_path)
-
-        if asset_path:
-            unreal.EditorAssetLibrary.rename_asset(
-                f"{asset_path}",
-                f"{asset_dir}/{asset_name}.{asset_name}"
-            )
-
-        product_type = context["product"]["productType"]
         self.imprint(
             folder_path,
             asset_dir,
             container_name,
             asset_name,
             context["representation"],
-            product_type,
+            context["product"]["productType"],
             folder_entity["attrib"]["frameStart"],
             folder_entity["attrib"]["frameEnd"],
-            context["project"]["name"],
-            content_plugin_name,
-            use_content_plugin
+            context["project"]["name"]
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
@@ -317,46 +299,35 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
         folder_path = context["folder"]["path"]
         product_type = context["product"]["productType"]
         repre_entity = context["representation"]
-        name = context["product"]["name"]
 
         # Create directory for folder and Ayon container
         suffix = "_CON"
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        content_plugin_name = container.get("content_plugin_name", "")
 
         asset_root, asset_name = format_asset_directory(
-            context, self.loaded_asset_dir,
-            use_content_plugin=bool(content_plugin_name),
-            content_plugin_name=content_plugin_name
+            context, self.loaded_asset_dir
         )
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
 
-        asset_path = has_asset_directory_pattern_matched(
-            asset_name, asset_dir, name, extension=ext,
-            use_content_plugin=bool(content_plugin_name),
-            content_plugin_name=content_plugin_name
-        )
-
         container_name += suffix
-        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            unreal.EditorAssetLibrary.make_directory(asset_dir)
         loaded_options = {
             "default_conversion": False,
             "abc_conversion_preset": self.abc_conversion_preset,
             "frameStart": container.get("frameStart", 1),
             "frameEnd": container.get("frameEnd", 1)
         }
-        self.import_and_containerize(path, asset_dir, asset_name,
-                                     container_name, loaded_options,
-                                     asset_path=asset_path)
-        if asset_path:
-            unreal.EditorAssetLibrary.rename_asset(
-                f"{asset_path}",
-                f"{asset_dir}/{asset_name}.{asset_name}"
-            )
+        pattern_regex = {
+            "name": context["product"]["name"],
+            "extension": ext
+        }
+        asset_dir = self.import_and_containerize(
+            path, asset_dir, asset_name,
+            container_name, loaded_options,
+            pattern_regex
+        )
 
         self.imprint(
             folder_path,
@@ -381,4 +352,3 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
         path = container["namespace"]
         if unreal.EditorAssetLibrary.does_directory_exist(path):
             unreal.EditorAssetLibrary.delete_directory(path)
-        remove_asset_from_content_plugin(container)
