@@ -28,13 +28,7 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
         )
         cls.loaded_layout_dir = import_settings["loaded_layout_dir"]
         cls.remove_loaded_assets = import_settings["remove_loaded_assets"]
-        if import_settings.get("content_plugin", {}):
-            cls.content_plugin_enabled = (
-                import_settings["content_plugin"]["enabled"]
-            )
-            cls.content_plugin_path = (
-                import_settings["content_plugin"]["content_plugin_name"]
-            )
+        cls.resolution_priority = import_settings["resolution_priority"]
 
     def _spawn_actor(self, obj, lasset, sequence):
         actor = EditorLevelLibrary.spawn_actor_from_object(
@@ -301,13 +295,11 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
 
         project_name = context["project"]["name"]
         path = self.filepath_from_context(context)
-
         import_options = {
-            "content_plugin_enabled": options.get(
-                "content_plugin_enabled", self.content_plugin_enabled),
-            "content_plugin_name": options.get(
-                "content_plugin_name", "")
+            "resolution_priority": options.get(
+                "resolution_priority", self.resolution_priority)
         }
+
         loaded_assets = self._process(path, project_name, sequence, import_options)
 
         container_name += suffix
@@ -324,8 +316,7 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
             curr_asset_dir,
             asset_name,
             container_name,
-            context["project"]["name"],
-            content_plugin_name=import_options["content_plugin_name"]
+            context["project"]["name"]
         )
 
     def update(self, container, context):
@@ -341,10 +332,8 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
         sequence = next((asset for asset in ar.get_assets(level_seq_filter)), None)
         source_path = self.filepath_from_context(context)
-        content_plugin = container.get("content_plugin", "")
         import_options = {
-            "content_plugin_enabled": bool(content_plugin),
-            "content_plugin_name": content_plugin
+            "resolution_priority": self.resolution_priority
         }
         loaded_assets = self._process(source_path, project_name, sequence, import_options)
 

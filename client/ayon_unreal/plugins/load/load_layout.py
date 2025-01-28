@@ -53,13 +53,7 @@ class LayoutLoader(plugin.LayoutLoader):
         )
         cls.loaded_layout_dir = import_settings["loaded_layout_dir"]
         cls.remove_loaded_assets = import_settings["remove_loaded_assets"]
-        if import_settings.get("content_plugin", {}):
-            cls.content_plugin_enabled = (
-                import_settings["content_plugin"]["enabled"]
-            )
-            cls.content_plugin_path = (
-                import_settings["content_plugin"]["content_plugin_name"]
-            )
+        cls.resolution_priority = import_settings["resolution_priority"]
 
     @classmethod
     def get_options(cls, contexts):
@@ -332,10 +326,8 @@ class LayoutLoader(plugin.LayoutLoader):
         extension = options.get(
             "folder_representation_type", self.folder_representation_type)
         import_options = {
-            "content_plugin_enabled": options.get(
-                "content_plugin_enabled", self.content_plugin_enabled),
-            "content_plugin_name": options.get(
-                "content_plugin_name", "")
+            "resolution_priority": options.get(
+                "resolution_priority", self.resolution_priority)
         }
 
         path = self.filepath_from_context(context)
@@ -364,8 +356,7 @@ class LayoutLoader(plugin.LayoutLoader):
             asset_name,
             container_name,
             context["project"]["name"],
-            hierarchy_dir=hierarchy_dir,
-            content_plugin_name=import_options["content_plugin_name"]
+            hierarchy_dir=hierarchy_dir
         )
         save_dir = hierarchy_dir if create_sequences else asset_dir
 
@@ -440,10 +431,8 @@ class LayoutLoader(plugin.LayoutLoader):
             EditorLevelLibrary.save_current_level()
         source_path = self.filepath_from_context(context)
 
-        content_plugin = container.get("content_plugin", "")
         import_options = {
-            "content_plugin_enabled": bool(content_plugin),
-            "content_plugin_name": content_plugin
+            "resolution_priority": self.resolution_priority
         }
         loaded_assets = self._process(
             source_path, project_name, asset_dir, sequence,

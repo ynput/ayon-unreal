@@ -301,25 +301,20 @@ class LayoutLoader(Loader):
     color = "orange"
     loaded_layout_dir = "{folder[path]}/{product[name]}"
     remove_loaded_assets = False
-    content_plugin_enabled = False
-    content_plugin_path = []
+    resolution_priority = "project_first"
 
     @classmethod
     def get_options(cls, contexts):
-        default_content_plugin = next(
-            (path for path in cls.content_plugin_path), "")
         return [
-            BoolDef(
-                "content_plugin_enabled",
-                label="Content Plugin",
-                default=cls.content_plugin_enabled
-            ),
             EnumDef(
-                    "content_plugin_name",
-                    label="Content Plugin Name",
-                    items=[path for path in cls.content_plugin_path],
-                    default=default_content_plugin
-            )
+                "resolution_priority",
+                label="Resolution Priority",
+                items={
+                "project_first": "Load in Project",
+                "content_plugin_first": "Content Plugin test",
+                },
+                default=cls.asset_loading_location
+            ),
         ]
 
     @staticmethod
@@ -434,8 +429,7 @@ class LayoutLoader(Loader):
         asset_name,
         container_name,
         project_name,
-        hierarchy_dir=None,
-        content_plugin_name=None
+        hierarchy_dir=None
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -454,8 +448,6 @@ class LayoutLoader(Loader):
         }
         if hierarchy_dir is not None:
             data["master_directory"] = hierarchy_dir
-        if content_plugin_name:
-            data["content_plugin_name"] = content_plugin_name
         imprint(
             "{}/{}".format(asset_dir, container_name), data)
 
@@ -486,8 +478,7 @@ class LayoutLoader(Loader):
             return
 
         import_options = {
-            "content_plugin_enabled": options["content_plugin_enabled"],
-            "content_plugin_name": options.get("content_plugin_name", "")
+            "resolution_priority": options["resolution_priority"]
         }
 
         assets = load_container(
