@@ -53,7 +53,8 @@ class LayoutLoader(plugin.LayoutLoader):
         )
         cls.loaded_layout_dir = import_settings["loaded_layout_dir"]
         cls.remove_loaded_assets = import_settings["remove_loaded_assets"]
-        cls.resolution_priority = import_settings["resolution_priority"]
+        cls.resolution_priority = import_settings.get(
+            "resolution_priority", cls.resolution_priority)
 
     @classmethod
     def get_options(cls, contexts):

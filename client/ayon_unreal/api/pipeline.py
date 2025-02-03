@@ -909,12 +909,13 @@ def set_asset_name(data):
     return asset_name
 
 
-def show_audit_dialog(missing_assets):
+def show_audit_dialog(missing_asset):
     """
     Show a dialog to inform the user about missing assets.
     """
-    message = "The following assets were missing in the content plugin:\n"
-    message += "\n".join(missing_assets)
+    message = "The following asset was missing in the content plugin:\n"
+    message += f"{missing_asset}.\n"
+    message += "Loading the asset into Game Content instead."
     unreal.EditorDialog.show_message(
         "Missing Assets", message, unreal.AppMsgType.OK
     )
@@ -1036,7 +1037,8 @@ def get_frame_range_from_folder_attributes(folder_entity=None):
     return frame_start, frame_end
 
 
-def find_existing_asset(asset_name, search_dir=None, pattern_regex=None):
+def find_existing_asset(asset_name, search_dir=None,
+                        pattern_regex=None, show_dialog=False):
     """
     Search for an existing asset in a specified directory or default directories.
 
@@ -1047,6 +1049,8 @@ def find_existing_asset(asset_name, search_dir=None, pattern_regex=None):
                                     If None, defaults to ["/Game", "/Plugins"].
         pattern_regex (dict, optional): A dictionary of regex patterns to filter assets.
                                         Keys are attribute names, and values are regex patterns.
+        show_dialog (bool, optional): show audit dialogs to warn the users about the failure of
+                                      asset loading.
 
     Returns:
         str: The full path of the asset if found, otherwise None.
@@ -1071,6 +1075,10 @@ def find_existing_asset(asset_name, search_dir=None, pattern_regex=None):
         ]
         if is_version_folder_matched and not game_content:
             return search_dir
+        else:
+            if show_dialog:
+                show_audit_dialog(asset_name)
+
     else:
         for package in asset_list:
             if asset_name in str(package.asset_name):

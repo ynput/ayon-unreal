@@ -478,7 +478,7 @@ class LayoutLoader(Loader):
             return
 
         import_options = {
-            "resolution_priority": options["resolution_priority"]
+            "resolution_priority": options.get("resolution_priority", "project_first")
         }
 
         assets = load_container(
