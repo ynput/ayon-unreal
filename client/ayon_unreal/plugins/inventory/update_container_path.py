@@ -9,6 +9,7 @@ def find_content_plugin_asset(asset_name):
     asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
     # Get all target assets
     # Create an ARFilter to find assets with the given name
+    # for the future development of filtering
     asset_filter = unreal.ARFilter(
         class_names=[],  # Empty means all classes
         package_paths=[],  # Empty means all paths
@@ -27,6 +28,7 @@ def find_content_plugin_asset(asset_name):
     }
 
     # Find assets in the /Game folder with the exact name
+    # Use ARFilter for the future development of filtering
     game_content_filter = unreal.ARFilter(
         class_names=[],
         package_paths=["/Game"],  # Limit to /Game folder
