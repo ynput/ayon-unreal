@@ -40,24 +40,11 @@ class StaticMeshAlembicLoader(plugin.Loader):
         cls.show_dialog = unreal_settings["show_dialog"]
         cls.asset_loading_location = unreal_settings.get(
             "asset_loading_location", cls.asset_loading_location)
-        cls.resolution_priority = unreal_settings.get(
-            "resolution_priority", "project_first")
-        cls.forbid_missing_assets = unreal_settings.get(
-            "forbid_missing_assets", False)
 
     @classmethod
     def get_options(cls, contexts):
 
         return [
-            EnumDef(
-                "asset_loading_location",
-                label="Asset Loading Location",
-                items={
-                "project": "Load in Project",
-                "follow_existing": "Load in where the asset already exists",
-                },
-                default=cls.asset_loading_location
-            ),
             EnumDef(
                 "abc_conversion_preset",
                 label="Alembic Conversion Preset",

@@ -47,15 +47,6 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
 
         return [
             EnumDef(
-                "asset_loading_location",
-                label="Asset Loading Location",
-                items={
-                "project": "Load in Project",
-                "follow_existing": "Load in where the asset already exists",
-                },
-                default=cls.asset_loading_location
-            ),
-            EnumDef(
                 "abc_conversion_preset",
                 label="Alembic Conversion Preset",
                 items={

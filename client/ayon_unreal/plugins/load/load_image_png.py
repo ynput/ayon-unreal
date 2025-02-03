@@ -50,21 +50,6 @@ class TexturePNGLoader(plugin.Loader):
             "asset_loading_location", cls.asset_loading_location)
 
     @classmethod
-    def get_options(cls, contexts):
-
-        return [
-            EnumDef(
-                "asset_loading_location",
-                label="Asset Loading Location",
-                items={
-                "project": "Load in Project",
-                "follow_existing": "Load in where the asset already exists",
-                },
-                default="project"
-            ),
-        ]
-
-    @classmethod
     def get_task(cls, filename, asset_dir, asset_name, replace):
         task = unreal.AssetImportTask()
 

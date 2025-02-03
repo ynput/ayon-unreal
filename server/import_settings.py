@@ -1,6 +1,19 @@
 from ayon_server.settings import BaseSettingsModel, SettingsField
 
 
+def _asset_loading_enum():
+    return [
+        {"value": "project", "label": "Load in Project"},
+        {"value": "follow_existing", "label": "Load in where the asset already exists"}
+    ]
+
+
+def _resolution_loading_enum():
+    return [
+        {"value": "project_first", "label": "Load in Project First"},
+        {"value": "content_plugin_first", "label": "Load in Content Plugin First"}
+    ]
+
 def _loaded_asset_enum():
     return [
         {"value": "json", "label": "json"},
@@ -15,14 +28,6 @@ def _abc_conversion_presets_enum():
         {"value": "3dsmax", "label": "3dsmax"},
         {"value": "custom", "label": "custom"},
     ]
-
-
-class UnrealContentPluginModel(BaseSettingsModel):
-    enabled: bool = SettingsField(False, title="enabled")
-    content_plugin_name: list[str] = SettingsField(
-        default_factory=list,
-        title="Content Plugin Name"
-    )
 
 
 class UnrealInterchangeModel(BaseSettingsModel):
@@ -62,10 +67,11 @@ class UnrealImportModel(BaseSettingsModel):
 
     )
 
-    content_plugin: UnrealContentPluginModel = SettingsField(
-        default_factory=UnrealContentPluginModel,
-        title="Content Plugin",
-        section="Content Plugin"
+    asset_loading_location: str = SettingsField(
+        "project",
+        title="Asset Loading Location",
+        description="User preference for asset loading location",
+        enum_resolver=_asset_loading_enum,
     )
 
     interchange: UnrealInterchangeModel = SettingsField(
@@ -105,6 +111,13 @@ class UnrealImportModel(BaseSettingsModel):
         description="Directories to store the loaded layouts",
         section="Load Layout Settings"
     )
+    resolution_priority: str = SettingsField(
+        "project_first",
+        title="Resolution Priority",
+        description="User preference to prioritize which "
+                    "asset location to load for the layout",
+        enum_resolver=_resolution_loading_enum,
+    )
 
     level_sequences_for_layouts: bool = SettingsField(
         True,
@@ -137,10 +150,7 @@ class UnrealImportModel(BaseSettingsModel):
 
 DEFAULT_IMPORT_SETTINGS = {
     "loaded_asset_dir": "{folder[path]}/{product[name]}_{version[version]}",
-    "content_plugin": {
-        "enabled": False,
-        "content_plugin_name": []
-    },
+    "asset_loading_location": "project",
     "interchange": {
         "enabled": False,
         "pipeline_path_static_mesh": "/Game/Interchange/CustomPipeline.CustomPipeline",
@@ -150,6 +160,7 @@ DEFAULT_IMPORT_SETTINGS = {
     "show_dialog": False,
     "abc_conversion_preset": "maya",
     "loaded_layout_dir": "{folder[path]}/{product[name]}",
+    "resolution_priority": "project_first",
     "level_sequences_for_layouts": True,
     "force_loaded": False,
     "folder_representation_type": "json",

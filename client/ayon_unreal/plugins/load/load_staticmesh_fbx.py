@@ -45,22 +45,6 @@ class StaticMeshFBXLoader(plugin.Loader):
         cls.pipeline_path = import_settings.get("interchange", {}).get(
             "pipeline_path_static_mesh", cls.pipeline_path
         )
-        cls.asset_loading_location = unreal_settings.get(
-            "asset_loading_location", cls.asset_loading_location)
-
-    @classmethod
-    def get_options(cls, contexts):
-        return [
-            EnumDef(
-                "asset_loading_location",
-                label="Asset Loading Location",
-                items={
-                "project": "Load in Project",
-                "follow_existing": "Load in where the asset already exists",
-                },
-                default=cls.asset_loading_location
-            ),
-        ]
 
     @classmethod
     def get_task(cls, filename, asset_dir, asset_name, replace):

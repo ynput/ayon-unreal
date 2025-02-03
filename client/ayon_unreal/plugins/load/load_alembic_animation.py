@@ -40,15 +40,6 @@ class AnimationAlembicLoader(plugin.Loader):
     def get_options(cls, contexts):
         return [
             EnumDef(
-                "asset_loading_location",
-                label="Asset Loading Location",
-                items={
-                "project": "Load in Project",
-                "follow_existing": "Load in where the asset already exists",
-                },
-                default=cls.asset_loading_location
-            ),
-            EnumDef(
                 "abc_conversion_preset",
                 label="Alembic Conversion Preset",
                 items={
@@ -134,7 +125,8 @@ class AnimationAlembicLoader(plugin.Loader):
         # Determine where to load the asset based on settings
         if self.asset_loading_location == "follow_existing":
             # Follow the existing version's location
-            existing_asset_path = unreal_pipeline.find_existing_asset(asset_name, asset_dir, pattern_regex)
+            existing_asset_path = unreal_pipeline.find_existing_asset(
+                asset_name, asset_dir, pattern_regex)
             if existing_asset_path:
                 asset_dir = unreal.Paths.get_path(existing_asset_path)
         # Check if the asset already exists
@@ -239,7 +231,7 @@ class AnimationAlembicLoader(plugin.Loader):
             "abc_conversion_preset": options.get(
                 "abc_conversion_preset", self.abc_conversion_preset),
             "frameStart": folder_entity["attrib"]["frameStart"],
-            "frameEnd": folder_entity["attrib"]["frameEnd"]
+            "frameEnd": folder_entity["attrib"]["frameEnd"],
         }
         pattern_regex = {
             "name": name,

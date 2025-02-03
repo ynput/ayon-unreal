@@ -310,8 +310,8 @@ class LayoutLoader(Loader):
                 "resolution_priority",
                 label="Resolution Priority",
                 items={
-                "project_first": "Load in Project",
-                "content_plugin_first": "Content Plugin test",
+                "project_first": "Load in Project First",
+                "content_plugin_first": "Content Plugin First",
                 },
                 default=cls.resolution_priority
             ),
