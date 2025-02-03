@@ -1064,11 +1064,16 @@ def find_existing_asset(asset_name, search_dir=None, pattern_regex=None):
         if extension:
             pattern = rf"{name}_v\d{{3}}_{extension}"
         is_version_folder_matched = re.match(pattern, search_dir)
-        if is_version_folder_matched:
+        game_content = [
+            game_asset for game_asset in
+            asset_registry.get_assets_by_path('/Game', recursive=True)
+            if search_dir != game_asset.get_asset().get_path_name()
+        ]
+        if is_version_folder_matched and not game_content:
             return search_dir
     else:
         for package in asset_list:
-            if asset_name in package.asset_name:
+            if asset_name in str(package.asset_name):
                 return unreal.Paths.split(package.package_path)[0]
 
     return None

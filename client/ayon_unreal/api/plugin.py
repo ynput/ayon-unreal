@@ -313,7 +313,7 @@ class LayoutLoader(Loader):
                 "project_first": "Load in Project",
                 "content_plugin_first": "Content Plugin test",
                 },
-                default=cls.asset_loading_location
+                default=cls.resolution_priority
             ),
         ]
 

@@ -164,14 +164,17 @@ class PointCacheAlembicLoader(plugin.Loader):
         if existing_asset_path:
             # If the asset exists, reuse it
             task = self.get_task(
-                filepath, existing_asset_path, asset_name, True, loaded_options
+                filepath, existing_asset_path, asset_name, True,
+                frame_start, frame_end,
+                loaded_options=loaded_options
             )
         else:
             if not unreal.EditorAssetLibrary.does_asset_exist(
                 f"{asset_dir}/{asset_name}"):
                     task = self.get_task(
                         filepath, asset_dir, asset_name, False,
-                        frame_start, frame_end, loaded_options
+                        frame_start, frame_end,
+                        loaded_options=loaded_options
                     )
 
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])

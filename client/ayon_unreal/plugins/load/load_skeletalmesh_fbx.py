@@ -3,7 +3,7 @@
 import os
 
 from ayon_core.pipeline import AYON_CONTAINER_ID
-from ayon_core.lib import BoolDef, EnumDef
+from ayon_core.lib import EnumDef
 from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
     create_container,
@@ -101,6 +101,9 @@ class SkeletalMeshFBXLoader(plugin.Loader):
             existing_asset_path = find_existing_asset(asset_name, asset_dir, pattern_regex)
             if existing_asset_path:
                 asset_dir = unreal.Paths.get_path(existing_asset_path)
+
+        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+            unreal.EditorAssetLibrary.make_directory(asset_dir)
         # Check if the asset already exists
         existing_asset_path = find_existing_asset(asset_name)
         if existing_asset_path:
@@ -180,8 +183,6 @@ class SkeletalMeshFBXLoader(plugin.Loader):
             asset_root, suffix=f"_{ext}")
 
         container_name += suffix
-        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            unreal.EditorAssetLibrary.make_directory(asset_dir)
 
         asset_dir = self.import_and_containerize(
             path, asset_dir, asset_name,
@@ -216,12 +217,9 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         suffix = "_CON"
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        content_plugin_name = container.get("content_plugin_name", "")
 
         asset_root, asset_name = format_asset_directory(
-            context, self.loaded_asset_dir,
-            use_content_plugin=bool(content_plugin_name),
-            content_plugin_name=content_plugin_name
+            context, self.loaded_asset_dir
         )
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(

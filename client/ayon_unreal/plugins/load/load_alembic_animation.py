@@ -134,11 +134,11 @@ class AnimationAlembicLoader(plugin.Loader):
         # Determine where to load the asset based on settings
         if self.asset_loading_location == "follow_existing":
             # Follow the existing version's location
-            existing_asset_path = find_existing_asset(asset_name, asset_dir, pattern_regex)
+            existing_asset_path = unreal_pipeline.find_existing_asset(asset_name, asset_dir, pattern_regex)
             if existing_asset_path:
                 asset_dir = unreal.Paths.get_path(existing_asset_path)
         # Check if the asset already exists
-        existing_asset_path = find_existing_asset(asset_name)
+        existing_asset_path = unreal_pipeline.find_existing_asset(asset_name)
         if existing_asset_path:
             # If the asset exists, reuse it
             task = self.get_task(
