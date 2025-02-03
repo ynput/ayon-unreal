@@ -1071,7 +1071,8 @@ def find_existing_asset(asset_name, search_dir=None,
         game_content = [
             game_asset for game_asset in
             asset_registry.get_assets_by_path('/Game', recursive=True)
-            if search_dir != game_asset.get_asset().get_path_name()
+            if search_dir != unreal.Paths.split(
+                game_asset.get_asset().get_path_name())[0]
         ]
         if is_version_folder_matched and not game_content:
             return search_dir
