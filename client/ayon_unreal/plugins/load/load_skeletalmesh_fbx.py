@@ -80,6 +80,8 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         pattern_regex, resolution_priority
     ):
         task = None
+        if resolution_priority == "content_plugin_first":
+             self.asset_loading_location = "follow_existing"
         # Determine where to load the asset based on settings
         if self.asset_loading_location == "follow_existing":
             show_dialog = (

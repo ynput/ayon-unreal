@@ -78,6 +78,8 @@ class StaticMeshFBXLoader(plugin.Loader):
         cls, filepath, asset_dir, asset_name, container_name,
         pattern_regex, resolution_priority
     ):
+        if resolution_priority == "content_plugin_first":
+            cls.asset_loading_location = "follow_existing"
         # Determine where to load the asset based on settings
         if cls.asset_loading_location == "follow_existing":
             # Follow the existing version's location

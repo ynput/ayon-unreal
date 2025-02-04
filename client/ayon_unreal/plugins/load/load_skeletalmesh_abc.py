@@ -156,12 +156,18 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
     ):
         task = None
         # Determine where to load the asset based on settings
+        if loaded_options.get(
+            "resolution_priority","project_first") == (
+                "content_plugin_first"
+            ):
+                self.asset_loading_location = "follow_existing"
         if self.asset_loading_location == "follow_existing":
             # Follow the existing version's location
             show_dialog = (
                 True
                 if loaded_options.get(
-                    "resolution_priority", "project_first") == "content_plugin_first"
+                    "resolution_priority",
+                    "project_first") == "content_plugin_first"
                 else False
             )
             existing_asset_path = find_existing_asset(
