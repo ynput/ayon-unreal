@@ -137,17 +137,19 @@ class TexturePNGLoader(plugin.Loader):
 
             unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
             if existing_asset_path:
-                unreal.EditorAssetLibrary.rename_asset(
-                    f"{existing_asset_path}/{asset_name}.{asset_name}",
-                    f"{asset_dir}/{asset_name}.{asset_name}"
-                )
+                if not unreal.EditorAssetLibrary.does_directory_exist(
+                    existing_asset_path):
+                        unreal.EditorAssetLibrary.rename_asset(
+                            f"{existing_asset_path}/{asset_name}.{asset_name}",
+                            f"{asset_dir}/{asset_name}.{asset_name}"
+                        )
             if not unreal.EditorAssetLibrary.does_asset_exist(
                 f"{asset_dir}/{container_name}"
             ):
                 # Create Asset Container
                 create_container(container=container_name, path=asset_dir)
 
-            return asset_dir
+        return asset_dir
 
     def imprint(
         self,

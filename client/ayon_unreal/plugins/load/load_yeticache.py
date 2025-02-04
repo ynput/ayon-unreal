@@ -132,10 +132,12 @@ class YetiLoader(plugin.Loader):
 
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])  # noqa: E501
         if existing_asset_path:
-            unreal.EditorAssetLibrary.rename_asset(
-                f"{existing_asset_path}/{asset_name}.{asset_name}",
-                f"{asset_dir}/{asset_name}.{asset_name}"
-            )
+            if not unreal.EditorAssetLibrary.does_directory_exist(
+                existing_asset_path):
+                    unreal.EditorAssetLibrary.rename_asset(
+                        f"{existing_asset_path}/{asset_name}.{asset_name}",
+                        f"{asset_dir}/{asset_name}.{asset_name}"
+                    )
         if not unreal.EditorAssetLibrary.does_asset_exist(
             f"{asset_dir}/{container_name}"):
                 # Create Asset Container
@@ -199,10 +201,12 @@ class YetiLoader(plugin.Loader):
         # do import fbx and replace existing data
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
         if existing_asset_path:
-            unreal.EditorAssetLibrary.rename_asset(
-                f"{existing_asset_path}/{asset_name}.{asset_name}",
-                f"{destination_path}/{asset_name}.{asset_name}"
-            )
+            if not unreal.EditorAssetLibrary.does_directory_exist(
+                existing_asset_path):
+                    unreal.EditorAssetLibrary.rename_asset(
+                        f"{existing_asset_path}/{asset_name}.{asset_name}",
+                        f"{destination_path}/{asset_name}.{asset_name}"
+                    )
         container_path = f'{container["namespace"]}/{container["objectName"]}'
         # update metadata
         unreal_pipeline.imprint(

@@ -128,7 +128,9 @@ class AnimationAlembicLoader(plugin.Loader):
             existing_asset_path = unreal_pipeline.find_existing_asset(
                 asset_name, asset_dir, pattern_regex)
             if existing_asset_path:
+                version_folder = unreal.Paths.split(asset_dir)[1]
                 asset_dir = unreal.Paths.get_path(existing_asset_path)
+                asset_dir = f"{existing_asset_path}/{version_folder}"
         # Check if the asset already exists
         existing_asset_path = unreal_pipeline.find_existing_asset(asset_name)
         if existing_asset_path:
@@ -145,10 +147,12 @@ class AnimationAlembicLoader(plugin.Loader):
 
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
         if existing_asset_path:
-            unreal.EditorAssetLibrary.rename_asset(
-                f"{existing_asset_path}/{asset_name}.{asset_name}",
-                f"{asset_dir}/{asset_name}.{asset_name}"
-            )
+            if not unreal.EditorAssetLibrary.does_directory_exist(
+                existing_asset_path):
+                unreal.EditorAssetLibrary.rename_asset(
+                    f"{existing_asset_path}/{asset_name}.{asset_name}",
+                    f"{asset_dir}/{asset_name}.{asset_name}"
+                )
         # avoid duplicate container asset data being created
         if not unreal.EditorAssetLibrary.does_asset_exist(
             f"{asset_dir}/{container_name}"):

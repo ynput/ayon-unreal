@@ -1074,7 +1074,6 @@ def find_existing_asset(asset_name, search_dir=None,
             # Get all target assets
             target_asset_path = find_content_plugin_asset(pattern)
             if target_asset_path:
-                print("target_asset_path", target_asset_path)
                 return target_asset_path
         else:
             if show_dialog:

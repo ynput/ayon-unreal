@@ -98,10 +98,12 @@ class UAssetLoader(plugin.Loader):
 
         shutil.copy(path, f"{destination_path}/{asset_name}")
         if existing_asset_path:
-            unreal.EditorAssetLibrary.rename_asset(
-                f"{existing_asset_path}/{asset_name}.{asset_name}",
-                f"{asset_dir}/{asset_name}.{asset_name}"
-            )
+            if not unreal.EditorAssetLibrary.does_directory_exist(
+                existing_asset_path):
+                    unreal.EditorAssetLibrary.rename_asset(
+                        f"{existing_asset_path}/{asset_name}.{asset_name}",
+                        f"{asset_dir}/{asset_name}.{asset_name}"
+                    )
         if not unreal.EditorAssetLibrary.does_asset_exist(
             f"{asset_dir}/{container_name}"):
                 # Create Asset Container
@@ -177,10 +179,12 @@ class UAssetLoader(plugin.Loader):
         shutil.copy(
             update_filepath, f"{destination_path}/{new_asset_name}")
         if existing_asset_path:
-            unreal.EditorAssetLibrary.rename_asset(
-                f"{existing_asset_path}/{new_asset_name}.{new_asset_name}",
-                f"{asset_dir}/{new_asset_name}.{new_asset_name}"
-            )
+            if not unreal.EditorAssetLibrary.does_directory_exist(
+                existing_asset_path):
+                    unreal.EditorAssetLibrary.rename_asset(
+                        f"{existing_asset_path}/{new_asset_name}.{new_asset_name}",
+                        f"{asset_dir}/{new_asset_name}.{new_asset_name}"
+                    )
         container_path = f'{container["namespace"]}/{container["objectName"]}'
         # update metadata
         unreal_pipeline.imprint(
