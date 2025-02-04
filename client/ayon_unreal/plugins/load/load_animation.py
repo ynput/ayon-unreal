@@ -325,7 +325,9 @@ class AnimationFBXLoader(plugin.Loader):
                 existing_asset_path = unreal_pipeline.find_existing_asset(
                     asset_name, asset_dir, pattern_regex)
                 if existing_asset_path:
+                    version_folder = unreal.Paths.split(asset_dir)[1]
                     asset_dir = unreal.Paths.get_path(existing_asset_path)
+                    asset_dir = f"{existing_asset_path}/{version_folder}"
 
             if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
                 EditorAssetLibrary.make_directory(asset_dir)

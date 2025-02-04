@@ -73,7 +73,9 @@ class TexturePNGLoader(plugin.Loader):
             # Follow the existing version's location
             existing_asset_path = find_existing_asset(asset_name, asset_dir, pattern_regex)
             if existing_asset_path:
+                version_folder = unreal.Paths.split(asset_dir)[1]
                 asset_dir = unreal.Paths.get_path(existing_asset_path)
+                asset_dir = f"{existing_asset_path}/{version_folder}"
 
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
@@ -133,9 +135,12 @@ class TexturePNGLoader(plugin.Loader):
                         filepath, asset_dir, asset_name, False
                     )
 
-            if task:
-                unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
-
+            unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+            if existing_asset_path:
+                unreal.EditorAssetLibrary.rename_asset(
+                    f"{existing_asset_path}/{asset_name}.{asset_name}",
+                    f"{asset_dir}/{asset_name}.{asset_name}"
+                )
             if not unreal.EditorAssetLibrary.does_asset_exist(
                 f"{asset_dir}/{container_name}"
             ):

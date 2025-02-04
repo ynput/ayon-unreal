@@ -144,7 +144,11 @@ class AnimationAlembicLoader(plugin.Loader):
                     )
 
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
-
+        if existing_asset_path:
+            unreal.EditorAssetLibrary.rename_asset(
+                f"{existing_asset_path}/{asset_name}.{asset_name}",
+                f"{asset_dir}/{asset_name}.{asset_name}"
+            )
         # avoid duplicate container asset data being created
         if not unreal.EditorAssetLibrary.does_asset_exist(
             f"{asset_dir}/{container_name}"):

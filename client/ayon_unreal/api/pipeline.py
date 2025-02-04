@@ -1061,21 +1061,21 @@ def find_existing_asset(asset_name, search_dir=None,
     # Get all assets
     asset_list = asset_registry.get_all_assets()
     # Search for the asset by name
-    if search_dir and pattern_regex:
+    if pattern_regex:
         name = pattern_regex["name"]
         extension = pattern_regex["extension"]
         pattern = rf"{name}_\d{{3}}"
         if extension:
             pattern = rf"{name}_v\d{{3}}_{extension}"
-        is_version_folder_matched = re.match(pattern, search_dir)
-        game_content = [
-            game_asset for game_asset in
-            asset_registry.get_assets_by_path('/Game', recursive=True)
-            if search_dir != unreal.Paths.split(
-                game_asset.get_asset().get_path_name())[0]
-        ]
-        if is_version_folder_matched and not game_content:
-            return search_dir
+        version_folder = search_dir.split("/")[-1]
+        is_version_folder_matched = re.match(pattern, version_folder)
+
+        if is_version_folder_matched:
+            # Get all target assets
+            target_asset_path = find_content_plugin_asset(pattern)
+            if target_asset_path:
+                print("target_asset_path", target_asset_path)
+                return target_asset_path
         else:
             if show_dialog:
                 show_audit_dialog(asset_name)
@@ -1084,6 +1084,31 @@ def find_existing_asset(asset_name, search_dir=None,
         for package in asset_list:
             if asset_name in str(package.asset_name):
                 return unreal.Paths.split(package.package_path)[0]
+
+    return None
+
+
+def find_content_plugin_asset(pattern):
+    # List all assets in the project content folder
+    asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
+    # Get all target assets
+    target_assets = {
+        unreal.Paths.split(package.package_path)[0]
+        for package in
+        asset_registry.get_all_assets()
+        if re.match(pattern, str(package.asset_name))
+    }
+    # asset in game content
+    game_content = {
+        unreal.Paths.split(game_asset.get_asset().get_path_name())[0]
+        for game_asset in
+        asset_registry.get_assets_by_path('/Game', recursive=True)
+        if game_asset.get_asset().get_name() == re.match(
+            pattern, game_asset.get_asset().get_name())
+    }
+    target_assets = target_assets.difference(game_content)
+    if target_assets:
+        return list(target_assets)[-1]
 
     return None
 
