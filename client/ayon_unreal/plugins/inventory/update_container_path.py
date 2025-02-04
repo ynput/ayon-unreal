@@ -1,6 +1,5 @@
 import unreal
 
-from ayon_unreal.api.pipeline import imprint
 from ayon_core.pipeline import InventoryAction
 
 

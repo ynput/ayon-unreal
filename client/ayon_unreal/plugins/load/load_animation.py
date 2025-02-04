@@ -4,7 +4,6 @@ import json
 import os
 import ayon_api
 import unreal
-from ayon_core.lib import EnumDef
 from ayon_core.pipeline import (AYON_CONTAINER_ID,
                                 get_current_project_name,
                                 load_container,
