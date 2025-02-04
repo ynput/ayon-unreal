@@ -4,29 +4,30 @@ from ayon_unreal.api.pipeline import imprint
 from ayon_core.pipeline import InventoryAction
 
 
-def find_content_plugin_asset(asset_name):
+def find_content_plugin_asset(container_name):
     # List all assets in the project content folder
     asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
     # Get all target assets
     target_assets = {
-        unreal.Paths.split(package.package_path)[0]
+        package.get_asset()
         for package in
         asset_registry.get_all_assets()
-        if asset_name in str(package.asset_name)
+        if container_name in str(package.asset_name)
     }
 
     # asset in game content
     game_content = {
-        unreal.Paths.split(game_asset.get_asset().get_path_name())[0]
+        game_asset.get_asset()
         for game_asset in
         asset_registry.get_assets_by_path('/Game', recursive=True)
-        if game_asset.get_asset().get_name() == asset_name
+        if game_asset.get_asset().get_name() == container_name
     }
 
     target_assets = target_assets.difference(game_content)
     if target_assets:
-        print("target_assets", list(target_assets)[0])
-        return list(target_assets)[-1]
+        target_asset = list(target_assets)[-1]
+        target_asset_path = target_asset.get_path_name()
+        return target_asset, target_asset_path
 
     return None
 
@@ -46,11 +47,11 @@ class UpdateContainerPath(InventoryAction):
                 unreal.log_warning(
                     f"Container {container_dir} is not supported.")
                 continue
-            asset_name = container.get("asset_name")
-            updated_container_dir = find_content_plugin_asset(asset_name)
-            if updated_container_dir:
-                container_name = container.get("container_name")
-                imprint(
-                    f"{updated_container_dir}/{asset_name}/{container_name}",
-                    {"namespace": f"{updated_container_dir}/{asset_name}"}
+            container_name = container.get("container_name")
+            target_container, path = find_content_plugin_asset(container_name)
+            if target_container:
+                dst_path = unreal.Paths.get_path(path)
+                unreal.EditorAssetLibrary.set_metadata_tag(
+                    target_container, "namespace", f"{dst_path}"
                 )
+                unreal.EditorAssetLibrary.save_asset(target_container)
