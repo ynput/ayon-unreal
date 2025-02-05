@@ -17,11 +17,6 @@ def _abc_conversion_presets_enum():
     ]
 
 
-class UnrealInterchangeModel(BaseSettingsModel):
-    """Define Interchange Pipeline Asset Paths"""
-    enabled: bool = SettingsField(False, title="enabled")
-
-
 class CustomAlembicPresetsModel(BaseSettingsModel):
     flip_u: bool = SettingsField(False, title="Flip U")
     flip_v: bool = SettingsField(True, title="Flip V")
@@ -42,12 +37,6 @@ class UnrealImportModel(BaseSettingsModel):
         title="Asset directories for loaded assets",
         description="Asset directories to store the loaded assets",
 
-    )
-
-    interchange: UnrealInterchangeModel = SettingsField(
-        default_factory=UnrealInterchangeModel,
-        title="Interchange pipeline",
-        section="Load Fbx Settings"
     )
 
     use_nanite: bool = SettingsField(True,
@@ -113,9 +102,6 @@ class UnrealImportModel(BaseSettingsModel):
 
 DEFAULT_IMPORT_SETTINGS = {
     "loaded_asset_dir": "{folder[path]}/{product[name]}_{version[version]}",
-    "interchange": {
-        "enabled": False
-    },
     "use_nanite": True,
     "show_dialog": False,
     "abc_conversion_preset": "maya",
