@@ -17,21 +17,6 @@ def _abc_conversion_presets_enum():
     ]
 
 
-class UnrealInterchangeModel(BaseSettingsModel):
-    """Define Interchange Pipeline Asset Paths"""
-    enabled: bool = SettingsField(False, title="enabled")
-    pipeline_path_static_mesh: str = SettingsField(
-        "/Game/Interchange/CustomPipeline.CustomPipeline",
-        title="path to static mesh pipeline",
-        description="Path to the Interchange pipeline asset."
-                    "Right-click asset and copy reference path.")
-    pipeline_path_textures: str = SettingsField(
-        "/Game/Interchange/CustomPipeline.CustomPipeline",
-        title="path to texture pipeline",
-        description="Path to the Interchange pipeline asset."
-                    "Right-click asset and copy reference path.")
-
-
 class CustomAlembicPresetsModel(BaseSettingsModel):
     flip_u: bool = SettingsField(False, title="Flip U")
     flip_v: bool = SettingsField(True, title="Flip V")
@@ -52,12 +37,6 @@ class UnrealImportModel(BaseSettingsModel):
         title="Asset directories for loaded assets",
         description="Asset directories to store the loaded assets",
 
-    )
-
-    interchange: UnrealInterchangeModel = SettingsField(
-        default_factory=UnrealInterchangeModel,
-        title="Interchange pipeline",
-        section="Load Fbx Settings"
     )
 
     use_nanite: bool = SettingsField(True,
@@ -123,11 +102,6 @@ class UnrealImportModel(BaseSettingsModel):
 
 DEFAULT_IMPORT_SETTINGS = {
     "loaded_asset_dir": "{folder[path]}/{product[name]}_{version[version]}",
-    "interchange": {
-        "enabled": False,
-        "pipeline_path_static_mesh": "/Game/Interchange/CustomPipeline.CustomPipeline",
-        "pipeline_path_textures": "/Game/Interchange/CustomPipeline.CustomPipeline",
-    },
     "use_nanite": True,
     "show_dialog": False,
     "abc_conversion_preset": "maya",
