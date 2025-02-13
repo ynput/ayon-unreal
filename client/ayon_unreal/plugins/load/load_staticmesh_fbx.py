@@ -23,10 +23,8 @@ class StaticMeshFBXLoader(plugin.Loader):
     icon = "cube"
     color = "orange"
 
-    use_interchange = False
     use_nanite = True
     show_dialog = False
-    pipeline_path = ""
     loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
     asset_loading_location = "project"
 
@@ -44,6 +42,8 @@ class StaticMeshFBXLoader(plugin.Loader):
         cls.pipeline_path = import_settings.get("interchange", {}).get(
             "pipeline_path_static_mesh", cls.pipeline_path
         )
+        cls.loaded_asset_dir = import_settings.get(
+            "loaded_asset_dir", cls.loaded_asset_dir)
 
     @classmethod
     def get_task(cls, filename, asset_dir, asset_name, replace):
@@ -93,66 +93,22 @@ class StaticMeshFBXLoader(plugin.Loader):
                 version_folder = unreal.Paths.split(asset_dir)[1]
                 asset_dir = unreal.Paths.get_path(existing_asset_path)
                 asset_dir = f"{existing_asset_path}/{version_folder}"
+
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
-        if cls.use_interchange:
-            unreal.log("Import using interchange method")
-            unreal.SystemLibrary.execute_console_command(None, "Interchange.FeatureFlags.Import.FBX 1")
 
-            import_assetparameters = unreal.ImportAssetParameters()
-            editor_asset_subsystem = unreal.EditorAssetSubsystem()
-            import_assetparameters.is_automated = not cls.show_dialog
+        unreal.log("Import using interchange method")
+        unreal.SystemLibrary.execute_console_command(None, "Interchange.FeatureFlags.Import.FBX 1")
 
-            # The path to the Interchange asset
-            tmp_pipeline_path = "/Game/tmp"
-            # interchange settings here
-            unreal.EditorAssetLibrary.rename_asset(
-                f"{cls.pipeline_path}",
-                f"{tmp_pipeline_path}/{asset_name}.{asset_name}"
-            )
+        import_asset_parameters = unreal.ImportAssetParameters()
+        import_asset_parameters.is_automated = not cls.show_dialog
 
-            import_assetparameters.override_pipelines.append(
-                unreal.SoftObjectPath(f"{tmp_pipeline_path}.tmp"))
+        source_data = unreal.InterchangeManager.create_source_data(filepath)
+        interchange_manager = unreal.InterchangeManager.get_interchange_manager_scripted()
+        interchange_manager.import_asset(asset_dir, source_data, import_asset_parameters)
 
-            source_data = unreal.InterchangeManager.create_source_data(filepath)
-            interchange_manager = unreal.InterchangeManager.get_interchange_manager_scripted()
-            interchange_manager.import_asset(asset_dir, source_data,
-                                            import_assetparameters)
-
-
-            editor_asset_subsystem.delete_asset(tmp_pipeline_path) # remove temp file
-
-        else:
-            unreal.log("Import using deferred method")
-            task = None
-            # Check if the asset already exists
-            existing_asset_path = find_existing_asset(asset_name)
-            if existing_asset_path:
-                # If the asset exists, reuse it
-                task = cls.get_task(
-                    filepath, existing_asset_path, asset_name, True
-                )
-            else:
-                # If the asset does not exist, create a new one
-                if not unreal.EditorAssetLibrary.does_asset_exist(
-                    f"{asset_dir}/{asset_name}"
-                ):
-                    task = cls.get_task(
-                        filepath, asset_dir, asset_name, False
-                    )
-
-
-            unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
-            if existing_asset_path:
-                if not unreal.EditorAssetLibrary.does_directory_exist(
-                    existing_asset_path):
-                        unreal.EditorAssetLibrary.rename_asset(
-                            f"{existing_asset_path}/{asset_name}.{asset_name}",
-                            f"{asset_dir}/{asset_name}.{asset_name}"
-                        )
-            if not unreal.EditorAssetLibrary.does_asset_exist(
-                f"{asset_dir}/{container_name}"
-            ):
+        if not unreal.EditorAssetLibrary.does_asset_exist(
+            f"{asset_dir}/{container_name}"):
                 # Create Asset Container
                 create_container(container=container_name, path=asset_dir)
 
@@ -223,6 +179,7 @@ class StaticMeshFBXLoader(plugin.Loader):
         }
         resolution_priority = options.get(
             "resolution_priority", "project_first")
+
         asset_dir = self.import_and_containerize(
             path, asset_dir, asset_name,
             container_name, pattern_regex,

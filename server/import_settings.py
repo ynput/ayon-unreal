@@ -30,21 +30,6 @@ def _abc_conversion_presets_enum():
     ]
 
 
-class UnrealInterchangeModel(BaseSettingsModel):
-    """Define Interchange Pipeline Asset Paths"""
-    enabled: bool = SettingsField(False, title="enabled")
-    pipeline_path_static_mesh: str = SettingsField(
-        "/Game/Interchange/CustomPipeline.CustomPipeline",
-        title="path to static mesh pipeline",
-        description="Path to the Interchange pipeline asset."
-                    "Right-click asset and copy reference path.")
-    pipeline_path_textures: str = SettingsField(
-        "/Game/Interchange/CustomPipeline.CustomPipeline",
-        title="path to texture pipeline",
-        description="Path to the Interchange pipeline asset."
-                    "Right-click asset and copy reference path.")
-
-
 class CustomAlembicPresetsModel(BaseSettingsModel):
     flip_u: bool = SettingsField(False, title="Flip U")
     flip_v: bool = SettingsField(True, title="Flip V")
@@ -66,20 +51,12 @@ class UnrealImportModel(BaseSettingsModel):
         description="Asset directories to store the loaded assets",
 
     )
-
     asset_loading_location: str = SettingsField(
         "project",
         title="Asset Loading Location",
         description="User preference for asset loading location",
         enum_resolver=_asset_loading_enum,
     )
-
-    interchange: UnrealInterchangeModel = SettingsField(
-        default_factory=UnrealInterchangeModel,
-        title="Interchange pipeline",
-        section="Load Fbx Settings"
-    )
-
     use_nanite: bool = SettingsField(True,
         title="Use nanite",
         description=(
@@ -88,9 +65,7 @@ class UnrealImportModel(BaseSettingsModel):
             "this in the pipeline asset"
         )
     )
-
     show_dialog: bool = SettingsField(False, title="Show import dialog")
-
     abc_conversion_preset: str = SettingsField(
         "maya",
         title="Alembic Conversion Setting Presets",
@@ -118,7 +93,6 @@ class UnrealImportModel(BaseSettingsModel):
                     "asset location to load for the layout",
         enum_resolver=_resolution_loading_enum,
     )
-
     level_sequences_for_layouts: bool = SettingsField(
         True,
         title="Generate level sequences when loading layouts"
@@ -148,14 +122,10 @@ class UnrealImportModel(BaseSettingsModel):
         )
     )
 
+
 DEFAULT_IMPORT_SETTINGS = {
     "loaded_asset_dir": "{folder[path]}/{product[name]}_{version[version]}",
     "asset_loading_location": "project",
-    "interchange": {
-        "enabled": False,
-        "pipeline_path_static_mesh": "/Game/Interchange/CustomPipeline.CustomPipeline",
-        "pipeline_path_textures": "/Game/Interchange/CustomPipeline.CustomPipeline",
-    },
     "use_nanite": True,
     "show_dialog": False,
     "abc_conversion_preset": "maya",
