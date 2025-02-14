@@ -1100,9 +1100,9 @@ def find_content_plugin_asset(pattern):
     # asset in game content
     game_content = {
         unreal.Paths.split(game_asset.get_asset().get_path_name())[0]
-        for game_asset in
-        asset_registry.get_assets_by_path('/Game', recursive=True)
-        if game_asset.get_asset().get_name() == re.match(
+        for game_asset in asset_registry.get_assets_by_path('/Game', recursive=True)
+        if game_asset.get_asset() is not None
+        and game_asset.get_asset().get_name() == re.match(
             pattern, game_asset.get_asset().get_name())
     }
     target_assets = target_assets.difference(game_content)
