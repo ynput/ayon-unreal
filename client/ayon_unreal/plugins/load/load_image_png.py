@@ -34,9 +34,6 @@ class TexturePNGLoader(plugin.Loader):
         unreal_settings = project_settings.get("unreal", {})
         # Apply import settings
         import_settings = unreal_settings.get("import_settings", {})
-        cls.use_interchange = import_settings.get("interchange", {}).get(
-            "enabled", cls.use_interchange
-        )
         cls.show_dialog = import_settings.get("show_dialog", cls.show_dialog)
         cls.loaded_asset_dir = import_settings.get(
             "loaded_asset_dir", cls.loaded_asset_dir)
