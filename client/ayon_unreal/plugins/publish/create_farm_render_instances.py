@@ -154,7 +154,7 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
             mrq.delete_all_jobs()
         else:
             mrq = unreal.EditorAssetLibrary.load_asset(
-                project_settings["unreal"]["render_queue_path"]
+                render_settings["render_queue_path"]
             )
 
         for inst in context:
