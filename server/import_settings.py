@@ -12,23 +12,20 @@ def _loaded_asset_enum():
 def _abc_conversion_presets_enum():
     return [
         {"value": "maya", "label": "maya"},
-        {"value": "3dsmax", "label": "3dsmax"}
+        {"value": "3dsmax", "label": "3dsmax"},
+        {"value": "custom", "label": "custom"},
     ]
 
 
-class UnrealInterchangeModel(BaseSettingsModel):
-    """Define Interchange Pipeline Asset Paths"""
-    enabled: bool = SettingsField(False, title="enabled")
-    pipeline_path_static_mesh: str = SettingsField(
-        "/Game/Interchange/CustomPipeline.CustomPipeline",
-        title="path to static mesh pipeline",
-        description="Path to the Interchange pipeline asset."
-                    "Right-click asset and copy reference path.")
-    pipeline_path_textures: str = SettingsField(
-        "/Game/Interchange/CustomPipeline.CustomPipeline",
-        title="path to texture pipeline",
-        description="Path to the Interchange pipeline asset."
-                    "Right-click asset and copy reference path.")
+class CustomAlembicPresetsModel(BaseSettingsModel):
+    flip_u: bool = SettingsField(False, title="Flip U")
+    flip_v: bool = SettingsField(True, title="Flip V")
+    rot_x: float = SettingsField(90.0, title="Rotation X")
+    rot_y: float = SettingsField(0.0, title="Rotation Y")
+    rot_z: float = SettingsField(0.0, title="Rotation Z")
+    scl_x: float = SettingsField(1.0, title="Scale X")
+    scl_y: float = SettingsField(-1.0, title="Scale Y")
+    scl_z: float = SettingsField(1.0, title="Scale Z")
 
 
 class UnrealImportModel(BaseSettingsModel):
@@ -40,12 +37,6 @@ class UnrealImportModel(BaseSettingsModel):
         title="Asset directories for loaded assets",
         description="Asset directories to store the loaded assets",
 
-    )
-
-    interchange: UnrealInterchangeModel = SettingsField(
-        default_factory=UnrealInterchangeModel,
-        title="Interchange pipeline",
-        section="Load Fbx Settings"
     )
 
     use_nanite: bool = SettingsField(True,
@@ -62,12 +53,17 @@ class UnrealImportModel(BaseSettingsModel):
     abc_conversion_preset: str = SettingsField(
         "maya",
         title="Alembic Conversion Setting Presets",
-        enum_resolver=_abc_conversion_presets_enum,
         description="Presets for converting the loaded alembic "
                     "with correct UV and transform",
+        enum_resolver=_abc_conversion_presets_enum,
+        conditionalEnum=True,
         section="Load Alembic Settings"
     )
-
+    custom: CustomAlembicPresetsModel = SettingsField(
+        title="Custom Alembic Conversion Setting Presets",
+        description="Custom Presets for converting the loaded alembic",
+        default_factory=CustomAlembicPresetsModel,
+    )
     loaded_layout_dir: str = SettingsField(
         "{folder[path]}/{product[name]}",
         title="Directories for loaded layouts",
@@ -106,11 +102,6 @@ class UnrealImportModel(BaseSettingsModel):
 
 DEFAULT_IMPORT_SETTINGS = {
     "loaded_asset_dir": "{folder[path]}/{product[name]}_{version[version]}",
-    "interchange": {
-        "enabled": False,
-        "pipeline_path_static_mesh": "/Game/Interchange/CustomPipeline.CustomPipeline",
-        "pipeline_path_textures": "/Game/Interchange/CustomPipeline.CustomPipeline",
-    },
     "use_nanite": True,
     "show_dialog": False,
     "abc_conversion_preset": "maya",
