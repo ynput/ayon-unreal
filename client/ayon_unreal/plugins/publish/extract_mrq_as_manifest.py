@@ -13,7 +13,7 @@ import unreal
 class ExtractMRQAsManifest(publish.Extractor):
     label = "Extract Media Render Queue as Manifest"
     hosts = ["unreal"]
-    families = ["render", "render.farm"]
+    families = ["render.farm"]
 
     def process(self, instance):
         self.anatomy_data = deepcopy(instance.data["anatomyData"])
