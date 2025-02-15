@@ -80,4 +80,8 @@ class ExtractMRQAsManifest(publish.Extractor):
 
         shutil.copyfile(self.manifest_to_publish, work_manifest)
         instance.data["work_mrq"] = work_manifest.as_posix()
+        jobinfo = instance.data["deadline"].get("job_info")
+        jobinfo.EnvironmentKeyValue.update(
+            {"AYON_UNREAL_WORK_MRQ": work_manifest.as_posix()}
+        )
         self.log.info(f"Manifest extracted to: {work_manifest}")
