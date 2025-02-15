@@ -24,7 +24,6 @@ class ExtractMRQAsManifest(publish.Extractor):
         self.serialize_mrq(instance)
         self.copy_manifest_to_publish(instance)
 
-
     def get_work_file_template(self):
         # get work file template
         #   how can i build a @token?
@@ -34,7 +33,6 @@ class ExtractMRQAsManifest(publish.Extractor):
 
         self.dir_template = StringTemplate(_dir_template)
         self.file_template = StringTemplate(_file_template)
-
 
     def configure_mrq(self, instance):
         self.mrq = instance.context.data["mrq"]
@@ -47,7 +45,9 @@ class ExtractMRQAsManifest(publish.Extractor):
     def serialize_mrq(self, instance):
         # serialize mrq to file and string
         _, manifest = (
-            unreal.MoviePipelineEditorLibrary.save_queue_to_manifest_file(self.mrq)
+            unreal.MoviePipelineEditorLibrary.save_queue_to_manifest_file(
+                self.mrq
+            )
         )
         manifest_string = (
             unreal.MoviePipelineEditorLibrary.convert_manifest_file_to_string(
