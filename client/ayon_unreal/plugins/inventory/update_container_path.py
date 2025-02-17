@@ -7,14 +7,13 @@ def find_content_plugin_asset(container_name):
     # List all assets in the project content folder
     asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
     # Get all target assets
-    print(container_name)
     target_assets = {
         package.get_asset()
         for package in
         asset_registry.get_all_assets()
         if container_name in str(package.asset_name)
     }
-    print("target_assets", target_assets)
+
     # asset in game content
     game_content = {
         game_asset.get_asset()
@@ -22,7 +21,7 @@ def find_content_plugin_asset(container_name):
         asset_registry.get_assets_by_path('/Game', recursive=True)
         if game_asset.get_asset().get_name() == container_name
     }
-    print("game_content", game_content)
+
     target_assets = target_assets.difference(game_content)
     if target_assets:
         target_asset = list(target_assets)[-1]
