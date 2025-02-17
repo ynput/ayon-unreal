@@ -51,6 +51,7 @@ class LayoutLoader(plugin.LayoutLoader):
         cls.level_sequences_for_layouts = (
             import_settings["level_sequences_for_layouts"]
         )
+        cls.loaded_asset_dir = import_settings["loaded_asset_dir"]
         cls.loaded_layout_dir = import_settings["loaded_layout_dir"]
         cls.remove_loaded_assets = import_settings["remove_loaded_assets"]
         cls.resolution_priority = import_settings.get(
@@ -186,7 +187,7 @@ class LayoutLoader(plugin.LayoutLoader):
                     product_type = element.get("family")
 
                 assets = self._load_assets(
-                    instance_name, repre_id,
+                    project_name, instance_name, repre_id,
                     product_type, repr_format, options)
 
                 container = None

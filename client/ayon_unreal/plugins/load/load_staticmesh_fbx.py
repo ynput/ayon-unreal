@@ -69,20 +69,14 @@ class StaticMeshFBXLoader(plugin.Loader):
     @classmethod
     def import_and_containerize(
         cls, filepath, asset_dir, asset_name, container_name,
-        pattern_regex, resolution_priority
+        pattern_regex
     ):
-        if resolution_priority == "content_plugin_first":
-            cls.asset_loading_location = "follow_existing"
         # Determine where to load the asset based on settings
         if cls.asset_loading_location == "follow_existing":
             # Follow the existing version's location
-            show_dialog = (
-                True
-                if resolution_priority == "content_plugin_first"
-                else False
-            )
             existing_asset_path = find_existing_asset(
-                asset_name, asset_dir, pattern_regex, show_dialog=show_dialog)
+                asset_name, asset_dir, pattern_regex
+            )
             if existing_asset_path:
                 version_folder = unreal.Paths.split(asset_dir)[1]
                 asset_dir = unreal.Paths.get_path(existing_asset_path)
@@ -116,8 +110,7 @@ class StaticMeshFBXLoader(plugin.Loader):
         asset_name,
         repre_entity,
         product_type,
-        project_name,
-        resolution_priority="project_first"
+        project_name
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -133,8 +126,7 @@ class StaticMeshFBXLoader(plugin.Loader):
             # TODO these shold be probably removed
             "asset": folder_path,
             "family": product_type,
-            "project_name": project_name,
-            "resolution_priority": resolution_priority
+            "project_name": project_name
         }
         imprint(f"{asset_dir}/{container_name}", data)
 
@@ -171,13 +163,10 @@ class StaticMeshFBXLoader(plugin.Loader):
             "name": name,
             "extension": ext
         }
-        resolution_priority = options.get(
-            "resolution_priority", "project_first")
 
         asset_dir = self.import_and_containerize(
             path, asset_dir, asset_name,
-            container_name, pattern_regex,
-            resolution_priority
+            container_name, pattern_regex
         )
 
         self.imprint(
@@ -187,8 +176,7 @@ class StaticMeshFBXLoader(plugin.Loader):
             asset_name,
             context["representation"],
             context["product"]["productType"],
-            context["project"]["name"],
-            resolution_priority
+            context["project"]["name"]
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
@@ -218,16 +206,13 @@ class StaticMeshFBXLoader(plugin.Loader):
             asset_root, suffix=f"_{ext}")
 
         container_name += suffix
-        resolution_priority = container.get(
-            "resolution_priority", "project_first")
         pattern_regex = {
             "name": context["product"]["name"],
             "extension": ext
         }
         asset_dir = self.import_and_containerize(
             path, asset_dir, asset_name,
-            container_name, pattern_regex,
-            resolution_priority
+            container_name, pattern_regex
         )
 
         self.imprint(

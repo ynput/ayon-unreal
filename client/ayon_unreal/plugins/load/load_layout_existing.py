@@ -26,6 +26,7 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
         cls.delete_unmatched_assets = (
             import_settings["delete_unmatched_assets"]
         )
+        cls.loaded_asset_dir = import_settings["loaded_asset_dir"]
         cls.loaded_layout_dir = import_settings["loaded_layout_dir"]
         cls.remove_loaded_assets = import_settings["remove_loaded_assets"]
         cls.resolution_priority = import_settings.get(
@@ -60,7 +61,8 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
                 "Skipping to add spawned actor into the sequence."
             )
 
-    def _load_asset(self, repr_data, instance_name, family, extension, options):
+    def _load_asset(self, project_name, repr_data, instance_name,
+                    family, extension, options):
         repre_entity = next((repre_entity for repre_entity in repr_data
                              if repre_entity["name"] == extension), None)
         if not repre_entity or extension == "ma":
@@ -69,7 +71,7 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
         repr_format = repre_entity.get('name')
         representation = repre_entity.get('id')
         assets = self._load_assets(
-            instance_name, representation, family, repr_format, options)
+            project_name, instance_name, representation, family, repr_format, options)
         return assets
 
     def _process(self, lib_path, project_name, sequence, options):
@@ -228,6 +230,7 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
                 product_type = lasset.get("family")
             extension = lasset.get("extension")
             assets = self._load_asset(
+                project_name,
                 repre_entities,
                 lasset.get('instance_name'),
                 product_type,
