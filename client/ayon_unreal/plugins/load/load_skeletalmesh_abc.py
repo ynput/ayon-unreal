@@ -155,11 +155,23 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
         loaded_options, pattern_regex
     ):
         task = None
+        # Determine where to load the asset based on settings
+        if loaded_options.get(
+            "resolution_priority","project_first") == (
+                "content_plugin_first"
+            ):
+                self.asset_loading_location = "follow_existing"
         if self.asset_loading_location == "follow_existing":
             # Follow the existing version's location
-            existing_asset_path = find_existing_asset(
-                asset_name, asset_dir, pattern_regex
+            show_dialog = (
+                True
+                if loaded_options.get(
+                    "resolution_priority",
+                    "project_first") == "content_plugin_first"
+                else False
             )
+            existing_asset_path = find_existing_asset(
+                asset_name, asset_dir, pattern_regex, show_dialog=show_dialog)
             if existing_asset_path:
                 version_folder = unreal.Paths.split(asset_dir)[1]
                 asset_dir = unreal.Paths.get_path(existing_asset_path)
@@ -204,7 +216,8 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
         product_type,
         frameStart,
         frameEnd,
-        project_name
+        project_name,
+        resolution_priority="project_first"
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -222,7 +235,8 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             # TODO these should be probably removed
             "asset": folder_path,
             "family": product_type,
-            "project_name": project_name
+            "project_name": project_name,
+            "resolution_priority": resolution_priority
         }
 
         imprint(f"{asset_dir}/{container_name}", data)
@@ -251,6 +265,7 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
         asset_root, asset_name = format_asset_directory(
             context, self.loaded_asset_dir
         )
+        resolution_priority = options.get("resolution_priority", "project_first")
         loaded_options = {
             "default_conversion": options.get("default_conversion", False),
             "abc_conversion_preset": options.get(
@@ -258,6 +273,7 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             "abc_material_settings": options.get("abc_material_settings", "no_material"),
             "frameStart": folder_entity["attrib"]["frameStart"],
             "frameEnd": folder_entity["attrib"]["frameEnd"],
+            "resolution_priority": resolution_priority
         }
 
         pattern_regex = {
@@ -283,7 +299,8 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             context["product"]["productType"],
             folder_entity["attrib"]["frameStart"],
             folder_entity["attrib"]["frameEnd"],
-            context["project"]["name"]
+            context["project"]["name"],
+            resolution_priority
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
@@ -317,7 +334,9 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             "default_conversion": False,
             "abc_conversion_preset": self.abc_conversion_preset,
             "frameStart": container.get("frameStart", 1),
-            "frameEnd": container.get("frameEnd", 1)
+            "frameEnd": container.get("frameEnd", 1),
+            "resolution_priority": container.get(
+                "resolution_priority", "project_first")
         }
         pattern_regex = {
             "name": context["product"]["name"],

@@ -76,15 +76,22 @@ class SkeletalMeshFBXLoader(plugin.Loader):
 
     def import_and_containerize(
         self, filepath, asset_dir, asset_name, container_name,
-        pattern_regex
+        pattern_regex, resolution_priority
     ):
         task = None
+        if resolution_priority == "content_plugin_first":
+             self.asset_loading_location = "follow_existing"
         # Determine where to load the asset based on settings
         if self.asset_loading_location == "follow_existing":
+            show_dialog = (
+                True
+                if resolution_priority == "content_plugin_first"
+                else False
+            )
             # Follow the existing version's location
             existing_asset_path = find_existing_asset(
                 asset_name, search_dir=asset_dir,
-                pattern_regex=pattern_regex
+                pattern_regex=pattern_regex, show_dialog=show_dialog
             )
             if existing_asset_path:
                 version_folder = unreal.Paths.split(asset_dir)[1]
@@ -125,7 +132,8 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         asset_name,
         representation,
         product_type,
-        project_name
+        project_name,
+        resolution_priority="project_first"
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -141,7 +149,8 @@ class SkeletalMeshFBXLoader(plugin.Loader):
             # TODO these should be probably removed
             "asset": folder_path,
             "family": product_type,
-            "project_name": project_name
+            "project_name": project_name,
+            "resolution_priority": resolution_priority
         }
         imprint(f"{asset_dir}/{container_name}", data)
 
@@ -178,9 +187,12 @@ class SkeletalMeshFBXLoader(plugin.Loader):
             asset_root, suffix=f"_{ext}")
 
         container_name += suffix
+        resolution_priority = options.get(
+            "resolution_priority", "project_first")
         asset_dir = self.import_and_containerize(
             path, asset_dir, asset_name,
-            container_name, pattern_regex
+            container_name, pattern_regex,
+            resolution_priority
         )
 
         self.imprint(
@@ -222,13 +234,16 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         container_name += suffix
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
+        resolution_priority = container.get(
+            "resolution_priority", "project_first")
         pattern_regex = {
             "name": context["product"]["name"],
             "extension": ext
         }
         asset_dir = self.import_and_containerize(
             path, asset_dir, asset_name,
-            container_name, pattern_regex
+            container_name, pattern_regex,
+            resolution_priority
         )
 
         self.imprint(
