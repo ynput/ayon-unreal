@@ -4,7 +4,7 @@ from platform import system
 from ayon_applications import PreLaunchHook, LaunchTypes
 
 
-class InstallOtioToBlender(PreLaunchHook):
+class InstallOtioToUnreal(PreLaunchHook):
     """Install Qt binding to Unreal's python packages.
 
     Prelaunch hook does 2 things:
