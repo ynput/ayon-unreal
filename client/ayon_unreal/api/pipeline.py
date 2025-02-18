@@ -1038,7 +1038,7 @@ def get_frame_range_from_folder_attributes(folder_entity=None):
 
 
 def find_existing_asset(asset_name, search_dir=None,
-                        pattern_regex=None, show_dialog=False):
+                        pattern_regex=None):
     """
     Search for an existing asset in a specified directory or default directories.
 
@@ -1049,8 +1049,6 @@ def find_existing_asset(asset_name, search_dir=None,
                                     If None, defaults to ["/Game", "/Plugins"].
         pattern_regex (dict, optional): A dictionary of regex patterns to filter assets.
                                         Keys are attribute names, and values are regex patterns.
-        show_dialog (bool, optional): show audit dialogs to warn the users about the failure of
-                                      asset loading.
 
     Returns:
         str: The full path of the asset if found, otherwise None.
@@ -1075,9 +1073,6 @@ def find_existing_asset(asset_name, search_dir=None,
             target_asset_path = find_content_plugin_asset(pattern)
             if target_asset_path:
                 return target_asset_path
-        else:
-            if show_dialog:
-                show_audit_dialog(asset_name)
 
     else:
         for package in asset_list:

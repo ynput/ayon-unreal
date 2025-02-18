@@ -167,23 +167,12 @@ class StaticMeshAlembicLoader(plugin.Loader):
         Handle asset loading based on settings.
         """
         task = None
-        if loaded_options.get(
-            "resolution_priority","project_first") == (
-                "content_plugin_first"
-            ):
-                self.asset_loading_location = "follow_existing"
         # Determine where to load the asset based on settings
         if self.asset_loading_location == "follow_existing":
             # Follow the existing version's location
-            show_dialog = (
-                True
-                if loaded_options.get("resolution_priority",
-                    "project_first") == "content_plugin_first"
-                else False
-            )
             existing_asset_path = find_existing_asset(
                 asset_name, search_dir=asset_dir,
-                pattern_regex=pattern_regex, show_dialog=show_dialog
+                pattern_regex=pattern_regex
             )
             if existing_asset_path:
                 version_folder = unreal.Paths.split(asset_dir)[1]
@@ -232,8 +221,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
         asset_name,
         representation,
         product_type,
-        project_name,
-        resolution_priority="project_first"
+        project_name
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -249,8 +237,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
             # TODO these should be probably removed
             "asset": folder_path,
             "family": product_type,
-            "project_name": project_name,
-            "resolution_priority": resolution_priority
+            "project_name": project_name
         }
         imprint(f"{asset_dir}/{container_name}", data)
 
@@ -279,7 +266,6 @@ class StaticMeshAlembicLoader(plugin.Loader):
         asset_root, asset_name = format_asset_directory(
             context, self.loaded_asset_dir
         )
-        resolution_priority = options.get("resolution_priority", "project_first")
         loaded_options = {
             "default_conversion": options.get("default_conversion", False),
             "abc_conversion_preset": options.get(
@@ -287,7 +273,6 @@ class StaticMeshAlembicLoader(plugin.Loader):
             "abc_material_settings": options.get("abc_material_settings", "no_material"),
             "merge_meshes": options.get("merge_meshes", True),
             "show_dialog": options.get("show_dialog", self.show_dialog),
-            "resolution_priority": resolution_priority
         }
         pattern_regex = {
             "name": name,
@@ -311,8 +296,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
             asset_name,
             context["representation"],
             product_type,
-            context["project"]["name"],
-            resolution_priority
+            context["project"]["name"]
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
@@ -346,9 +330,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
         }
         loaded_options = {
             "default_conversion": False,
-            "abc_conversion_preset": self.abc_conversion_preset,
-            "resolution_priority": container.get(
-                "resolution_priority", "project_first")
+            "abc_conversion_preset": self.abc_conversion_preset
         }
         asset_dir = self.import_and_containerize(path, asset_dir, asset_name,
                                                  container_name, loaded_options,
