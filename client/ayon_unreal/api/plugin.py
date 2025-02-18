@@ -15,7 +15,11 @@ from .pipeline import (
     create_publish_instance,
     imprint,
     ls_inst,
-    UNREAL_VERSION
+    UNREAL_VERSION,
+    get_asset_from_content_plugin,
+    get_assets_from_project_content,
+    format_asset_directory,
+    show_audit_dialog
 )
 from .lib import remove_loaded_asset
 from ayon_core.lib import (
@@ -300,6 +304,7 @@ class LayoutLoader(Loader):
     icon = "code-fork"
     color = "orange"
     loaded_layout_dir = "{folder[path]}/{product[name]}"
+    loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
     remove_loaded_assets = False
     resolution_priority = "project_first"
 
@@ -478,9 +483,9 @@ class LayoutLoader(Loader):
             return
 
         import_options = {
-            "resolution_priority": options.get("resolution_priority", "project_first")
+            # "resolution_priority"
         }
-
+        resolution_priority = options.get("resolution_priority", "project_first")
         assets = load_container(
             loader,
             repre_id,
@@ -488,6 +493,31 @@ class LayoutLoader(Loader):
             options=import_options
         )
         return assets
+
+    def get_existing_asset(self, project_name, repre_id, resolution_priority):
+        repre_data = ayon_api.get_representation_by_id(
+            project_name,
+            representation_id=repre_id,
+            fields={"data"}
+        )
+
+        context = repre_data["data"]["context"]
+        asset_root, asset_name = format_asset_directory(
+            context, self.loaded_asset_dir)
+        if resolution_priority == "project_first":
+            asset_content = get_assets_from_project_content(
+                asset_root, asset_name)
+            if not asset_content:
+                asset_content = get_asset_from_content_plugin(asset_content)
+
+        elif resolution_priority == "content_plugin_first":
+            asset_content = get_asset_from_content_plugin(asset_content)
+            if not asset_content:
+                show_audit_dialog(asset_name)
+                asset_content = get_assets_from_project_content(
+                    asset_root, asset_name)
+
+        return asset_content
 
     def _remove_Loaded_asset(self, container):
         """

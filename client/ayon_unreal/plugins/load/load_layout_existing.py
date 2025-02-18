@@ -30,6 +30,8 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
         cls.remove_loaded_assets = import_settings["remove_loaded_assets"]
         cls.resolution_priority = import_settings.get(
             "resolution_priority", cls.resolution_priority)
+        cls.loaded_asset_dir = import_settings.get(
+            "loaded_asset_dir", cls.loaded_asset_dir)
 
     def _spawn_actor(self, obj, lasset, sequence):
         actor = EditorLevelLibrary.spawn_actor_from_object(
