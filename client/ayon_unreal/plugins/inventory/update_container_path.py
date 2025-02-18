@@ -28,7 +28,7 @@ def find_content_plugin_asset(container_name):
         target_asset_path = target_asset.get_path_name()
         return target_asset, target_asset_path
 
-    return None
+    return None, None
 
 
 class UpdateContainerPath(InventoryAction):
@@ -53,4 +53,8 @@ class UpdateContainerPath(InventoryAction):
                 unreal.EditorAssetLibrary.set_metadata_tag(
                     target_container, "namespace", f"{dst_path}"
                 )
-                unreal.EditorAssetLibrary.save_asset(target_container)
+                asset_content = unreal.EditorAssetLibrary.list_assets(
+                    container.get("namespace"), recursive=True, include_folder=False
+                )
+                for a in asset_content:
+                    unreal.EditorAssetLibrary.save_asset(a)
