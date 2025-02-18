@@ -5,7 +5,7 @@ from ayon_unreal.api.pipeline import (
     ls,
     replace_static_mesh_actors,
     replace_skeletal_mesh_actors,
-    replace_geometry_cache_actors,
+    replace_geometry_cache_actors
 )
 from ayon_core.pipeline import InventoryAction
 
@@ -67,9 +67,6 @@ def update_assets(containers, selected):
             old_content = unreal.EditorAssetLibrary.list_assets(
                 sa_dir, recursive=True, include_folder=False
             )
-
-            unreal.log("old_content")
-            unreal.log(old_content)
 
             if container.get("family") == "rig":
                 replace_skeletal_mesh_actors(

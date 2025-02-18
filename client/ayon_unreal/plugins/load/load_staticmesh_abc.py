@@ -2,15 +2,12 @@
 """Loader for Static Mesh alembics."""
 import os
 
-from ayon_core.pipeline import (
-    get_representation_path,
-    AYON_CONTAINER_ID
-)
+from ayon_core.pipeline import AYON_CONTAINER_ID
 from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
     create_container,
     imprint,
-    has_asset_directory_pattern_matched,
+    find_existing_asset,
     format_asset_directory,
     UNREAL_VERSION
 )
@@ -31,7 +28,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
     abc_conversion_preset = "maya"
     loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
     show_dialog = False
-
+    asset_loading_location = "project"
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -41,9 +38,12 @@ class StaticMeshAlembicLoader(plugin.Loader):
         cls.abc_conversion_preset = unreal_settings["abc_conversion_preset"]
         cls.loaded_asset_dir = unreal_settings["loaded_asset_dir"]
         cls.show_dialog = unreal_settings["show_dialog"]
+        cls.asset_loading_location = unreal_settings.get(
+            "asset_loading_location", cls.asset_loading_location)
 
     @classmethod
     def get_options(cls, contexts):
+
         return [
             EnumDef(
                 "abc_conversion_preset",
@@ -160,24 +160,58 @@ class StaticMeshAlembicLoader(plugin.Loader):
 
     def import_and_containerize(
         self, filepath, asset_dir, asset_name, container_name,
-        loaded_options, asset_path=None
+        loaded_options, pattern_regex
     ):
+        """
+        Import the asset and create a container for it.
+        Handle asset loading based on settings.
+        """
         task = None
-        if asset_path:
-            loaded_asset_dir = unreal.Paths.split(asset_path)[0]
+        # Determine where to load the asset based on settings
+        if self.asset_loading_location == "follow_existing":
+            # Follow the existing version's location
+            existing_asset_path = find_existing_asset(
+                asset_name, search_dir=asset_dir,
+                pattern_regex=pattern_regex
+            )
+            if existing_asset_path:
+                version_folder = unreal.Paths.split(asset_dir)[1]
+                asset_dir = unreal.Paths.get_path(existing_asset_path)
+                asset_dir = f"{existing_asset_path}/{version_folder}"
+
+        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+            unreal.EditorAssetLibrary.make_directory(asset_dir)
+        # Check if the asset already exists
+        existing_asset_path = find_existing_asset(asset_name)
+        if existing_asset_path:
+            # If the asset exists, reuse it
             task = self.get_task(
-                filepath, loaded_asset_dir, asset_name, True, loaded_options)
+                filepath, existing_asset_path, asset_name, True, loaded_options
+            )
         else:
+            # If the asset does not exist, create a new one
             if not unreal.EditorAssetLibrary.does_asset_exist(
-                f"{asset_dir}/{asset_name}"):
-                    task = self.get_task(
-                        filepath, asset_dir, asset_name, False, loaded_options)
+                f"{asset_dir}/{asset_name}"
+            ):
+                task = self.get_task(
+                    filepath, asset_dir, asset_name, False, loaded_options
+                )
 
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+        if existing_asset_path:
+            if not unreal.EditorAssetLibrary.does_directory_exist(
+                existing_asset_path):
+                    unreal.EditorAssetLibrary.rename_asset(
+                        f"{existing_asset_path}/{asset_name}.{asset_name}",
+                        f"{asset_dir}/{asset_name}.{asset_name}"
+                    )
         if not unreal.EditorAssetLibrary.does_asset_exist(
-            f"{asset_dir}/{container_name}"):
-                # Create Asset Container
-                create_container(container=container_name, path=asset_dir)
+            f"{asset_dir}/{container_name}"
+        ):
+            # Create Asset Container
+            create_container(container=container_name, path=asset_dir)
+
+        return asset_dir
 
     def imprint(
         self,
@@ -228,7 +262,10 @@ class StaticMeshAlembicLoader(plugin.Loader):
         suffix = "_CON"
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        asset_root, asset_name = format_asset_directory(context, self.loaded_asset_dir)
+
+        asset_root, asset_name = format_asset_directory(
+            context, self.loaded_asset_dir
+        )
         loaded_options = {
             "default_conversion": options.get("default_conversion", False),
             "abc_conversion_preset": options.get(
@@ -237,19 +274,19 @@ class StaticMeshAlembicLoader(plugin.Loader):
             "merge_meshes": options.get("merge_meshes", True),
             "show_dialog": options.get("show_dialog", self.show_dialog),
         }
-
+        pattern_regex = {
+            "name": name,
+            "extension": ext
+        }
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
 
         container_name += suffix
-        asset_path = has_asset_directory_pattern_matched(
-            asset_name, asset_dir, name, extension=ext)
-        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            unreal.EditorAssetLibrary.make_directory(asset_dir)
-            self.import_and_containerize(path, asset_dir, asset_name,
-                                         container_name, loaded_options,
-                                         asset_path=asset_path)
+
+        asset_dir = self.import_and_containerize(path, asset_dir, asset_name,
+                                                 container_name, loaded_options,
+                                                 pattern_regex)
 
         product_type = context["product"]["productType"]
         self.imprint(
@@ -261,11 +298,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
             product_type,
             context["project"]["name"]
         )
-        if asset_path:
-            unreal.EditorAssetLibrary.rename_asset(
-                f"{asset_path}",
-                f"{asset_dir}/{asset_name}.{asset_name}"
-            )
+
         asset_content = unreal.EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=False
         )
@@ -278,25 +311,30 @@ class StaticMeshAlembicLoader(plugin.Loader):
         folder_path = context["folder"]["path"]
         product_type = context["product"]["productType"]
         repre_entity = context["representation"]
-
         # Create directory for asset and Ayon container
         suffix = "_CON"
-        path = get_representation_path(repre_entity)
+        path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        asset_root, asset_name = format_asset_directory(context, self.loaded_asset_dir)
+
+        asset_root, asset_name = format_asset_directory(
+            context, self.loaded_asset_dir
+        )
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
 
         container_name += suffix
-        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            unreal.EditorAssetLibrary.make_directory(asset_dir)
+        pattern_regex = {
+            "name": context["product"]["name"],
+            "extension": ext
+        }
         loaded_options = {
             "default_conversion": False,
             "abc_conversion_preset": self.abc_conversion_preset
         }
-        self.import_and_containerize(path, asset_dir, asset_name,
-                                     container_name, loaded_options)
+        asset_dir = self.import_and_containerize(path, asset_dir, asset_name,
+                                                 container_name, loaded_options,
+                                                 pattern_regex)
 
         self.imprint(
             folder_path,

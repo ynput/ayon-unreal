@@ -10,10 +10,7 @@ from unreal import (
 )
 import ayon_api
 
-from ayon_core.pipeline import (
-    get_representation_path,
-    get_current_project_name
-)
+from ayon_core.pipeline import get_current_project_name
 from ayon_core.settings import get_current_project_settings
 from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
@@ -56,10 +53,14 @@ class LayoutLoader(plugin.LayoutLoader):
         )
         cls.loaded_layout_dir = import_settings["loaded_layout_dir"]
         cls.remove_loaded_assets = import_settings["remove_loaded_assets"]
+        cls.resolution_priority = import_settings.get(
+            "resolution_priority", cls.resolution_priority)
+        cls.loaded_asset_dir = import_settings.get(
+            "loaded_asset_dir", cls.loaded_asset_dir)
 
     @classmethod
     def get_options(cls, contexts):
-        defs = []
+        defs = super().get_options(contexts)
         if cls.force_loaded:
             defs.append(
                 EnumDef(
@@ -123,7 +124,7 @@ class LayoutLoader(plugin.LayoutLoader):
 
     def _process(self, lib_path, project_name, asset_dir, sequence,
                  repr_loaded=None, loaded_extension=None,
-                 force_loaded=False):
+                 force_loaded=False, options={}):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
         with open(lib_path, "r") as fp:
@@ -188,7 +189,7 @@ class LayoutLoader(plugin.LayoutLoader):
 
                 assets = self._load_assets(
                     instance_name, repre_id,
-                    product_type, repr_format)
+                    product_type, repr_format, options)
 
                 container = None
 
@@ -327,11 +328,19 @@ class LayoutLoader(plugin.LayoutLoader):
         project_name = get_current_project_name()
         extension = options.get(
             "folder_representation_type", self.folder_representation_type)
+        import_options = {
+            "resolution_priority": options.get(
+                "resolution_priority", self.resolution_priority)
+        }
+
         path = self.filepath_from_context(context)
         loaded_assets = self._process(
             path, project_name, asset_dir, shot,
             loaded_extension=extension,
-            force_loaded=self.force_loaded)
+            force_loaded=self.force_loaded,
+            options=import_options
+        )
+
         for s in sequences:
             EditorAssetLibrary.save_asset(s.get_path_name())
 
@@ -423,12 +432,17 @@ class LayoutLoader(plugin.LayoutLoader):
 
         if create_sequences:
             EditorLevelLibrary.save_current_level()
-        source_path = get_representation_path(repre_entity)
+        source_path = self.filepath_from_context(context)
 
+        import_options = {
+            "resolution_priority": self.resolution_priority
+        }
         loaded_assets = self._process(
             source_path, project_name, asset_dir, sequence,
             loaded_extension=self.folder_representation_type,
-            force_loaded=self.force_loaded)
+            force_loaded=self.force_loaded,
+            options=import_options
+        )
 
         update_container(container, project_name, repre_entity, loaded_assets=loaded_assets)
 
