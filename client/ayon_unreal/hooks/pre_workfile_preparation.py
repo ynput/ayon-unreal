@@ -4,6 +4,7 @@ import os
 import copy
 import shutil
 import tempfile
+import platform
 from pathlib import Path
 
 from qtpy import QtCore
@@ -202,7 +203,12 @@ class UnrealPrelaunchHook(PreLaunchHook):
 
         # engine_path points to the specific Unreal Engine root
         # so, we are going up from the executable itself 3 levels.
-        engine_path: Path = Path(executable).parents[3]
+        # on macOS it's 6 levels up as the executable lives under
+        # ./UnrealEditor.app/Contents/MacOS/UnrealEditor
+        if platform.system().lower() == "darwin":
+            engine_path: Path = Path(executable).parents[6]
+        else:
+            engine_path: Path = Path(executable).parents[3]
 
         # Check if new env variable exists, and if it does, if the path
         # actually contains the plugin. If not, install it.
