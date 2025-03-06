@@ -188,7 +188,7 @@ class LayoutLoader(plugin.LayoutLoader):
                     product_type = element.get("family")
 
                 assets = self._load_assets(
-                    instance_name, repre_id,
+                    instance_name, project_name, repre_id,
                     product_type, repr_format, options)
 
                 container = None

@@ -62,7 +62,9 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
                 "Skipping to add spawned actor into the sequence."
             )
 
-    def _load_asset(self, repr_data, instance_name, family, extension, options):
+    def _load_asset(self, repr_data, instance_name,
+                    project_name, family, extension,
+                    options):
         repre_entity = next((repre_entity for repre_entity in repr_data
                              if repre_entity["name"] == extension), None)
         if not repre_entity or extension == "ma":
@@ -71,7 +73,8 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
         repr_format = repre_entity.get('name')
         representation = repre_entity.get('id')
         assets = self._load_assets(
-            instance_name, representation, family, repr_format, options)
+            instance_name, project_name, representation,
+            family, repr_format, options)
         return assets
 
     def _process(self, lib_path, project_name, sequence, options):
@@ -232,6 +235,7 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
             assets = self._load_asset(
                 repre_entities,
                 lasset.get('instance_name'),
+                project_name,
                 product_type,
                 extension,
                 options

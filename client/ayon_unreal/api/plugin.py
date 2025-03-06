@@ -456,7 +456,9 @@ class LayoutLoader(Loader):
         imprint(
             "{}/{}".format(asset_dir, container_name), data)
 
-    def _load_assets(self, instance_name, repre_id, product_type, repr_format, options):
+    def _load_assets(self, instance_name, project_name,
+                     repre_id, product_type, repr_format,
+                     options):
         all_loaders = discover_loader_plugins()
         loaders = loaders_from_representation(
             all_loaders, repre_id)
@@ -486,27 +488,33 @@ class LayoutLoader(Loader):
             # "resolution_priority"
         }
         resolution_priority = options.get("resolution_priority", "project_first")
-        assets = load_container(
-            loader,
-            repre_id,
-            namespace=instance_name,
-            options=import_options
-        )
+        assets = self.get_existing_asset(project_name, repre_id, resolution_priority)
+        if not assets:
+            assets = load_container(
+                loader,
+                repre_id,
+                namespace=instance_name,
+                options=import_options
+            )
         return assets
 
     def get_existing_asset(self, project_name, repre_id, resolution_priority):
+        asset_content = None
         repre_data = ayon_api.get_representation_by_id(
             project_name,
             representation_id=repre_id,
             fields={"data"}
         )
-
         context = repre_data["data"]["context"]
+        ext = context["ext"]
         asset_root, asset_name = format_asset_directory(
             context, self.loaded_asset_dir)
+        tools = unreal.AssetToolsHelpers().get_asset_tools()
+        asset_dir, _ = tools.create_unique_asset_name(
+            asset_root, suffix=f"_{ext}")
         if resolution_priority == "project_first":
             asset_content = get_assets_from_project_content(
-                asset_root, asset_name)
+                asset_dir, asset_name)
             if not asset_content:
                 asset_content = get_asset_from_content_plugin(asset_content)
 
@@ -515,7 +523,7 @@ class LayoutLoader(Loader):
             if not asset_content:
                 show_audit_dialog(asset_name)
                 asset_content = get_assets_from_project_content(
-                    asset_root, asset_name)
+                    asset_dir, asset_name)
 
         return asset_content
 

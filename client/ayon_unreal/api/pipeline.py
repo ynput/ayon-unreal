@@ -1144,6 +1144,7 @@ def get_assets_from_project_content(asset_root, asset_name):
             asset_root, recursive=True, include_folder=True
         )
         return asset_content
+    return None
 
 
 def get_top_hierarchy_folder(path):
