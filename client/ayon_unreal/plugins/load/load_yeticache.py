@@ -2,10 +2,7 @@
 """Loader for Yeti Cache."""
 import json
 import os
-from ayon_core.pipeline import (
-    get_representation_path,
-    AYON_CONTAINER_ID
-)
+from ayon_core.pipeline import AYON_CONTAINER_ID
 from ayon_unreal.api import plugin
 from ayon_unreal.api import pipeline as unreal_pipeline
 import unreal  # noqa
@@ -21,15 +18,16 @@ class YetiLoader(plugin.Loader):
     color = "orange"
 
     loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
+    asset_loading_location = "project"
+
     @classmethod
     def apply_settings(cls, project_settings):
         super(YetiLoader, cls).apply_settings(project_settings)
         # Apply import settings
-        cls.loaded_asset_dir = (
-            project_settings["unreal"]
-                            ["import_settings"]
-                            ["loaded_asset_dir"]
-        )
+        unreal_settings = project_settings["unreal"]["import_settings"]
+        cls.loaded_asset_dir = unreal_settings["loaded_asset_dir"]
+        cls.asset_loading_location = unreal_settings.get(
+            "asset_loading_location", cls.asset_loading_location)
 
     @staticmethod
     def get_task(filename, asset_dir, asset_name, replace):
@@ -100,28 +98,45 @@ class YetiLoader(plugin.Loader):
         suffix = "_CON"
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        asset_root, asset_name = unreal_pipeline.format_asset_directory(context, self.loaded_asset_dir)
+        asset_root, asset_name = unreal_pipeline.format_asset_directory(
+            context, self.loaded_asset_dir
+        )
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
-
+        pattern_regex = {
+            "name": name,
+            "extension": ext
+        }
         container_name = f"{container_name}_{suffix}"
-        asset_path = unreal_pipeline.has_asset_directory_pattern_matched(
-            asset_name, asset_dir, name)
+        task = None
+        if self.asset_loading_location == "follow_existing":
+            # Follow the existing version's location
+            existing_asset_path = unreal_pipeline.find_existing_asset(
+                asset_name, asset_dir, pattern_regex)
+            if existing_asset_path:
+                version_folder = unreal.Paths.split(asset_dir)[1]
+                asset_dir = unreal.Paths.get_path(existing_asset_path)
+                asset_dir = f"{existing_asset_path}/{version_folder}"
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
-        task = None
-        if asset_path:
-            loaded_asset_dir = unreal.Paths.split(asset_path)[0]
-            task = self.get_task(path, loaded_asset_dir, asset_name, True)
+        # Check if the asset already exists
+        existing_asset_path =  unreal_pipeline.find_existing_asset(asset_name)
+        if existing_asset_path:
+            task = self.get_task(
+                path, existing_asset_path, asset_name, True)
         else:
-            if not unreal.EditorAssetLibrary.does_asset_exist(
-                f"{asset_dir}/{asset_name}"):
-                    task = self.get_task(path, asset_dir, asset_name, False)
+            task = self.get_task(path, asset_dir, asset_name, False)
 
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])  # noqa: E501
-
+        if existing_asset_path:
+            if not unreal.EditorAssetLibrary.does_directory_exist(
+                existing_asset_path):
+                    unreal.EditorAssetLibrary.rename_asset(
+                        f"{existing_asset_path}/{asset_name}.{asset_name}",
+                        f"{asset_dir}/{asset_name}.{asset_name}"
+                    )
         if not unreal.EditorAssetLibrary.does_asset_exist(
             f"{asset_dir}/{container_name}"):
                 # Create Asset Container
@@ -145,11 +160,6 @@ class YetiLoader(plugin.Loader):
             "project_name": context["project"]["name"]
         }
 
-        if asset_path:
-            unreal.EditorAssetLibrary.rename_asset(
-                f"{asset_path}",
-                f"{asset_dir}/{asset_name}.{asset_name}"
-            )
         unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
@@ -163,15 +173,39 @@ class YetiLoader(plugin.Loader):
 
     def update(self, container, context):
         repre_entity = context["representation"]
-        name = container["asset_name"]
-        source_path = get_representation_path(repre_entity)
+        asset_name = container["asset_name"]
+        source_path = self.filepath_from_context(context)
+        ext = os.path.splitext(source_path)[-1].lstrip(".")
         destination_path = container["namespace"]
-
-        task = self.get_task(source_path, destination_path, name, False)
+        pattern_regex = {
+            "name": context["product"]["name"],
+            "extension": ext
+        }
+        task = None
+        if self.asset_loading_location == "follow_existing":
+            # Follow the existing version's location
+            existing_asset_path = unreal_pipeline.find_existing_asset(
+                asset_name, destination_path, pattern_regex)
+            if existing_asset_path:
+                destination_path = unreal.Paths.get_path(existing_asset_path)
+        if not unreal.EditorAssetLibrary.does_directory_exist(destination_path):
+            unreal.EditorAssetLibrary.make_directory(destination_path)
+        # Check if the asset already exists
+        existing_asset_path =  unreal_pipeline.find_existing_asset(asset_name)
+        if existing_asset_path:
+            task = self.get_task(source_path, existing_asset_path, asset_name, True)
+        else:
+            task = self.get_task(source_path, destination_path, asset_name, False)
 
         # do import fbx and replace existing data
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
-
+        if existing_asset_path:
+            if not unreal.EditorAssetLibrary.does_directory_exist(
+                existing_asset_path):
+                    unreal.EditorAssetLibrary.rename_asset(
+                        f"{existing_asset_path}/{asset_name}.{asset_name}",
+                        f"{destination_path}/{asset_name}.{asset_name}"
+                    )
         container_path = f'{container["namespace"]}/{container["objectName"]}'
         # update metadata
         unreal_pipeline.imprint(
@@ -182,7 +216,6 @@ class YetiLoader(plugin.Loader):
                 "project_name": context["project"]["name"]
             }
         )
-
         asset_content = unreal.EditorAssetLibrary.list_assets(
             destination_path, recursive=True, include_folder=True
         )
