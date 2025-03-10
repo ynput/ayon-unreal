@@ -67,6 +67,8 @@ def main():
     # copy work MRQ locally
     saved_dir = Path(unreal.Paths.project_saved_dir()) / "MovieRenderPipeline"
     mrq_dest: Path = saved_dir / work_mrq.name
+    if not saved_dir.exists():
+        saved_dir.mkdir(parents=True)
     shutil.copyfile(work_mrq, mrq_dest)
     unreal.log(f"Copied WorkMRQ to: {mrq_dest}")
 
