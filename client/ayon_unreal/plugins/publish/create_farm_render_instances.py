@@ -26,6 +26,7 @@ class UnrealRenderInstance(RenderInstance):
     publish_attributes = attr.ib(default={})
     file_names = attr.ib(default=[])
     master_level = attr.ib(default=None)
+    mrq_job = attr.ib(default=None)
     config_path = attr.ib(default=None)
     app_version = attr.ib(default=None)
     output_settings = attr.ib(default=None)
@@ -135,7 +136,27 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
         resolution_height = resolution.y
 
         output_fps = output_settings.output_frame_rate
-        fps = f"{output_fps.denominator}.{output_fps.numerator}"
+        fps = round(output_fps.numerator / output_fps.denominator, 3)
+
+        render_queue_path = (
+            render_settings["render_queue_path"]
+        )
+        self.log.debug(f"{render_queue_path = }")
+        auto_handle_mrq = False
+        if not unreal.EditorAssetLibrary.does_asset_exist(
+                render_queue_path):
+            # TODO: temporary until C++ blueprint is created as it is not
+            #   possible to create renderQueue. Also, we could
+            #   use Render Graph from UE 5.4
+
+            mrq = unreal.MoviePipelineQueue()
+            auto_handle_mrq = True
+            context.data["auto_handle_mrq"] = auto_handle_mrq
+            mrq.delete_all_jobs()
+        else:
+            mrq = unreal.EditorAssetLibrary.load_asset(
+                render_settings["render_queue_path"]
+            )
 
         for inst in context:
             instance_families = inst.data.get("families", [])
@@ -155,27 +176,8 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
             if not inst.data.get("farm", False):
                 self.log.info("Skipping local render instance")
                 continue
-
-            render_queue_path = render_settings["render_queue_path"]
-            if not unreal.EditorAssetLibrary.does_asset_exist(
-                    render_queue_path):
-                # TODO: temporary until C++ blueprint is created as it is not
-                #   possible to create renderQueue. Also, we could
-                #   use Render Graph from UE 5.4
-
-                master_level = inst.data["master_level"]
-                sequence = inst.data["sequence"]
-                msg = (f"Please create `Movie Pipeline Queue` "
-                       f"at `{render_queue_path}`. "
-                       f"Set it Sequence to `{sequence}`, "
-                       f"Map to `{master_level}` and "
-                       f"Settings to `{config_path}` ")
-                raise PublishError(msg)
-
             # Get current jobs
-            jobs = unreal.EditorAssetLibrary.load_asset(
-                render_settings["render_queue_path"]
-            ).get_jobs()
+            jobs = mrq.get_jobs()
 
             # backward compatibility
             task_name = inst.data.get("task") or inst.data.get("task_name")
@@ -196,10 +198,32 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
                 ),
                 None,
             )
-            if not job:
+            if not job and not auto_handle_mrq:
                 raise PublishError(
                     f"Cannot find job with sequence {inst.data['sequence']}"
                 )
+            else:
+                # create job for instance
+                job = mrq.allocate_new_job()
+                job.map = unreal.SoftObjectPath(inst.data["master_level"])
+                job.sequence = unreal.SoftObjectPath(inst.data["sequence"])
+                sequence_uasset = unreal.EditorAssetLibrary.load_asset(inst.data["sequence"])
+                display_rate = sequence_uasset.get_display_rate()
+                fps = round(display_rate.numerator / display_rate.denominator, 3)
+
+                render_preset = inst.data['creator_attributes'].get("render_preset")
+                if render_preset:
+                    asset_filter = unreal.ARFilter(
+                        class_names=["MoviePipelinePrimaryConfig"],
+                        recursive_paths=True
+                    )
+                    render_presets = ar.get_assets(asset_filter)
+                    for preset in render_presets:
+                        if preset.asset_name == render_preset:
+                            config = preset.get_asset()
+                            break
+
+                job.set_configuration(config)
 
             # current frame range - might be different from created
             frame_start = sequence.get_playback_start()
@@ -264,8 +288,10 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
                 config_path=config_path,
                 master_level=inst.data["master_level"],
                 render_queue_path=render_queue_path,
+                mrq_job=job,
                 deadline=inst.data.get("deadline"),
             )
+            context.data["mrq"] = mrq
             new_instance.farm = True
 
             instances.append(new_instance)
