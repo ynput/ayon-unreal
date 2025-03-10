@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import ast
+import copy
 import collections
 import sys
 import six
@@ -505,8 +506,11 @@ class LayoutLoader(Loader):
             representation_id=repre_id,
             fields={"data"}
         )
-        context = repre_data["data"]["context"]
+        context = copy.deepcopy(repre_data["data"]["context"])
         ext = context["ext"]
+        context["version"].update({
+            "version": repre_data["data"]["context"]["version"]
+        })
         asset_root, asset_name = format_asset_directory(
             context, self.loaded_asset_dir)
         tools = unreal.AssetToolsHelpers().get_asset_tools()
