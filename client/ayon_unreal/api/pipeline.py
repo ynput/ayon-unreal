@@ -713,15 +713,6 @@ def replace_static_mesh_actors(old_assets, new_assets, selected):
         new_assets,
         selected
     )
-    unreal.log("static_mesh_comps")
-    unreal.log(static_mesh_comps)
-
-    unreal.log("old_meshes")
-    unreal.log(old_meshes)
-
-    unreal.log("new_meshes")
-    unreal.log(old_meshes)
-
 
     for old_name, old_mesh in old_meshes.items():
         new_mesh = new_meshes.get(old_name)
@@ -849,10 +840,9 @@ def select_camera(sequence):
 def format_asset_directory(context, directory_template):
     """Setting up the asset directory path and name.
     Args:
-        name (str): Instance name
         context (dict): context
         directory_template (str): directory template path
-        extension (str, optional): file extension. Defaults to "abc".
+
     Returns:
         tuple[str, str]: asset directory, asset name
     """
@@ -889,6 +879,7 @@ def format_asset_directory(context, directory_template):
         data["version"]["version"] = f"v{version:03d}"
     asset_name_with_version = set_asset_name(data)
     asset_dir = StringTemplate(directory_template).format_strict(data)
+
     return f"{AYON_ROOT_DIR}/{asset_dir}", asset_name_with_version
 
 
@@ -916,6 +907,18 @@ def set_asset_name(data):
     else:
         asset_name = "{}_{}_{}".format(name, version, extension)
     return asset_name
+
+
+def show_audit_dialog(missing_asset):
+    """
+    Show a dialog to inform the user about missing assets.
+    """
+    message = "The following asset was missing in the content plugin:\n"
+    message += f"{missing_asset}.\n"
+    message += "Loading the asset into Game Content instead."
+    unreal.EditorDialog.show_message(
+        "Missing Assets", message, unreal.AppMsgType.OK
+    )
 
 
 def get_sequence(files):
@@ -1034,43 +1037,113 @@ def get_frame_range_from_folder_attributes(folder_entity=None):
     return frame_start, frame_end
 
 
-def has_asset_existing_directory(asset_name, asset_dir):
-    """Check if the asset already existed
+def find_existing_asset(asset_name, search_dir=None,
+                        pattern_regex=None):
+    """
+    Search for an existing asset in a specified directory or default directories.
+
+
     Args:
-        asset_name (str): asset name
+        asset_name (str): The name of the asset to search for.
+        search_dir (str, optional): The directory to search (e.g., "/Game/Characters").
+                                    If None, defaults to ["/Game", "/Plugins"].
+        pattern_regex (dict, optional): A dictionary of regex patterns to filter assets.
+                                        Keys are attribute names, and values are regex patterns.
 
     Returns:
-        str: package path
+        str: The full path of the asset if found, otherwise None.
     """
+    # List all assets in the project content folder
     asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
-    all_assets = asset_registry.get_assets_by_path('/Game', recursive=True)
-    for game_asset in all_assets:
-        if game_asset.asset_name == asset_name:
-            asset_path = game_asset.get_asset().get_path_name()
-            existing_asset_dir = unreal.Paths.split(asset_path)[0]
-            existing_version_folder = existing_asset_dir.split("/")[-1]
-            existing_asset_dir = existing_asset_dir.replace(existing_version_folder, "")
-            if existing_asset_dir != asset_dir:
-                return asset_path
+
+    # Get all assets
+    asset_list = asset_registry.get_all_assets()
+    # Search for the asset by name
+    if pattern_regex:
+        name = pattern_regex["name"]
+        extension = pattern_regex["extension"]
+        pattern = rf"{name}_\d{{3}}"
+        if extension:
+            pattern = rf"{name}_v\d{{3}}_{extension}"
+        version_folder = search_dir.split("/")[-1]
+        is_version_folder_matched = re.match(pattern, version_folder)
+
+        if is_version_folder_matched:
+            # Get all target assets
+            target_asset_path = find_content_plugin_asset(pattern)
+            if target_asset_path:
+                return target_asset_path
+
+    else:
+        for package in asset_list:
+            if asset_name in str(package.asset_name):
+                return unreal.Paths.split(package.package_path)[0]
+
     return None
 
-def has_asset_directory_pattern_matched(asset_name, asset_dir, name, extension=None):
-    version_folder = asset_dir.split("/")[-1]
-    target_asset_dir = asset_dir.replace(version_folder, "")
-    asset_path = has_asset_existing_directory(asset_name, target_asset_dir)
-    if not asset_path:
-        return None
-    existing_asset_dir = unreal.Paths.split(asset_path)[0]
-    existing_version_folder = existing_asset_dir.split("/")[-1]
-    # TODO: make it not hardcoded
-    pattern = rf"{name}_\d{{3}}"
-    if extension:
-        pattern = rf"{name}_v\d{{3}}_{extension}"
-    is_version_folder_matched = re.match(pattern, version_folder)
-    is_existing_version_folder_matched = re.match(pattern, existing_version_folder)
-    if not is_version_folder_matched or not is_existing_version_folder_matched:
-        return asset_path
 
+def find_content_plugin_asset(pattern):
+    # List all assets in the project content folder
+    asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
+    # Get all target assets
+    target_assets = {
+        unreal.Paths.split(package.package_path)[0]
+        for package in
+        asset_registry.get_all_assets()
+        if re.match(pattern, str(package.asset_name))
+    }
+    # asset in game content
+    game_content = {
+        unreal.Paths.split(game_asset.get_asset().get_path_name())[0]
+        for game_asset in asset_registry.get_assets_by_path('/Game', recursive=True)
+        if game_asset.get_asset() is not None
+        and game_asset.get_asset().get_name() == re.match(
+            pattern, game_asset.get_asset().get_name())
+    }
+    target_assets = target_assets.difference(game_content)
+    if target_assets:
+        return list(target_assets)[-1]
+
+    return None
+
+
+def get_asset_from_content_plugin(asset_name):
+    asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
+    # Get all target assets
+    target_assets = {
+        package.get_asset()
+        for package in
+        asset_registry.get_all_assets()
+        if asset_name in str(package.asset_name)
+    }
+
+    # asset in game content
+    game_content = {
+        game_asset.get_asset()
+        for game_asset in
+        asset_registry.get_assets_by_path('/Game', recursive=True)
+        if game_asset.get_asset().get_name() == asset_name
+    }
+
+    target_assets = target_assets.difference(game_content)
+    content_plugin_root = next((
+        target_asset for target_asset in list(target_assets)), None)
+    if content_plugin_root:
+        asset_content = unreal.EditorAssetLibrary.list_assets(
+            content_plugin_root, recursive=True, include_folder=True
+        )
+        return asset_content
+
+    return None
+
+
+def get_assets_from_project_content(asset_root, asset_name):
+    if unreal.EditorAssetLibrary.does_asset_exist(
+    f"{asset_root}/{asset_name}.{asset_name}"):
+        asset_content = unreal.EditorAssetLibrary.list_assets(
+            asset_root, recursive=True, include_folder=True
+        )
+        return asset_content
     return None
 
 

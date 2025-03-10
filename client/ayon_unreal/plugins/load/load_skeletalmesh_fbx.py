@@ -2,16 +2,13 @@
 """Load Skeletal Meshes form FBX."""
 import os
 
-from ayon_core.pipeline import (
-    get_representation_path,
-    AYON_CONTAINER_ID
-)
+from ayon_core.pipeline import AYON_CONTAINER_ID
 from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
     create_container,
     imprint,
-    has_asset_directory_pattern_matched,
-    format_asset_directory
+    format_asset_directory,
+    find_existing_asset
 )
 import unreal  # noqa
 
@@ -27,6 +24,7 @@ class SkeletalMeshFBXLoader(plugin.Loader):
 
     loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
     show_dialog = False
+    asset_loading_location = "project"
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -34,6 +32,8 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         super(SkeletalMeshFBXLoader, cls).apply_settings(project_settings)
         cls.loaded_asset_dir = unreal_settings["loaded_asset_dir"]
         cls.show_dialog = unreal_settings["show_dialog"]
+        cls.asset_loading_location = unreal_settings.get(
+            "asset_loading_location", cls.asset_loading_location)
 
     @classmethod
     def get_task(cls, filename, asset_dir, asset_name, replace):
@@ -76,23 +76,46 @@ class SkeletalMeshFBXLoader(plugin.Loader):
 
     def import_and_containerize(
         self, filepath, asset_dir, asset_name, container_name,
-        asset_path=None
+        pattern_regex
     ):
         task = None
-        if asset_path:
-            loaded_asset_dir = unreal.Paths.split(asset_path)[0]
-            task = self.get_task(filepath, loaded_asset_dir, asset_name, False)
+        # Determine where to load the asset based on settings
+        if self.asset_loading_location == "follow_existing":
+            # Follow the existing version's location
+            existing_asset_path = find_existing_asset(
+                asset_name, search_dir=asset_dir,
+                pattern_regex=pattern_regex
+            )
+            if existing_asset_path:
+                version_folder = unreal.Paths.split(asset_dir)[1]
+                asset_dir = unreal.Paths.get_path(existing_asset_path)
+                asset_dir = f"{existing_asset_path}/{version_folder}"
+
+        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+            unreal.EditorAssetLibrary.make_directory(asset_dir)
+        # Check if the asset already exists
+        existing_asset_path = find_existing_asset(asset_name)
+        if existing_asset_path:
+            task = self.get_task(filepath, existing_asset_path, asset_name, True)
         else:
             if not unreal.EditorAssetLibrary.does_asset_exist(
                 f"{asset_dir}/{asset_name}"):
                     task = self.get_task(filepath, asset_dir, asset_name, False)
 
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
-
+        if existing_asset_path:
+            if not unreal.EditorAssetLibrary.does_directory_exist(
+                existing_asset_path):
+                    unreal.EditorAssetLibrary.rename_asset(
+                        f"{existing_asset_path}/{asset_name}.{asset_name}",
+                        f"{asset_dir}/{asset_name}.{asset_name}"
+                    )
         if not unreal.EditorAssetLibrary.does_asset_exist(
             f"{asset_dir}/{container_name}"):
                 # Create Asset Container
                 create_container(container=container_name, path=asset_dir)
+
+        return asset_dir
 
     def imprint(
         self,
@@ -143,27 +166,22 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         suffix = "_CON"
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        asset_root, asset_name = format_asset_directory(context, self.loaded_asset_dir)
-
+        asset_root, asset_name = format_asset_directory(
+            context, self.loaded_asset_dir
+        )
+        pattern_regex = {
+            "name": name,
+            "extension": ext
+        }
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
 
         container_name += suffix
-        asset_path = has_asset_directory_pattern_matched(
-            asset_name, asset_dir, name, extension=ext)
-        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            unreal.EditorAssetLibrary.make_directory(asset_dir)
-
-        self.import_and_containerize(
+        asset_dir = self.import_and_containerize(
             path, asset_dir, asset_name,
-            container_name, asset_path=asset_path
+            container_name, pattern_regex
         )
-        if asset_path:
-            unreal.EditorAssetLibrary.rename_asset(
-                f"{asset_path}",
-                f"{asset_dir}/{asset_name}.{asset_name}"
-            )
 
         self.imprint(
             folder_name,
@@ -191,9 +209,12 @@ class SkeletalMeshFBXLoader(plugin.Loader):
 
         # Create directory for asset and Ayon container
         suffix = "_CON"
-        path = get_representation_path(repre_entity)
+        path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        asset_root, asset_name = format_asset_directory(context, self.loaded_asset_dir)
+
+        asset_root, asset_name = format_asset_directory(
+            context, self.loaded_asset_dir
+        )
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
@@ -201,7 +222,14 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         container_name += suffix
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
-        self.import_and_containerize(path, asset_dir, asset_name, container_name)
+        pattern_regex = {
+            "name": context["product"]["name"],
+            "extension": ext
+        }
+        asset_dir = self.import_and_containerize(
+            path, asset_dir, asset_name,
+            container_name, pattern_regex
+        )
 
         self.imprint(
             folder_path,

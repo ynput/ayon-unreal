@@ -2,15 +2,14 @@
 """Load Static meshes form FBX."""
 import os
 
-from ayon_core.pipeline import (
-    get_representation_path,
-    AYON_CONTAINER_ID
-)
+from ayon_core.pipeline import AYON_CONTAINER_ID
+
 from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
     create_container,
     imprint,
-    format_asset_directory
+    format_asset_directory,
+    find_existing_asset,
 )
 import unreal  # noqa
 
@@ -27,6 +26,7 @@ class StaticMeshFBXLoader(plugin.Loader):
     use_nanite = True
     show_dialog = False
     loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
+    asset_loading_location = "project"
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -34,9 +34,6 @@ class StaticMeshFBXLoader(plugin.Loader):
         # Apply import settings
         unreal_settings = project_settings.get("unreal", {})
         import_settings = unreal_settings.get("import_settings", {})
-        cls.use_interchange = import_settings.get("interchange", {}).get(
-            "enabled", cls.use_interchange
-        )
         cls.show_dialog = import_settings.get("show_dialog", cls.show_dialog)
         cls.use_nanite = import_settings.get("use_nanite", cls.use_nanite)
         cls.loaded_asset_dir = import_settings.get(
@@ -71,8 +68,20 @@ class StaticMeshFBXLoader(plugin.Loader):
 
     @classmethod
     def import_and_containerize(
-        cls, filepath, asset_dir, container_name
+        cls, filepath, asset_dir, asset_name, container_name,
+        pattern_regex
     ):
+        if cls.asset_loading_location == "follow_existing":
+            existing_asset_path = find_existing_asset(
+                asset_name, asset_dir, pattern_regex)
+            if existing_asset_path:
+                version_folder = unreal.Paths.split(asset_dir)[1]
+                asset_dir = unreal.Paths.get_path(existing_asset_path)
+                asset_dir = f"{existing_asset_path}/{version_folder}"
+
+        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+            unreal.EditorAssetLibrary.make_directory(asset_dir)
+
         unreal.log("Import using interchange method")
         unreal.SystemLibrary.execute_console_command(None, "Interchange.FeatureFlags.Import.FBX 1")
 
@@ -87,6 +96,8 @@ class StaticMeshFBXLoader(plugin.Loader):
             f"{asset_dir}/{container_name}"):
                 # Create Asset Container
                 create_container(container=container_name, path=asset_dir)
+
+        return asset_dir
 
     def imprint(
         self,
@@ -136,17 +147,24 @@ class StaticMeshFBXLoader(plugin.Loader):
         suffix = "_CON"
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        asset_root, asset_name = format_asset_directory(context, self.loaded_asset_dir)
+        asset_root, asset_name = format_asset_directory(
+            context, self.loaded_asset_dir
+        )
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
 
         container_name += suffix
+        pattern_regex = {
+            "name": name,
+            "extension": ext
+        }
 
-        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            unreal.EditorAssetLibrary.make_directory(asset_dir)
-        self.import_and_containerize(path, asset_dir, container_name)
+        asset_dir = self.import_and_containerize(
+            path, asset_dir, asset_name,
+            container_name, pattern_regex
+        )
 
         self.imprint(
             folder_path,
@@ -174,18 +192,25 @@ class StaticMeshFBXLoader(plugin.Loader):
 
         # Create directory for asset and Ayon container
         suffix = "_CON"
-        path = get_representation_path(repre_entity)
+        path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        asset_root, asset_name = format_asset_directory(context, self.loaded_asset_dir)
+
+        asset_root, asset_name = format_asset_directory(
+            context, self.loaded_asset_dir
+        )
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
 
-
         container_name += suffix
-        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            unreal.EditorAssetLibrary.make_directory(asset_dir)
-        self.import_and_containerize(path, asset_dir, container_name)
+        pattern_regex = {
+            "name": context["product"]["name"],
+            "extension": ext
+        }
+        asset_dir = self.import_and_containerize(
+            path, asset_dir, asset_name,
+            container_name, pattern_regex
+        )
 
         self.imprint(
             folder_path,

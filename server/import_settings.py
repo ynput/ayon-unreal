@@ -1,6 +1,19 @@
 from ayon_server.settings import BaseSettingsModel, SettingsField
 
 
+def _asset_loading_enum():
+    return [
+        {"value": "project", "label": "Load in Project"},
+        {"value": "follow_existing", "label": "Load in where the asset already exists"}
+    ]
+
+
+def _resolution_loading_enum():
+    return [
+        {"value": "project_first", "label": "Load in Project First"},
+        {"value": "content_plugin_first", "label": "Load in Content Plugin First"}
+    ]
+
 def _loaded_asset_enum():
     return [
         {"value": "json", "label": "json"},
@@ -38,7 +51,12 @@ class UnrealImportModel(BaseSettingsModel):
         description="Asset directories to store the loaded assets",
 
     )
-
+    asset_loading_location: str = SettingsField(
+        "project",
+        title="Asset Loading Location",
+        description="User preference for asset loading location",
+        enum_resolver=_asset_loading_enum,
+    )
     use_nanite: bool = SettingsField(True,
         title="Use nanite",
         description=(
@@ -47,9 +65,7 @@ class UnrealImportModel(BaseSettingsModel):
             "this in the pipeline asset"
         )
     )
-
     show_dialog: bool = SettingsField(False, title="Show import dialog")
-
     abc_conversion_preset: str = SettingsField(
         "maya",
         title="Alembic Conversion Setting Presets",
@@ -70,7 +86,13 @@ class UnrealImportModel(BaseSettingsModel):
         description="Directories to store the loaded layouts",
         section="Load Layout Settings"
     )
-
+    resolution_priority: str = SettingsField(
+        "project_first",
+        title="Resolution Priority",
+        description="User preference to prioritize which "
+                    "asset location to load for the layout",
+        enum_resolver=_resolution_loading_enum,
+    )
     level_sequences_for_layouts: bool = SettingsField(
         True,
         title="Generate level sequences when loading layouts"
@@ -100,12 +122,15 @@ class UnrealImportModel(BaseSettingsModel):
         )
     )
 
+
 DEFAULT_IMPORT_SETTINGS = {
     "loaded_asset_dir": "{folder[path]}/{product[name]}_{version[version]}",
+    "asset_loading_location": "project",
     "use_nanite": True,
     "show_dialog": False,
     "abc_conversion_preset": "maya",
     "loaded_layout_dir": "{folder[path]}/{product[name]}",
+    "resolution_priority": "project_first",
     "level_sequences_for_layouts": True,
     "force_loaded": False,
     "folder_representation_type": "json",
