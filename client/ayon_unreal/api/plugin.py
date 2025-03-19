@@ -1,12 +1,7 @@
 # -*- coding: utf-8 -*-
 import ast
 import collections
-import sys
-import six
-from abc import (
-    ABC,
-    ABCMeta,
-)
+from abc import ABC
 
 import unreal
 import ayon_api
@@ -153,11 +148,8 @@ class UnrealCreateLogic():
 
             return instance
 
-        except Exception as er:
-            six.reraise(
-                CreatorError,
-                CreatorError(f"Creator error: {er}"),
-                sys.exc_info()[2])
+        except Exception as exc:
+            raise CreatorError(f"Creator error: {exc}") from exc
 
 
 class UnrealBaseAutoCreator(AutoCreator, UnrealCreateLogic):
@@ -220,11 +212,8 @@ class UnrealAssetCreator(UnrealBaseCreator):
                 instance_data,
                 pre_create_data)
 
-        except Exception as er:
-            six.reraise(
-                CreatorError,
-                CreatorError(f"Creator error: {er}"),
-                sys.exc_info()[2])
+        except Exception as exc:
+            raise CreatorError(f"Creator error: {exc}") from exc
 
     def get_pre_create_attr_defs(self):
         return [
@@ -232,7 +221,6 @@ class UnrealAssetCreator(UnrealBaseCreator):
         ]
 
 
-@six.add_metaclass(ABCMeta)
 class UnrealActorCreator(UnrealBaseCreator):
     """Base class for Unreal creator plugins based on actors."""
 
@@ -273,11 +261,8 @@ class UnrealActorCreator(UnrealBaseCreator):
                 instance_data,
                 pre_create_data)
 
-        except Exception as er:
-            six.reraise(
-                CreatorError,
-                CreatorError(f"Creator error: {er}"),
-                sys.exc_info()[2])
+        except Exception as exc:
+            raise CreatorError(f"Creator error: {exc}") from exc
 
     def get_pre_create_attr_defs(self):
         return [
