@@ -286,7 +286,7 @@ class CreateRender(UnrealAssetCreator):
             ),
             NumberDef(
                 "end_frame",
-                label="Start Frame",
+                label="End Frame",
                 default=150,
                 minimum=-999999,
                 maximum=999999
