@@ -14,7 +14,7 @@ class CollectInstanceMembers(pyblish.api.InstancePlugin):
 
     order = pyblish.api.CollectorOrder + 0.1
     hosts = ["unreal"]
-    families = ["camera", "look", "staticMesh", "uasset"]
+    families = ["camera", "staticMesh", "uasset"]
     label = "Collect Instance Members"
 
     def process(self, instance):
