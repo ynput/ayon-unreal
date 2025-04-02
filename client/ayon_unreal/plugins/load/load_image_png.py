@@ -7,7 +7,8 @@ from ayon_unreal.api.pipeline import (
     create_container,
     imprint,
     format_asset_directory,
-    find_existing_asset
+    find_existing_asset,
+    prepare_pattern_regex
 )
 
 import unreal  # noqa
@@ -62,7 +63,10 @@ class TexturePNGLoader(plugin.Loader):
         # Determine where to load the asset based on settings
         if self.asset_loading_location == "follow_existing":
             # Follow the existing version's location
-            existing_asset_path = find_existing_asset(asset_name, asset_dir, pattern_regex)
+            existing_asset_path = find_existing_asset(
+                asset_name, asset_dir, pattern_regex,
+                self.loaded_asset_dir
+            )
             if existing_asset_path:
                 version_folder = unreal.Paths.split(asset_dir)[1]
                 asset_dir = unreal.Paths.get_path(existing_asset_path)
@@ -153,10 +157,7 @@ class TexturePNGLoader(plugin.Loader):
 
         container_name += suffix
 
-        pattern_regex = {
-            "name": name,
-            "extension": ext
-        }
+        pattern_regex = prepare_pattern_regex(context, ext)
         asset_dir = self.import_and_containerize(
             path, asset_dir, asset_name, container_name, pattern_regex)
         self.imprint(
@@ -195,10 +196,7 @@ class TexturePNGLoader(plugin.Loader):
             asset_root, suffix=f"_{ext}")
 
         container_name += suffix
-        pattern_regex = {
-            "name": context["product"]["name"],
-            "extension": ext
-        }
+        pattern_regex = prepare_pattern_regex(context, ext)
         asset_dir = self.import_and_containerize(
             path, asset_dir, asset_name, container_name, pattern_regex)
 

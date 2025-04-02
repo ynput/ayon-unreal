@@ -126,7 +126,7 @@ class AnimationAlembicLoader(plugin.Loader):
         if self.asset_loading_location == "follow_existing":
             # Follow the existing version's location
             existing_asset_path = unreal_pipeline.find_existing_asset(
-                asset_name, asset_dir, pattern_regex)
+                asset_name, asset_dir, pattern_regex, self.loaded_asset_dir)
             if existing_asset_path:
                 version_folder = unreal.Paths.split(asset_dir)[1]
                 asset_dir = unreal.Paths.get_path(existing_asset_path)
@@ -241,10 +241,7 @@ class AnimationAlembicLoader(plugin.Loader):
             "frameStart": folder_entity["attrib"]["frameStart"],
             "frameEnd": folder_entity["attrib"]["frameEnd"],
         }
-        pattern_regex = {
-            "name": name,
-            "extension": ext
-        }
+        pattern_regex = unreal_pipeline.prepare_pattern_regex(context, ext)
         path = self.filepath_from_context(context)
         asset_dir = self.import_and_containerize(
             path, asset_dir, asset_name,
@@ -297,10 +294,8 @@ class AnimationAlembicLoader(plugin.Loader):
 
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
-        pattern_regex = {
-            "name": context["product"]["name"],
-            "extension": ext
-        }
+
+        pattern_regex = unreal_pipeline.prepare_pattern_regex(context, ext)
         loaded_options = {
             "abc_conversion_preset": self.abc_conversion_preset,
             "frameStart": int(container.get("frameStart", "1")),

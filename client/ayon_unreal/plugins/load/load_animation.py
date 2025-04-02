@@ -322,7 +322,9 @@ class AnimationFBXLoader(plugin.Loader):
             if self.asset_loading_location == "follow_existing":
                 # Follow the existing version's location
                 existing_asset_path = unreal_pipeline.find_existing_asset(
-                    asset_name, asset_dir, pattern_regex)
+                    asset_name, asset_dir, pattern_regex,
+                    self.loaded_asset_dir
+                )
                 if existing_asset_path:
                     version_folder = unreal.Paths.split(asset_dir)[1]
                     asset_dir = unreal.Paths.get_path(existing_asset_path)
@@ -446,10 +448,7 @@ class AnimationFBXLoader(plugin.Loader):
             "frameStart": folder_entity["attrib"]["frameStart"],
             "frameEnd": folder_entity["attrib"]["frameEnd"]
         }
-        pattern_regex = {
-            "name": name,
-            "extension": ext
-        }
+        pattern_regex = unreal_pipeline.prepare_pattern_regex(context, ext)
         master_level, asset_dir = self._import_animation_with_json(
             path, context, hierarchy,
             asset_dir, folder_name,
@@ -510,10 +509,7 @@ class AnimationFBXLoader(plugin.Loader):
             asset_root, suffix=f"_{ext}")
 
         container_name += suffix
-        pattern_regex = {
-            "name": context["product"]["name"],
-            "extension": ext
-        }
+        pattern_regex = unreal_pipeline.prepare_pattern_regex(context, ext)
         master_level, asset_dir = self._import_animation_with_json(
             source_path, context, hierarchy,
             asset_dir, folder_name, asset_name,

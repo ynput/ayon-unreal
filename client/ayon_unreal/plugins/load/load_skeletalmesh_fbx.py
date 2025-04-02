@@ -8,7 +8,8 @@ from ayon_unreal.api.pipeline import (
     create_container,
     imprint,
     format_asset_directory,
-    find_existing_asset
+    find_existing_asset,
+    prepare_pattern_regex
 )
 import unreal  # noqa
 
@@ -84,7 +85,8 @@ class SkeletalMeshFBXLoader(plugin.Loader):
             # Follow the existing version's location
             existing_asset_path = find_existing_asset(
                 asset_name, search_dir=asset_dir,
-                pattern_regex=pattern_regex
+                pattern_regex=pattern_regex,
+                loaded_asset_dir=self.loaded_asset_dir
             )
             if existing_asset_path:
                 version_folder = unreal.Paths.split(asset_dir)[1]
@@ -169,10 +171,7 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         asset_root, asset_name = format_asset_directory(
             context, self.loaded_asset_dir
         )
-        pattern_regex = {
-            "name": name,
-            "extension": ext
-        }
+        pattern_regex = prepare_pattern_regex(context, ext)
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
@@ -222,10 +221,7 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         container_name += suffix
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
-        pattern_regex = {
-            "name": context["product"]["name"],
-            "extension": ext
-        }
+        pattern_regex = prepare_pattern_regex(context, ext)
         asset_dir = self.import_and_containerize(
             path, asset_dir, asset_name,
             container_name, pattern_regex

@@ -1037,8 +1037,45 @@ def get_frame_range_from_folder_attributes(folder_entity=None):
     return frame_start, frame_end
 
 
+def prepare_pattern_regex(context, extension):
+    """
+    Prepare the pattern regex dictionary by combining context with file extension.
+
+    Args:
+        context: Dictionary containing asset context information
+        ext: File extension to include in the pattern (e.g., 'fbx', 'png')
+
+    Returns:
+        Dictionary containing:
+        - All original context values
+        - Added 'extension' key with the provided extension
+
+    Example:
+            context = {
+                "folder": {"path": "Characters"},
+                "product": {"name": "hero"},
+                "version": {"version": "001"}
+            }
+            prepare_pattern_regex(context, "fbx")
+        {
+            "folder": {"path": "Characters"},
+            "product": {"name": "hero"},
+            "version": {"version": "001"},
+            "extension": "fbx"
+        }
+    """
+    # Create a deep copy to avoid modifying the original context
+    pattern_regex = copy.deepcopy(context)
+
+    # Add the extension to the pattern dictionary
+    pattern_regex["extension"] = extension
+
+    return pattern_regex
+
+
 def find_existing_asset(asset_name, search_dir=None,
-                        pattern_regex=None):
+                        pattern_regex=None,
+                        loaded_asset_dir=None):
     """
     Search for an existing asset in a specified directory or default directories.
 
@@ -1049,9 +1086,24 @@ def find_existing_asset(asset_name, search_dir=None,
                                     If None, defaults to ["/Game", "/Plugins"].
         pattern_regex (dict, optional): A dictionary of regex patterns to filter assets.
                                         Keys are attribute names, and values are regex patterns.
+        loaded_asset_dir(str, optional): Template string for asset directory structure.
 
     Returns:
         str: The full path of the asset if found, otherwise None.
+
+    Examples:
+        # Simple name search
+        # >>> find_existing_asset("MyCharacter")
+        # Template-based search
+        # >>> find_existing_asset(
+        # ...     "character",
+        # ...     "/Game/Characters",
+        # ...     {
+        # ...         "folder": {"path": "Characters"},
+        # ...         "product": {"name": "hero"},
+        # ...         "version": {"version": "001"}
+        # ...     }
+        # ... )
     """
     # List all assets in the project content folder
     asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
@@ -1059,20 +1111,24 @@ def find_existing_asset(asset_name, search_dir=None,
     # Get all assets
     asset_list = asset_registry.get_all_assets()
     # Search for the asset by name
-    if pattern_regex:
-        name = pattern_regex["name"]
-        extension = pattern_regex["extension"]
-        pattern = rf"{name}_\d{{3}}"
-        if extension:
-            pattern = rf"{name}_v\d{{3}}_{extension}"
-        version_folder = search_dir.split("/")[-1]
-        is_version_folder_matched = re.match(pattern, version_folder)
+    if pattern_regex and loaded_asset_dir:
+        pattern = loaded_asset_dir.replace(
+            "{version[version]}", r"\d{3}"
+        )
 
-        if is_version_folder_matched:
-            # Get all target assets
-            target_asset_path = find_content_plugin_asset(pattern)
-            if target_asset_path:
-                return target_asset_path
+        # Format the pattern with provided values
+        formatted_pattern = pattern.format(**pattern_regex)
+
+        # Escape special regex chars except our pattern
+        regex_pattern = re.escape(formatted_pattern)
+        regex_pattern = regex_pattern.replace(r"\d\{3\}", r"\d{3}")
+
+        if search_dir:
+            version_folder = search_dir.split("/")[-1]
+            is_version_folder_matched = re.match(pattern, version_folder)
+            if is_version_folder_matched:
+                if target_path := find_content_plugin_asset(regex_pattern):
+                        return target_path
 
     else:
         for package in asset_list:

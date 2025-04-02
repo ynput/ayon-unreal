@@ -71,15 +71,11 @@ class UAssetLoader(plugin.Loader):
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=""
         )
-        pattern_regex = {
-            "name": name,
-            "extension": ""
-        }
         container_name = f"{container_name}_{suffix}"
         if self.asset_loading_location == "follow_existing":
             # Follow the existing version's location
             existing_asset_path = unreal_pipeline.find_existing_asset(
-                asset_name, asset_dir, pattern_regex)
+                asset_name, asset_dir, context, self.loaded_asset_dir)
             if existing_asset_path:
                 version_folder = unreal.Paths.split(asset_dir)[1]
                 asset_dir = unreal.Paths.get_path(existing_asset_path)
@@ -154,14 +150,11 @@ class UAssetLoader(plugin.Loader):
 
         update_filepath = self.filepath_from_context(context)
         new_asset_name = os.path.basename(update_filepath)
-        pattern_regex = {
-            "name": context["product"]["name"],
-            "extension": ""
-        }
         if self.asset_loading_location == "follow_existing":
             # Follow the existing version's location
             existing_asset_path = unreal_pipeline.find_existing_asset(
-                new_asset_name, asset_dir, pattern_regex)
+                new_asset_name, asset_dir, context,
+                self.loaded_asset_dir)
             if existing_asset_path:
                 version_folder = unreal.Paths.split(asset_dir)[1]
                 asset_dir = unreal.Paths.get_path(existing_asset_path)

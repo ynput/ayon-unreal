@@ -10,6 +10,7 @@ from ayon_unreal.api.pipeline import (
     imprint,
     format_asset_directory,
     find_existing_asset,
+    prepare_pattern_regex
 )
 import unreal  # noqa
 
@@ -73,7 +74,9 @@ class StaticMeshFBXLoader(plugin.Loader):
     ):
         if cls.asset_loading_location == "follow_existing":
             existing_asset_path = find_existing_asset(
-                asset_name, asset_dir, pattern_regex)
+                asset_name, asset_dir, pattern_regex,
+                cls.loaded_asset_dir
+            )
             if existing_asset_path:
                 version_folder = unreal.Paths.split(asset_dir)[1]
                 asset_dir = unreal.Paths.get_path(existing_asset_path)
@@ -156,10 +159,7 @@ class StaticMeshFBXLoader(plugin.Loader):
             asset_root, suffix=f"_{ext}")
 
         container_name += suffix
-        pattern_regex = {
-            "name": name,
-            "extension": ext
-        }
+        pattern_regex = prepare_pattern_regex(context, ext)
 
         asset_dir = self.import_and_containerize(
             path, asset_dir, asset_name,
@@ -203,10 +203,7 @@ class StaticMeshFBXLoader(plugin.Loader):
             asset_root, suffix=f"_{ext}")
 
         container_name += suffix
-        pattern_regex = {
-            "name": context["product"]["name"],
-            "extension": ext
-        }
+        pattern_regex = prepare_pattern_regex(context, ext)
         asset_dir = self.import_and_containerize(
             path, asset_dir, asset_name,
             container_name, pattern_regex
