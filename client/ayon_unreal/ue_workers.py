@@ -342,17 +342,26 @@ class UEPluginInstallWorker(UEWorker):
             raise RuntimeError(msg)
 
         # Create a path to the plugin in the engine
-        op_plugin_path = self.engine_path / "Engine/Plugins/Marketplace" \
-                                            "/Ayon"
-
+        op_plugin_path = self.engine_path / "Engine/Plugins/Marketplace"
         if not op_plugin_path.is_dir():
             self.installing.emit("Installing and building the plugin ...")
             op_plugin_path.mkdir(parents=True, exist_ok=True)
 
-            engine_plugin_config_path = op_plugin_path / "Config"
-            engine_plugin_config_path.mkdir(exist_ok=True)
+        # Find the AYON plugin folder (handles FAB's randomized suffix)
+        ayon_plugin_dir = None
+        for item in op_plugin_path.iterdir():
+            if item.is_dir() and item.name.lower().startswith("ayon"):
+                ayon_plugin_dir = item
+                break
 
-            dir_util._path_created = {}
+        if not ayon_plugin_dir:
+            raise RuntimeError("AYON plugin not found in Marketplace directory!")
+
+        op_plugin_path = ayon_plugin_dir
+        engine_plugin_config_path = op_plugin_path / "Config"
+        engine_plugin_config_path.mkdir(exist_ok=True)
+
+        dir_util._path_created = {}
 
         if not (op_plugin_path / "Binaries").is_dir() \
                 or not (op_plugin_path / "Intermediate").is_dir():
