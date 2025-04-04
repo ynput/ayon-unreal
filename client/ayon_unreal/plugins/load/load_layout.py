@@ -53,10 +53,6 @@ class LayoutLoader(plugin.LayoutLoader):
         )
         cls.loaded_layout_dir = import_settings["loaded_layout_dir"]
         cls.remove_loaded_assets = import_settings["remove_loaded_assets"]
-        cls.resolution_priority = import_settings.get(
-            "resolution_priority", cls.resolution_priority)
-        cls.loaded_asset_dir = import_settings.get(
-            "loaded_asset_dir", cls.loaded_asset_dir)
 
     @classmethod
     def get_options(cls, contexts):
@@ -77,7 +73,7 @@ class LayoutLoader(plugin.LayoutLoader):
         return defs
 
     def _process_family(
-        self, assets, class_name, transform, basis, sequence, inst_name=None,
+        self, assets, class_name, transform, basis, sequence,
         rotation=None, unreal_import=False
     ):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
@@ -222,12 +218,12 @@ class LayoutLoader(plugin.LayoutLoader):
                     if product_type in ['model', 'staticMesh']:
                         actors, _ = self._process_family(
                             assets, 'StaticMesh', transform, basis,
-                            sequence, inst, rotation, unreal_import=unreal_import
+                            sequence, rotation, unreal_import=unreal_import
                         )
                     elif product_type in ['rig', 'skeletalMesh']:
                         actors, bindings = self._process_family(
                             assets, 'SkeletalMesh', transform, basis,
-                            sequence, inst, rotation, unreal_import=unreal_import
+                            sequence, rotation, unreal_import=unreal_import
                         )
                         actors_dict[inst] = actors
                         bindings_dict[inst] = bindings

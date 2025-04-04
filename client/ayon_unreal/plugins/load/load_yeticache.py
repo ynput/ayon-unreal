@@ -18,7 +18,6 @@ class YetiLoader(plugin.Loader):
     color = "orange"
 
     loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
-    asset_loading_location = "project"
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -26,8 +25,6 @@ class YetiLoader(plugin.Loader):
         # Apply import settings
         unreal_settings = project_settings["unreal"]["import_settings"]
         cls.loaded_asset_dir = unreal_settings["loaded_asset_dir"]
-        cls.asset_loading_location = unreal_settings.get(
-            "asset_loading_location", cls.asset_loading_location)
 
     @staticmethod
     def get_task(filename, asset_dir, asset_name, replace):
@@ -105,42 +102,29 @@ class YetiLoader(plugin.Loader):
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
-        pattern_regex = unreal_pipeline.prepare_pattern_regex(context, ext)
         container_name = f"{container_name}_{suffix}"
-        task = None
-        if self.asset_loading_location == "follow_existing":
-            # Follow the existing version's location
-            existing_asset_path = unreal_pipeline.find_existing_asset(
-                asset_name, asset_dir, pattern_regex,
-                self.loaded_asset_dir
-            )
-            if existing_asset_path:
-                version_folder = unreal.Paths.split(asset_dir)[1]
-                asset_dir = unreal.Paths.get_path(existing_asset_path)
-                asset_dir = f"{existing_asset_path}/{version_folder}"
-        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            unreal.EditorAssetLibrary.make_directory(asset_dir)
-        # Check if the asset already exists
-        existing_asset_path =  unreal_pipeline.find_existing_asset(asset_name)
-        if existing_asset_path:
-            task = self.get_task(
-                path, existing_asset_path, asset_name, True)
+
+        should_use_layout = options.get("layout", False)
+
+        # Get existing asset dir if possible, otherwise import & containerize
+        if should_use_layout and (
+            existing_asset_dir := (
+                unreal_pipeline.get_dir_from_existing_asset(asset_dir)
+                )
+            ):
+                asset_dir = existing_asset_dir
         else:
+            if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+                unreal.EditorAssetLibrary.make_directory(asset_dir)
+
             task = self.get_task(path, asset_dir, asset_name, False)
 
-        unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])  # noqa: E501
-        if existing_asset_path:
-            if not unreal.EditorAssetLibrary.does_directory_exist(
-                existing_asset_path):
-                    unreal.EditorAssetLibrary.rename_asset(
-                        f"{existing_asset_path}/{asset_name}.{asset_name}",
-                        f"{asset_dir}/{asset_name}.{asset_name}"
-                    )
-        if not unreal.EditorAssetLibrary.does_asset_exist(
-            f"{asset_dir}/{container_name}"):
-                # Create Asset Container
-                unreal_pipeline.create_container(
-                    container=container_name, path=asset_dir)
+            unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])  # noqa: E501
+            if not unreal.EditorAssetLibrary.does_asset_exist(
+                f"{asset_dir}/{container_name}"):
+                    # Create Asset Container
+                    unreal_pipeline.create_container(
+                        container=container_name, path=asset_dir)
 
         data = {
             "schema": "ayon:container-2.0",
@@ -156,7 +140,8 @@ class YetiLoader(plugin.Loader):
             # TODO these shold be probably removed
             "asset": folder_path,
             "family": context["product"]["productType"],
-            "project_name": context["project"]["name"]
+            "project_name": context["project"]["name"],
+            "layout": should_use_layout
         }
 
         unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
@@ -174,36 +159,24 @@ class YetiLoader(plugin.Loader):
         repre_entity = context["representation"]
         asset_name = container["asset_name"]
         source_path = self.filepath_from_context(context)
-        ext = os.path.splitext(source_path)[-1].lstrip(".")
         destination_path = container["namespace"]
-        pattern_regex = unreal_pipeline.prepare_pattern_regex(context, ext)
-        task = None
-        if self.asset_loading_location == "follow_existing":
-            # Follow the existing version's location
-            existing_asset_path = unreal_pipeline.find_existing_asset(
-                asset_name, destination_path, pattern_regex,
-                self.loaded_asset_dir
-            )
-            if existing_asset_path:
-                destination_path = unreal.Paths.get_path(existing_asset_path)
-        if not unreal.EditorAssetLibrary.does_directory_exist(destination_path):
-            unreal.EditorAssetLibrary.make_directory(destination_path)
-        # Check if the asset already exists
-        existing_asset_path =  unreal_pipeline.find_existing_asset(asset_name)
-        if existing_asset_path:
-            task = self.get_task(source_path, existing_asset_path, asset_name, True)
-        else:
-            task = self.get_task(source_path, destination_path, asset_name, False)
+        should_use_layout = container.get("layout", False)
 
-        # do import fbx and replace existing data
-        unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
-        if existing_asset_path:
-            if not unreal.EditorAssetLibrary.does_directory_exist(
-                existing_asset_path):
-                    unreal.EditorAssetLibrary.rename_asset(
-                        f"{existing_asset_path}/{asset_name}.{asset_name}",
-                        f"{destination_path}/{asset_name}.{asset_name}"
-                    )
+        # Get existing asset dir if possible, otherwise import & containerize
+        if should_use_layout and (
+            existing_asset_dir := (
+                unreal_pipeline.get_dir_from_existing_asset(destination_path)
+                )
+            ):
+                destination_path = existing_asset_dir
+        else:
+            if not unreal.EditorAssetLibrary.does_directory_exist(destination_path):
+                unreal.EditorAssetLibrary.make_directory(destination_path)
+
+            task = self.get_task(source_path, destination_path, asset_name, False)
+            # do import fbx and replace existing data
+            unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+
         container_path = f'{container["namespace"]}/{container["objectName"]}'
         # update metadata
         unreal_pipeline.imprint(

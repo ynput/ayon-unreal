@@ -9,8 +9,7 @@ from ayon_unreal.api.pipeline import (
     create_container,
     imprint,
     format_asset_directory,
-    find_existing_asset,
-    prepare_pattern_regex
+    get_dir_from_existing_asset
 )
 import unreal  # noqa
 
@@ -27,7 +26,6 @@ class StaticMeshFBXLoader(plugin.Loader):
     use_nanite = True
     show_dialog = False
     loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
-    asset_loading_location = "project"
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -69,19 +67,8 @@ class StaticMeshFBXLoader(plugin.Loader):
 
     @classmethod
     def import_and_containerize(
-        cls, filepath, asset_dir, asset_name, container_name,
-        pattern_regex
+        cls, filepath, asset_dir, container_name
     ):
-        if cls.asset_loading_location == "follow_existing":
-            existing_asset_path = find_existing_asset(
-                asset_name, asset_dir, pattern_regex,
-                cls.loaded_asset_dir
-            )
-            if existing_asset_path:
-                version_folder = unreal.Paths.split(asset_dir)[1]
-                asset_dir = unreal.Paths.get_path(existing_asset_path)
-                asset_dir = f"{existing_asset_path}/{version_folder}"
-
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
 
@@ -110,7 +97,8 @@ class StaticMeshFBXLoader(plugin.Loader):
         asset_name,
         repre_entity,
         product_type,
-        project_name
+        project_name,
+        layout
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -126,7 +114,8 @@ class StaticMeshFBXLoader(plugin.Loader):
             # TODO these shold be probably removed
             "asset": folder_path,
             "family": product_type,
-            "project_name": project_name
+            "project_name": project_name,
+            "layout": layout
         }
         imprint(f"{asset_dir}/{container_name}", data)
 
@@ -157,13 +146,18 @@ class StaticMeshFBXLoader(plugin.Loader):
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
-
         container_name += suffix
-        pattern_regex = prepare_pattern_regex(context, ext)
 
-        asset_dir = self.import_and_containerize(
-            path, asset_dir, asset_name,
-            container_name, pattern_regex
+        should_use_layout = options.get("layout", False)
+
+        # Get existing asset dir if possible, otherwise import & containerize
+        if should_use_layout and (
+            existing_asset_dir := get_dir_from_existing_asset(asset_dir)
+            ):
+                asset_dir = existing_asset_dir
+        else:
+            asset_dir = self.import_and_containerize(
+                 path, asset_dir, container_name
         )
 
         self.imprint(
@@ -173,7 +167,8 @@ class StaticMeshFBXLoader(plugin.Loader):
             asset_name,
             context["representation"],
             context["product"]["productType"],
-            context["project"]["name"]
+            context["project"]["name"],
+            should_use_layout
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
@@ -203,10 +198,16 @@ class StaticMeshFBXLoader(plugin.Loader):
             asset_root, suffix=f"_{ext}")
 
         container_name += suffix
-        pattern_regex = prepare_pattern_regex(context, ext)
-        asset_dir = self.import_and_containerize(
-            path, asset_dir, asset_name,
-            container_name, pattern_regex
+        should_use_layout = container.get("layout", False)
+
+        # Get existing asset dir if possible, otherwise import & containerize
+        if should_use_layout and (
+            existing_asset_dir := get_dir_from_existing_asset(asset_dir)
+            ):
+                asset_dir = existing_asset_dir
+        else:
+            asset_dir = self.import_and_containerize(
+                 path, asset_dir, container_name
         )
 
         self.imprint(
@@ -216,7 +217,8 @@ class StaticMeshFBXLoader(plugin.Loader):
             asset_name,
             repre_entity,
             product_type,
-            context["project"]["name"]
+            context["project"]["name"],
+            should_use_layout
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(

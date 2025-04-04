@@ -1,13 +1,6 @@
 from ayon_server.settings import BaseSettingsModel, SettingsField
 
 
-def _asset_loading_enum():
-    return [
-        {"value": "project", "label": "Load in Project"},
-        {"value": "follow_existing", "label": "Load in where the asset already exists"}
-    ]
-
-
 def _resolution_loading_enum():
     return [
         {"value": "project_first", "label": "Load in Project First"},
@@ -50,12 +43,6 @@ class UnrealImportModel(BaseSettingsModel):
         title="Asset directories for loaded assets",
         description="Asset directories to store the loaded assets",
 
-    )
-    asset_loading_location: str = SettingsField(
-        "project",
-        title="Asset Loading Location",
-        description="User preference for asset loading location",
-        enum_resolver=_asset_loading_enum,
     )
     use_nanite: bool = SettingsField(True,
         title="Use nanite",

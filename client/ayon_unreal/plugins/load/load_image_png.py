@@ -6,9 +6,7 @@ from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
     create_container,
     imprint,
-    format_asset_directory,
-    find_existing_asset,
-    prepare_pattern_regex
+    format_asset_directory
 )
 
 import unreal  # noqa
@@ -27,7 +25,6 @@ class TexturePNGLoader(plugin.Loader):
     # Defined by settings
     show_dialog = False
     loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
-    asset_loading_location = "project"
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -36,10 +33,6 @@ class TexturePNGLoader(plugin.Loader):
         # Apply import settings
         import_settings = unreal_settings.get("import_settings", {})
         cls.show_dialog = import_settings.get("show_dialog", cls.show_dialog)
-        cls.loaded_asset_dir = import_settings.get(
-            "loaded_asset_dir", cls.loaded_asset_dir)
-        cls.asset_loading_location = import_settings.get(
-            "asset_loading_location", cls.asset_loading_location)
 
     @classmethod
     def get_task(cls, filename, asset_dir, asset_name, replace):
@@ -58,20 +51,8 @@ class TexturePNGLoader(plugin.Loader):
 
     @classmethod
     def import_and_containerize(
-        self, filepath, asset_dir, asset_name, container_name, pattern_regex
+        self, filepath, asset_dir, container_name
     ):
-        # Determine where to load the asset based on settings
-        if self.asset_loading_location == "follow_existing":
-            # Follow the existing version's location
-            existing_asset_path = find_existing_asset(
-                asset_name, asset_dir, pattern_regex,
-                self.loaded_asset_dir
-            )
-            if existing_asset_path:
-                version_folder = unreal.Paths.split(asset_dir)[1]
-                asset_dir = unreal.Paths.get_path(existing_asset_path)
-                asset_dir = f"{existing_asset_path}/{version_folder}"
-
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
 
@@ -90,8 +71,9 @@ class TexturePNGLoader(plugin.Loader):
 
         source_data = unreal.InterchangeManager.create_source_data(filepath)
         interchange_manager = unreal.InterchangeManager.get_interchange_manager_scripted()  # noqa
-        interchange_manager.import_asset(asset_dir, source_data,
-                                            import_asset_parameters)
+        interchange_manager.import_asset(
+            asset_dir, source_data,import_asset_parameters
+        )
 
         if not unreal.EditorAssetLibrary.does_asset_exist(
             f"{asset_dir}/{container_name}"):
@@ -157,9 +139,9 @@ class TexturePNGLoader(plugin.Loader):
 
         container_name += suffix
 
-        pattern_regex = prepare_pattern_regex(context, ext)
         asset_dir = self.import_and_containerize(
-            path, asset_dir, asset_name, container_name, pattern_regex)
+            path, asset_dir, container_name
+        )
         self.imprint(
             folder_path,
             asset_dir,
@@ -196,9 +178,9 @@ class TexturePNGLoader(plugin.Loader):
             asset_root, suffix=f"_{ext}")
 
         container_name += suffix
-        pattern_regex = prepare_pattern_regex(context, ext)
         asset_dir = self.import_and_containerize(
-            path, asset_dir, asset_name, container_name, pattern_regex)
+            path, asset_dir, container_name
+        )
 
         self.imprint(
             folder_path,

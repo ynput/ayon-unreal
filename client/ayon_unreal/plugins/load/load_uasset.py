@@ -11,6 +11,15 @@ import unreal  # noqa
 
 
 def parsing_to_absolute_directory(asset_dir):
+    """Converting unreal relative directory to
+    absolute directory
+
+    Args:
+        asset_dir (str): asset dir
+
+    Returns:
+        str: absolute asset dir
+    """
     if unreal_pipeline.AYON_ROOT_DIR in asset_dir:
         return asset_dir.replace(
             "/Game", Path(unreal.Paths.project_content_dir()).as_posix(),
@@ -33,7 +42,6 @@ class UAssetLoader(plugin.Loader):
     extension = "uasset"
 
     loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
-    asset_loading_location = "project"
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -41,8 +49,6 @@ class UAssetLoader(plugin.Loader):
         # Apply import settings
         unreal_settings = project_settings["unreal"]["import_settings"]
         cls.loaded_asset_dir = unreal_settings["loaded_asset_dir"]
-        cls.asset_loading_location = unreal_settings.get(
-            "asset_loading_location", cls.asset_loading_location)
 
     def load(self, context, name, namespace, options):
         """Load and containerise representation into Content Browser.
@@ -72,33 +78,16 @@ class UAssetLoader(plugin.Loader):
             asset_root, suffix=""
         )
         container_name = f"{container_name}_{suffix}"
-        if self.asset_loading_location == "follow_existing":
-            # Follow the existing version's location
-            existing_asset_path = unreal_pipeline.find_existing_asset(
-                asset_name, asset_dir, context, self.loaded_asset_dir)
-            if existing_asset_path:
-                version_folder = unreal.Paths.split(asset_dir)[1]
-                asset_dir = unreal.Paths.get_path(existing_asset_path)
-                asset_dir = f"{existing_asset_path}/{version_folder}"
+
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
-        # Check if the asset already exists
-        existing_asset_path =  unreal_pipeline.find_existing_asset(asset_name)
-        if existing_asset_path:
-            destination_path = parsing_to_absolute_directory(existing_asset_path)
-        else:
-            destination_path = parsing_to_absolute_directory(asset_dir)
+
+        destination_path = parsing_to_absolute_directory(asset_dir)
 
         path = self.filepath_from_context(context)
 
         shutil.copy(path, f"{destination_path}/{asset_name}")
-        if existing_asset_path:
-            if not unreal.EditorAssetLibrary.does_directory_exist(
-                existing_asset_path):
-                    unreal.EditorAssetLibrary.rename_asset(
-                        f"{existing_asset_path}/{asset_name}.{asset_name}",
-                        f"{asset_dir}/{asset_name}.{asset_name}"
-                    )
+
         if not unreal.EditorAssetLibrary.does_asset_exist(
             f"{asset_dir}/{container_name}"):
                 # Create Asset Container
@@ -150,33 +139,15 @@ class UAssetLoader(plugin.Loader):
 
         update_filepath = self.filepath_from_context(context)
         new_asset_name = os.path.basename(update_filepath)
-        if self.asset_loading_location == "follow_existing":
-            # Follow the existing version's location
-            existing_asset_path = unreal_pipeline.find_existing_asset(
-                new_asset_name, asset_dir, context,
-                self.loaded_asset_dir)
-            if existing_asset_path:
-                version_folder = unreal.Paths.split(asset_dir)[1]
-                asset_dir = unreal.Paths.get_path(existing_asset_path)
-                asset_dir = f"{existing_asset_path}/{version_folder}"
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             unreal.EditorAssetLibrary.make_directory(asset_dir)
-        # Check if the asset already exists
-        existing_asset_path =  unreal_pipeline.find_existing_asset(new_asset_name)
-        if existing_asset_path:
-            destination_path = parsing_to_absolute_directory(existing_asset_path)
-        else:
-            destination_path = parsing_to_absolute_directory(asset_dir)
+
+        destination_path = parsing_to_absolute_directory(asset_dir)
 
         shutil.copy(
-            update_filepath, f"{destination_path}/{new_asset_name}")
-        if existing_asset_path:
-            if not unreal.EditorAssetLibrary.does_directory_exist(
-                existing_asset_path):
-                    unreal.EditorAssetLibrary.rename_asset(
-                        f"{existing_asset_path}/{new_asset_name}.{new_asset_name}",
-                        f"{asset_dir}/{new_asset_name}.{new_asset_name}"
-                    )
+            update_filepath, f"{destination_path}/{new_asset_name}"
+        )
+
         container_path = f'{container["namespace"]}/{container["objectName"]}'
         # update metadata
         unreal_pipeline.imprint(

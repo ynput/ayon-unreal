@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import ast
-import copy
 import collections
 from abc import ABC
 
@@ -11,11 +10,7 @@ from .pipeline import (
     create_publish_instance,
     imprint,
     ls_inst,
-    UNREAL_VERSION,
-    get_asset_from_content_plugin,
-    get_assets_from_project_content,
-    format_asset_directory,
-    show_audit_dialog
+    UNREAL_VERSION
 )
 from .lib import remove_loaded_asset
 from ayon_core.lib import (
@@ -290,9 +285,7 @@ class LayoutLoader(Loader):
     icon = "code-fork"
     color = "orange"
     loaded_layout_dir = "{folder[path]}/{product[name]}"
-    loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
     remove_loaded_assets = False
-    resolution_priority = "project_first"
 
     @classmethod
     def get_options(cls, contexts):
@@ -471,50 +464,15 @@ class LayoutLoader(Loader):
             return
 
         import_options = {
-            # "resolution_priority"
+            "layout": True
         }
-        resolution_priority = options.get("resolution_priority", "project_first")
-        assets = self.get_existing_asset(project_name, repre_id, resolution_priority)
-        if not assets:
-            assets = load_container(
-                loader,
-                repre_id,
-                namespace=instance_name,
-                options=import_options
-            )
-        return assets
-
-    def get_existing_asset(self, project_name, repre_id, resolution_priority):
-        asset_content = None
-        repre_data = ayon_api.get_representation_by_id(
-            project_name,
-            representation_id=repre_id,
-            fields={"data"}
+        assets = load_container(
+            loader,
+            repre_id,
+            namespace=instance_name,
+            options=import_options
         )
-        context = copy.deepcopy(repre_data["data"]["context"])
-        ext = context["ext"]
-        context["version"].update({
-            "version": repre_data["data"]["context"]["version"]
-        })
-        asset_root, asset_name = format_asset_directory(
-            context, self.loaded_asset_dir)
-        tools = unreal.AssetToolsHelpers().get_asset_tools()
-        asset_dir, _ = tools.create_unique_asset_name(
-            asset_root, suffix=f"_{ext}")
-        if resolution_priority == "project_first":
-            asset_content = get_assets_from_project_content(
-                asset_dir, asset_name)
-            if not asset_content:
-                asset_content = get_asset_from_content_plugin(asset_content)
-
-        elif resolution_priority == "content_plugin_first":
-            asset_content = get_asset_from_content_plugin(asset_content)
-            if not asset_content:
-                show_audit_dialog(asset_name)
-                asset_content = get_assets_from_project_content(
-                    asset_dir, asset_name)
-
-        return asset_content
+        return assets
 
     def _remove_Loaded_asset(self, container):
         """
