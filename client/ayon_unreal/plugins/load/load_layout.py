@@ -120,7 +120,7 @@ class LayoutLoader(plugin.LayoutLoader):
 
     def _process(self, lib_path, project_name, asset_dir, sequence,
                  repr_loaded=None, loaded_extension=None,
-                 force_loaded=False, options={}):
+                 force_loaded=False):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
         with open(lib_path, "r") as fp:
@@ -184,8 +184,8 @@ class LayoutLoader(plugin.LayoutLoader):
                     product_type = element.get("family")
 
                 assets = self._load_assets(
-                    instance_name, project_name, repre_id,
-                    product_type, repr_format, options)
+                    instance_name, repre_id, product_type, repr_format
+                )
 
                 container = None
 
@@ -324,17 +324,11 @@ class LayoutLoader(plugin.LayoutLoader):
         project_name = get_current_project_name()
         extension = options.get(
             "folder_representation_type", self.folder_representation_type)
-        import_options = {
-            "resolution_priority": options.get(
-                "resolution_priority", self.resolution_priority)
-        }
-
         path = self.filepath_from_context(context)
         loaded_assets = self._process(
             path, project_name, asset_dir, shot,
             loaded_extension=extension,
-            force_loaded=self.force_loaded,
-            options=import_options
+            force_loaded=self.force_loaded
         )
 
         for s in sequences:
@@ -429,15 +423,10 @@ class LayoutLoader(plugin.LayoutLoader):
         if create_sequences:
             EditorLevelLibrary.save_current_level()
         source_path = self.filepath_from_context(context)
-
-        import_options = {
-            "resolution_priority": self.resolution_priority
-        }
         loaded_assets = self._process(
             source_path, project_name, asset_dir, sequence,
             loaded_extension=self.folder_representation_type,
-            force_loaded=self.force_loaded,
-            options=import_options
+            force_loaded=self.force_loaded
         )
 
         update_container(container, project_name, repre_entity, loaded_assets=loaded_assets)

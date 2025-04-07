@@ -58,9 +58,7 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
                 "Skipping to add spawned actor into the sequence."
             )
 
-    def _load_asset(self, repr_data, instance_name,
-                    project_name, family, extension,
-                    options):
+    def _load_asset(self, repr_data, instance_name, family, extension):
         repre_entity = next((repre_entity for repre_entity in repr_data
                              if repre_entity["name"] == extension), None)
         if not repre_entity or extension == "ma":
@@ -69,11 +67,11 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
         repr_format = repre_entity.get('name')
         representation = repre_entity.get('id')
         assets = self._load_assets(
-            instance_name, project_name, representation,
-            family, repr_format, options)
+            instance_name, representation, family, repr_format
+        )
         return assets
 
-    def _process(self, lib_path, project_name, sequence, options):
+    def _process(self, lib_path, project_name, sequence):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
         actors = EditorLevelLibrary.get_all_level_actors()
@@ -231,10 +229,8 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
             assets = self._load_asset(
                 repre_entities,
                 lasset.get('instance_name'),
-                project_name,
                 product_type,
-                extension,
-                options
+                extension
             )
             con = None
             for asset in assets:
@@ -298,12 +294,9 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
 
         project_name = context["project"]["name"]
         path = self.filepath_from_context(context)
-        import_options = {
-            "resolution_priority": options.get(
-                "resolution_priority", self.resolution_priority)
-        }
 
-        loaded_assets = self._process(path, project_name, sequence, import_options)
+
+        loaded_assets = self._process(path, project_name, sequence)
 
         container_name += suffix
         if not unreal.EditorAssetLibrary.does_asset_exist(
@@ -335,10 +328,8 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
         sequence = next((asset for asset in ar.get_assets(level_seq_filter)), None)
         source_path = self.filepath_from_context(context)
-        import_options = {
-            "resolution_priority": self.resolution_priority
-        }
-        loaded_assets = self._process(source_path, project_name, sequence, import_options)
+
+        loaded_assets = self._process(source_path, project_name, sequence)
 
         upipeline.update_container(
             container, repre_entity, loaded_assets=loaded_assets)

@@ -73,13 +73,6 @@ class UnrealImportModel(BaseSettingsModel):
         description="Directories to store the loaded layouts",
         section="Load Layout Settings"
     )
-    resolution_priority: str = SettingsField(
-        "project_first",
-        title="Resolution Priority",
-        description="User preference to prioritize which "
-                    "asset location to load for the layout",
-        enum_resolver=_resolution_loading_enum,
-    )
     level_sequences_for_layouts: bool = SettingsField(
         True,
         title="Generate level sequences when loading layouts"
@@ -117,7 +110,6 @@ DEFAULT_IMPORT_SETTINGS = {
     "show_dialog": False,
     "abc_conversion_preset": "maya",
     "loaded_layout_dir": "{folder[path]}/{product[name]}",
-    "resolution_priority": "project_first",
     "level_sequences_for_layouts": True,
     "force_loaded": False,
     "folder_representation_type": "json",

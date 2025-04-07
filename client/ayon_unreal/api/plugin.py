@@ -287,20 +287,6 @@ class LayoutLoader(Loader):
     loaded_layout_dir = "{folder[path]}/{product[name]}"
     remove_loaded_assets = False
 
-    @classmethod
-    def get_options(cls, contexts):
-        return [
-            EnumDef(
-                "resolution_priority",
-                label="Resolution Priority",
-                items={
-                "project_first": "Load in Project First",
-                "content_plugin_first": "Content Plugin First",
-                },
-                default=cls.resolution_priority
-            ),
-        ]
-
     @staticmethod
     def _get_fbx_loader(loaders, family):
         name = ""
@@ -435,9 +421,7 @@ class LayoutLoader(Loader):
         imprint(
             "{}/{}".format(asset_dir, container_name), data)
 
-    def _load_assets(self, instance_name, project_name,
-                     repre_id, product_type, repr_format,
-                     options):
+    def _load_assets(self, instance_name, repre_id, product_type, repr_format):
         all_loaders = discover_loader_plugins()
         loaders = loaders_from_representation(
             all_loaders, repre_id)
