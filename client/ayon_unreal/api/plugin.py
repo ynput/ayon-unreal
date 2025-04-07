@@ -16,7 +16,6 @@ from .lib import remove_loaded_asset
 from ayon_core.lib import (
     BoolDef,
     UILabelDef,
-    EnumDef
 )
 from ayon_core.pipeline import (
     AutoCreator,
