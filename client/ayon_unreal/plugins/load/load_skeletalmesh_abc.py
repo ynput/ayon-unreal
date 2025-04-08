@@ -234,7 +234,8 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
 
         # Get existing asset dir if possible, otherwise import & containerize
         if should_use_layout and (
-            existing_asset_dir := get_dir_from_existing_asset(asset_dir)
+            existing_asset_dir := get_dir_from_existing_asset(
+                 asset_dir, asset_name)
             ):
                 asset_dir = existing_asset_dir
 
@@ -296,7 +297,8 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
 
         # Get existing asset dir if possible, otherwise import & containerize
         if should_use_layout and (
-            existing_asset_dir := get_dir_from_existing_asset(asset_dir)
+            existing_asset_dir := get_dir_from_existing_asset(
+                 asset_dir, asset_name)
             ):
                 asset_dir = existing_asset_dir
         else:

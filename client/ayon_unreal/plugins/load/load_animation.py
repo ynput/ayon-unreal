@@ -346,7 +346,8 @@ class AnimationFBXLoader(plugin.Loader):
                 should_use_layout = loaded_options.get("layout", False)
                 if should_use_layout and (
                     existing_asset_dir := (
-                        unreal_pipeline.get_dir_from_existing_asset(asset_dir)
+                        unreal_pipeline.get_dir_from_existing_asset(
+                            asset_dir, asset_name)
                         )
                     ):
                         asset_dir = existing_asset_dir

@@ -1037,7 +1037,7 @@ def get_frame_range_from_folder_attributes(folder_entity=None):
     return frame_start, frame_end
 
 
-def get_dir_from_existing_asset(asset_dir):
+def get_dir_from_existing_asset(asset_dir, asset_name):
     """Get asset dir if the asset already existed
 
     Args:
@@ -1045,11 +1045,16 @@ def get_dir_from_existing_asset(asset_dir):
     Returns:
         str: asset dir
     """
+    if not unreal.EditorAssetLibrary.does_asset_exist(
+            f"{asset_dir}/{asset_name}"
+        ):
+        return asset_dir
     asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
     asset_template = asset_dir.replace("/Game", "")
     for package in asset_registry.get_all_assets():
         package_dir = str(unreal.Paths.split(package.package_path)[0])
-        if asset_template in package_dir:
+        package_name = str(unreal.Paths.split(package.package_path)[1])
+        if asset_template in package_dir and asset_name == package_name:
             return package_dir
     return None
 
