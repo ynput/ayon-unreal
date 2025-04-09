@@ -1045,7 +1045,7 @@ def get_dir_from_existing_asset(asset_dir, asset_name):
     Returns:
         str: asset dir
     """
-    if not unreal.EditorAssetLibrary.does_asset_exist(
+    if unreal.EditorAssetLibrary.does_asset_exist(
             f"{asset_dir}/{asset_name}"
         ):
         return asset_dir
