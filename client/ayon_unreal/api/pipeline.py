@@ -1052,9 +1052,11 @@ def get_dir_from_existing_asset(asset_dir, asset_name):
     asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
     asset_template = asset_dir.replace("/Game", "")
     for package in asset_registry.get_all_assets():
-        package_dir = str(unreal.Paths.split(package.package_path)[0])
-        package_name = str(unreal.Paths.split(package.package_path)[1])
-        if asset_template in package_dir and asset_name == package_name:
+        package_dir = str(package.package_path)
+        if asset_template in package_dir and  \
+            unreal.EditorAssetLibrary.does_asset_exist(
+            f"{package_dir}/{asset_name}"
+        ):
             return package_dir
     return None
 
