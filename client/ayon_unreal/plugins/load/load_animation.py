@@ -259,8 +259,6 @@ class AnimationFBXLoader(plugin.Loader):
             project_name, version_id=version_id)
         entities = [v_link["entityId"] for v_link in v_links]
         linked_versions = list(server.get_versions(project_name, entities))
-        unreal.log("linked_versions")
-        unreal.log(linked_versions)
         rigs = [
             version["id"] for version in linked_versions
             if "rig" in version["attrib"]["families"]]
@@ -287,6 +285,14 @@ class AnimationFBXLoader(plugin.Loader):
                     skeleton = skeletons[0].get_asset()
                     break
 
+                # Check if the asset exists in the content plugin
+                _content_filter = (
+                    self._get_content_plugin_filter(ar, namespace)
+                )
+                if skeletons := ar.get_assets(_content_filter):
+                    skeleton = skeletons[0].get_asset()
+                    break
+
         if not skeleton:
            ar = unreal.AssetRegistryHelpers.get_asset_registry()
            skeleton_asset = self._import_latest_skeleton(rigs)
@@ -304,6 +310,18 @@ class AnimationFBXLoader(plugin.Loader):
             path, asset_dir, asset_name,
             skeleton, True, loaded_options=loaded_options
         )
+
+    def _get_content_plugin_filter(self, asset_registry, namespace):
+        asset_template = namespace.replace("/Game", "")
+        for package in asset_registry.get_all_assets():
+            package_dir = str(package.package_path)
+            if asset_template in package_dir:
+                _content_plugin_filter = unreal.ARFilter(
+                class_names=["Skeleton"],
+                package_paths=[package_dir],
+                recursive_paths=False)
+                return _content_plugin_filter
+        return None
 
     def _import_animation_with_json(self, path, context, hierarchy,
                                     asset_dir, folder_name,
@@ -353,9 +371,6 @@ class AnimationFBXLoader(plugin.Loader):
                         asset_dir = existing_asset_dir
                 else:
                     version_id = context["representation"]["versionId"]
-                    # TODO: rebuild this function with checking on
-                    # the game content and content plugins
-
                     if not unreal.EditorAssetLibrary.does_asset_exist(
                         f"{asset_dir}/{asset_name}"):
                             self._load_standalone_animation(
@@ -451,8 +466,6 @@ class AnimationFBXLoader(plugin.Loader):
             asset_dir, folder_name, asset_name,
             loaded_options=loaded_options
         )
-        # TODO: rebuild this function with checking on
-        # the game content and content plugins
         if not unreal.EditorAssetLibrary.does_asset_exist(
             f"{asset_dir}/{container_name}"):
                 unreal_pipeline.create_container(
