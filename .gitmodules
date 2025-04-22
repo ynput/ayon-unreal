@@ -1,3 +1,4 @@
 [submodule "client/ayon_unreal/integration"]
 	path = client/ayon_unreal/integration
 	url = https://github.com/ynput/ayon-unreal-plugin.git
+	branch = main
