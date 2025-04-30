@@ -271,7 +271,7 @@ class AnimationFBXLoader(plugin.Loader):
         containers = unreal_pipeline.ls()
         for container in containers:
             self.log.debug(f"Checking container: {container}")
-            if container["parent"] not in rigs:
+            if container["parent"] in rigs:
                 unreal.log("{}".format(container["parent"]))
                 # we found loaded version of the linked rigs
                 if container["loader"] != "SkeletalMeshFBXLoader":
