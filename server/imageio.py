@@ -3,17 +3,6 @@ from ayon_server.settings import BaseSettingsModel, SettingsField
 from ayon_server.settings.validators import ensure_unique_names
 
 
-class ImageIOConfigModel(BaseSettingsModel):
-    override_global_config: bool = SettingsField(
-        False,
-        title="Override global OCIO config"
-    )
-    filepath: list[str] = SettingsField(
-        default_factory=list,
-        title="Config path"
-    )
-
-
 class ImageIOFileRuleModel(BaseSettingsModel):
     name: str = SettingsField("", title="Rule name")
     pattern: str = SettingsField("", title="Regex pattern")
@@ -37,10 +26,6 @@ class ImageIOFileRulesModel(BaseSettingsModel):
 class UnrealImageIOModel(BaseSettingsModel):
     activate_host_color_management: bool = SettingsField(
         True, title="Enable Color Management"
-    )
-    ocio_config: ImageIOConfigModel = SettingsField(
-        default_factory=ImageIOConfigModel,
-        title="OCIO config"
     )
     file_rules: ImageIOFileRulesModel = SettingsField(
         default_factory=ImageIOFileRulesModel,
