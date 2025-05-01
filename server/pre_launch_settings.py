@@ -2,29 +2,33 @@ from ayon_server.settings import BaseSettingsModel, SettingsField
 
 
 class UnrealPreLaunchSetting(BaseSettingsModel):
-    #_layout = "expanded"
-    _isGroup: bool = True
+    """Install PySide2/6 Qt binding to unreal's python packages."""
 
     use_dependency: bool = SettingsField(
         False,
-        title="Use Dependency Path",
+        title="Use Offline Package Source",
         description=(
-            "Use Dependency Path to pip install PySide before launching unreal."
+            "Install PySide package from a local folder or URL "
+            "instead of downloading from the internet."
         )
     )
     dependency_path: str = SettingsField(
         "",
-        title="Dependency Path",
+        title="Offline Package Source Path",
         description=(
-            "Dependency Path to pip install PySide before launching unreal."
+            "Path to a local folder or URL containing the PySide "
+            "package files (e.g., .whl, .tar.gz)."
         )
     )
-
     arbitrary_site_package_location: bool = SettingsField(
-        False, title="Use local user space location for dependencies",
-        description=("Use user space location for dependencies "
-                              "instead of installing them directly to "
-                              "Unreal install location.")
+        False, title="Install to Launcher Data Path",
+        description=(
+            "Use a dedicated folder in AYON launcher local data folder "
+            "`AYON_LAUNCHER_LOCAL_DIR` as the target install location "
+            "for dependencies, and add it to Unreal's Python path. "
+            "This avoids modifying the system, engine, or user-specific "
+            "Python environments."
+        )
     )
 
 
