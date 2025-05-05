@@ -15,7 +15,7 @@ from .pipeline import (
 from .lib import remove_loaded_asset
 from ayon_core.lib import (
     BoolDef,
-    UILabelDef
+    UILabelDef,
 )
 from ayon_core.pipeline import (
     AutoCreator,
@@ -313,7 +313,8 @@ class LayoutLoader(Loader):
             name = "SkeletalMeshAlembicLoader"
         elif family in ['model', 'staticMesh']:
             name = "StaticMeshAlembicLoader"
-
+        elif family in ["animation"]:
+            name = "AnimationAlembicLoader"
         if name == "":
             return None
 
@@ -446,15 +447,14 @@ class LayoutLoader(Loader):
                     f"{product_type}")
             return
 
-        options = {
-            # "asset_dir": asset_dir
+        import_options = {
+            "layout": True
         }
-
         assets = load_container(
             loader,
             repre_id,
             namespace=instance_name,
-            options=options
+            options=import_options
         )
         return assets
 
