@@ -3,7 +3,7 @@
 import pyblish.api
 import unreal
 from ayon_core.pipeline.publish import PublishValidationError, RepairAction
-from ayon_unreal.api.lib import get_tracks, add_track
+from ayon_unreal.api.pipeline import get_tracks, add_track
 
 
 class ValidateCameraTracks(pyblish.api.InstancePlugin):
