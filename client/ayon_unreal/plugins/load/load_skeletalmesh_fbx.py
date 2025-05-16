@@ -2,16 +2,13 @@
 """Load Skeletal Meshes form FBX."""
 import os
 
-from ayon_core.pipeline import (
-    get_representation_path,
-    AYON_CONTAINER_ID
-)
+from ayon_core.pipeline import AYON_CONTAINER_ID
 from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
     create_container,
     imprint,
-    has_asset_directory_pattern_matched,
-    format_asset_directory
+    format_asset_directory,
+    get_dir_from_existing_asset
 )
 import unreal  # noqa
 
@@ -75,17 +72,14 @@ class SkeletalMeshFBXLoader(plugin.Loader):
 
 
     def import_and_containerize(
-        self, filepath, asset_dir, asset_name, container_name,
-        asset_path=None
+        self, filepath, asset_dir, asset_name, container_name
     ):
         task = None
-        if asset_path:
-            loaded_asset_dir = unreal.Paths.split(asset_path)[0]
-            task = self.get_task(filepath, loaded_asset_dir, asset_name, False)
-        else:
-            if not unreal.EditorAssetLibrary.does_asset_exist(
-                f"{asset_dir}/{asset_name}"):
-                    task = self.get_task(filepath, asset_dir, asset_name, False)
+        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+            unreal.EditorAssetLibrary.make_directory(asset_dir)
+        if not unreal.EditorAssetLibrary.does_asset_exist(
+            f"{asset_dir}/{asset_name}"):
+                task = self.get_task(filepath, asset_dir, asset_name, False)
 
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
 
@@ -93,6 +87,8 @@ class SkeletalMeshFBXLoader(plugin.Loader):
             f"{asset_dir}/{container_name}"):
                 # Create Asset Container
                 create_container(container=container_name, path=asset_dir)
+
+        return asset_dir
 
     def imprint(
         self,
@@ -102,7 +98,8 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         asset_name,
         representation,
         product_type,
-        project_name
+        project_name,
+        layout
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -118,7 +115,8 @@ class SkeletalMeshFBXLoader(plugin.Loader):
             # TODO these should be probably removed
             "asset": folder_path,
             "family": product_type,
-            "project_name": project_name
+            "project_name": project_name,
+            "layout": layout
         }
         imprint(f"{asset_dir}/{container_name}", data)
 
@@ -143,26 +141,26 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         suffix = "_CON"
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        asset_root, asset_name = format_asset_directory(context, self.loaded_asset_dir)
+        asset_root, asset_name = format_asset_directory(
+            context, self.loaded_asset_dir
+        )
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
 
         container_name += suffix
-        asset_path = has_asset_directory_pattern_matched(
-            asset_name, asset_dir, name, extension=ext)
-        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            unreal.EditorAssetLibrary.make_directory(asset_dir)
+        should_use_layout = options.get("layout", False)
 
-        self.import_and_containerize(
-            path, asset_dir, asset_name,
-            container_name, asset_path=asset_path
-        )
-        if asset_path:
-            unreal.EditorAssetLibrary.rename_asset(
-                f"{asset_path}",
-                f"{asset_dir}/{asset_name}.{asset_name}"
+        # Get existing asset dir if possible, otherwise import & containerize
+        if should_use_layout and (
+            existing_asset_dir := get_dir_from_existing_asset(
+                 asset_dir, asset_name)
+            ):
+                asset_dir = existing_asset_dir
+        else:
+            asset_dir = self.import_and_containerize(
+                path, asset_dir, asset_name, container_name
             )
 
         self.imprint(
@@ -172,7 +170,8 @@ class SkeletalMeshFBXLoader(plugin.Loader):
             asset_name,
             context["representation"],
             product_type,
-            context["project"]["name"]
+            context["project"]["name"],
+            should_use_layout
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
@@ -191,17 +190,29 @@ class SkeletalMeshFBXLoader(plugin.Loader):
 
         # Create directory for asset and Ayon container
         suffix = "_CON"
-        path = get_representation_path(repre_entity)
+        path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        asset_root, asset_name = format_asset_directory(context, self.loaded_asset_dir)
+
+        asset_root, asset_name = format_asset_directory(
+            context, self.loaded_asset_dir
+        )
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
 
         container_name += suffix
-        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            unreal.EditorAssetLibrary.make_directory(asset_dir)
-        self.import_and_containerize(path, asset_dir, asset_name, container_name)
+        should_use_layout = container.get("layout", False)
+
+        # Get existing asset dir if possible, otherwise import & containerize
+        if should_use_layout and (
+            existing_asset_dir := get_dir_from_existing_asset(
+                 asset_dir, asset_name)
+            ):
+                asset_dir = existing_asset_dir
+        else:
+            asset_dir = self.import_and_containerize(
+                path, asset_dir, asset_name, container_name
+            )
 
         self.imprint(
             folder_path,
@@ -210,7 +221,8 @@ class SkeletalMeshFBXLoader(plugin.Loader):
             asset_name,
             repre_entity,
             product_type,
-            context["project"]["name"]
+            context["project"]["name"],
+            should_use_layout
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
