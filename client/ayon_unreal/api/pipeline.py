@@ -713,15 +713,6 @@ def replace_static_mesh_actors(old_assets, new_assets, selected):
         new_assets,
         selected
     )
-    unreal.log("static_mesh_comps")
-    unreal.log(static_mesh_comps)
-
-    unreal.log("old_meshes")
-    unreal.log(old_meshes)
-
-    unreal.log("new_meshes")
-    unreal.log(old_meshes)
-
 
     for old_name, old_mesh in old_meshes.items():
         new_mesh = new_meshes.get(old_name)
@@ -849,10 +840,9 @@ def select_camera(sequence):
 def format_asset_directory(context, directory_template):
     """Setting up the asset directory path and name.
     Args:
-        name (str): Instance name
         context (dict): context
         directory_template (str): directory template path
-        extension (str, optional): file extension. Defaults to "abc".
+
     Returns:
         tuple[str, str]: asset directory, asset name
     """
@@ -889,6 +879,7 @@ def format_asset_directory(context, directory_template):
         data["version"]["version"] = f"v{version:03d}"
     asset_name_with_version = set_asset_name(data)
     asset_dir = StringTemplate(directory_template).format_strict(data)
+
     return f"{AYON_ROOT_DIR}/{asset_dir}", asset_name_with_version
 
 
@@ -916,6 +907,18 @@ def set_asset_name(data):
     else:
         asset_name = "{}_{}_{}".format(name, version, extension)
     return asset_name
+
+
+def show_audit_dialog(missing_asset):
+    """
+    Show a dialog to inform the user about missing assets.
+    """
+    message = "The following asset was missing in the content plugin:\n"
+    message += f"{missing_asset}.\n"
+    message += "Loading the asset into Game Content instead."
+    unreal.EditorDialog.show_message(
+        "Missing Assets", message, unreal.AppMsgType.OK
+    )
 
 
 def get_sequence(files):
@@ -1034,43 +1037,27 @@ def get_frame_range_from_folder_attributes(folder_entity=None):
     return frame_start, frame_end
 
 
-def has_asset_existing_directory(asset_name, asset_dir):
-    """Check if the asset already existed
+def get_dir_from_existing_asset(asset_dir, asset_name):
+    """Get asset dir if the asset already existed
+
     Args:
-        asset_name (str): asset name
-
+        asset_dir (str): asset dir
     Returns:
-        str: package path
+        str: asset dir
     """
+    if unreal.EditorAssetLibrary.does_asset_exist(
+            f"{asset_dir}/{asset_name}"
+        ):
+        return asset_dir
     asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
-    all_assets = asset_registry.get_assets_by_path('/Game', recursive=True)
-    for game_asset in all_assets:
-        if game_asset.asset_name == asset_name:
-            asset_path = game_asset.get_asset().get_path_name()
-            existing_asset_dir = unreal.Paths.split(asset_path)[0]
-            existing_version_folder = existing_asset_dir.split("/")[-1]
-            existing_asset_dir = existing_asset_dir.replace(existing_version_folder, "")
-            if existing_asset_dir != asset_dir:
-                return asset_path
-    return None
-
-def has_asset_directory_pattern_matched(asset_name, asset_dir, name, extension=None):
-    version_folder = asset_dir.split("/")[-1]
-    target_asset_dir = asset_dir.replace(version_folder, "")
-    asset_path = has_asset_existing_directory(asset_name, target_asset_dir)
-    if not asset_path:
-        return None
-    existing_asset_dir = unreal.Paths.split(asset_path)[0]
-    existing_version_folder = existing_asset_dir.split("/")[-1]
-    # TODO: make it not hardcoded
-    pattern = rf"{name}_\d{{3}}"
-    if extension:
-        pattern = rf"{name}_v\d{{3}}_{extension}"
-    is_version_folder_matched = re.match(pattern, version_folder)
-    is_existing_version_folder_matched = re.match(pattern, existing_version_folder)
-    if not is_version_folder_matched or not is_existing_version_folder_matched:
-        return asset_path
-
+    asset_template = asset_dir.replace("/Game", "")
+    for package in asset_registry.get_all_assets():
+        package_dir = str(package.package_path)
+        if asset_template in package_dir and  \
+            unreal.EditorAssetLibrary.does_asset_exist(
+            f"{package_dir}/{asset_name}"
+        ):
+            return package_dir
     return None
 
 
