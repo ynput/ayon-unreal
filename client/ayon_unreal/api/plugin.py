@@ -313,6 +313,8 @@ class LayoutLoader(Loader):
             name = "SkeletalMeshAlembicLoader"
         elif family in ['model', 'staticMesh']:
             name = "StaticMeshAlembicLoader"
+        elif family in ['animation']:
+            name = "AnimationAlembicLoader"
 
         if name == "":
             return None
