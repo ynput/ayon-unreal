@@ -355,11 +355,17 @@ class UEPluginInstallWorker(UEWorker):
                 break
 
         if not ayon_plugin_dir:
-            raise RuntimeError("AYON plugin not found in Marketplace directory!")
+            self.installing.emit(
+                "AYON plugin not found in Unreal plugin directory: "
+                f"{op_plugin_path.as_posix()}. We will try to build "
+                "the plugin from the source files.")
+            # raise RuntimeError("AYON plugin not found in Marketplace directory!")
+            op_plugin_path = op_plugin_path / "Ayon"
+        else:
+            op_plugin_path = ayon_plugin_dir
 
-        op_plugin_path = ayon_plugin_dir
         engine_plugin_config_path = op_plugin_path / "Config"
-        engine_plugin_config_path.mkdir(exist_ok=True)
+        engine_plugin_config_path.mkdir(parents=True, exist_ok=True)
 
         dir_util._path_created = {}
 
