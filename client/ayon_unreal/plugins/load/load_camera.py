@@ -5,10 +5,7 @@ from unreal import (
     EditorAssetLibrary,
     EditorLevelLibrary
 )
-from ayon_core.pipeline import (
-    AYON_CONTAINER_ID,
-    get_representation_path,
-)
+from ayon_core.pipeline import AYON_CONTAINER_ID
 from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
     generate_master_level_sequence,
@@ -237,7 +234,6 @@ class CameraLoader(plugin.Loader):
 
     def update(self, container, context):
         # Create directory for asset and Ayon container
-        repre_entity = context["representation"]
         folder_entity = context["folder"]
         folder_path = folder_entity["path"]
         asset_root, asset_name = format_asset_directory(
@@ -253,11 +249,11 @@ class CameraLoader(plugin.Loader):
         master_level = None
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             EditorAssetLibrary.make_directory(asset_dir)
-            path = get_representation_path(repre_entity)
-            master_level = self._create_map_camera(
-                context, path, tools, hierarchy_dir,
-                master_dir_name, asset_dir, asset_name
-            )
+        path = self.filepath_from_context(context)
+        master_level = self._create_map_camera(
+            context, path, tools, hierarchy_dir,
+            master_dir_name, asset_dir, asset_name
+        )
 
         # Create Asset Container
         if not unreal.EditorAssetLibrary.does_asset_exist(

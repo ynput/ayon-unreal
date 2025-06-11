@@ -5,9 +5,6 @@ import unreal
 from unreal import EditorLevelLibrary
 import ayon_api
 from ayon_core.pipeline.load import LoadError
-from ayon_core.pipeline import (
-    get_representation_path
-)
 from ayon_unreal.api import plugin
 from ayon_unreal.api import pipeline as upipeline
 
@@ -70,7 +67,8 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
         repr_format = repre_entity.get('name')
         representation = repre_entity.get('id')
         assets = self._load_assets(
-            instance_name, representation, family, repr_format)
+            instance_name, representation, family, repr_format
+        )
         return assets
 
     def _process(self, lib_path, project_name, sequence):
@@ -296,6 +294,8 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
 
         project_name = context["project"]["name"]
         path = self.filepath_from_context(context)
+
+
         loaded_assets = self._process(path, project_name, sequence)
 
         container_name += suffix
@@ -327,7 +327,8 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
 
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
         sequence = next((asset for asset in ar.get_assets(level_seq_filter)), None)
-        source_path = get_representation_path(repre_entity)
+        source_path = self.filepath_from_context(context)
+
         loaded_assets = self._process(source_path, project_name, sequence)
 
         upipeline.update_container(

@@ -10,10 +10,7 @@ from unreal import (
 )
 import ayon_api
 
-from ayon_core.pipeline import (
-    get_representation_path,
-    get_current_project_name
-)
+from ayon_core.pipeline import get_current_project_name
 from ayon_core.settings import get_current_project_settings
 from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
@@ -59,7 +56,7 @@ class LayoutLoader(plugin.LayoutLoader):
 
     @classmethod
     def get_options(cls, contexts):
-        defs = []
+        defs = super().get_options(contexts)
         if cls.force_loaded:
             defs.append(
                 EnumDef(
@@ -76,7 +73,7 @@ class LayoutLoader(plugin.LayoutLoader):
         return defs
 
     def _process_family(
-        self, assets, class_name, transform, basis, sequence, inst_name=None,
+        self, assets, class_name, transform, basis, sequence,
         rotation=None, unreal_import=False
     ):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
@@ -187,8 +184,8 @@ class LayoutLoader(plugin.LayoutLoader):
                     product_type = element.get("family")
 
                 assets = self._load_assets(
-                    instance_name, repre_id,
-                    product_type, repr_format)
+                    instance_name, repre_id, product_type, repr_format
+                )
 
                 container = None
 
@@ -221,12 +218,12 @@ class LayoutLoader(plugin.LayoutLoader):
                     if product_type in ['model', 'staticMesh']:
                         actors, _ = self._process_family(
                             assets, 'StaticMesh', transform, basis,
-                            sequence, inst, rotation, unreal_import=unreal_import
+                            sequence, rotation, unreal_import=unreal_import
                         )
                     elif product_type in ['rig', 'skeletalMesh']:
                         actors, bindings = self._process_family(
                             assets, 'SkeletalMesh', transform, basis,
-                            sequence, inst, rotation, unreal_import=unreal_import
+                            sequence, rotation, unreal_import=unreal_import
                         )
                         actors_dict[inst] = actors
                         bindings_dict[inst] = bindings
@@ -331,7 +328,9 @@ class LayoutLoader(plugin.LayoutLoader):
         loaded_assets = self._process(
             path, project_name, asset_dir, shot,
             loaded_extension=extension,
-            force_loaded=self.force_loaded)
+            force_loaded=self.force_loaded
+        )
+
         for s in sequences:
             EditorAssetLibrary.save_asset(s.get_path_name())
 
@@ -423,12 +422,12 @@ class LayoutLoader(plugin.LayoutLoader):
 
         if create_sequences:
             EditorLevelLibrary.save_current_level()
-        source_path = get_representation_path(repre_entity)
-
+        source_path = self.filepath_from_context(context)
         loaded_assets = self._process(
             source_path, project_name, asset_dir, sequence,
             loaded_extension=self.folder_representation_type,
-            force_loaded=self.force_loaded)
+            force_loaded=self.force_loaded
+        )
 
         update_container(container, project_name, repre_entity, loaded_assets=loaded_assets)
 

@@ -1,10 +1,7 @@
 # -*- coding: utf-8 -*-
 """Load textures from PNG."""
 import os
-from ayon_core.pipeline import (
-    get_representation_path,
-    AYON_CONTAINER_ID
-)
+from ayon_core.pipeline import AYON_CONTAINER_ID
 from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
     create_container,
@@ -36,8 +33,6 @@ class TexturePNGLoader(plugin.Loader):
         # Apply import settings
         import_settings = unreal_settings.get("import_settings", {})
         cls.show_dialog = import_settings.get("show_dialog", cls.show_dialog)
-        cls.loaded_asset_dir = import_settings.get(
-            "loaded_asset_dir", cls.loaded_asset_dir)
 
     @classmethod
     def get_task(cls, filename, asset_dir, asset_name, replace):
@@ -58,6 +53,9 @@ class TexturePNGLoader(plugin.Loader):
     def import_and_containerize(
         self, filepath, asset_dir, container_name
     ):
+        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+            unreal.EditorAssetLibrary.make_directory(asset_dir)
+
         unreal.log("Import using interchange method")
         unreal.SystemLibrary.execute_console_command(
             None, "Interchange.FeatureFlags.Import.PNG 1")
@@ -71,16 +69,18 @@ class TexturePNGLoader(plugin.Loader):
         import_asset_parameters = unreal.ImportAssetParameters()
         import_asset_parameters.is_automated = bool(not self.show_dialog)
 
-        source_data = unreal.InterchangeManager.create_source_data(
-            filepath)
+        source_data = unreal.InterchangeManager.create_source_data(filepath)
         interchange_manager = unreal.InterchangeManager.get_interchange_manager_scripted()  # noqa
-        interchange_manager.import_asset(asset_dir, source_data,
-                                            import_asset_parameters)
+        interchange_manager.import_asset(
+            asset_dir, source_data,import_asset_parameters
+        )
 
         if not unreal.EditorAssetLibrary.does_asset_exist(
             f"{asset_dir}/{container_name}"):
                 # Create Asset Container
                 create_container(container=container_name, path=asset_dir)
+
+        return asset_dir
 
     def imprint(
         self,
@@ -130,18 +130,18 @@ class TexturePNGLoader(plugin.Loader):
         suffix = "_CON"
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        asset_root, asset_name = format_asset_directory(context, self.loaded_asset_dir)
-
+        asset_root, asset_name = format_asset_directory(
+            context, self.loaded_asset_dir
+        )
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
 
         container_name += suffix
-        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            unreal.EditorAssetLibrary.make_directory(asset_dir)
 
-        self.import_and_containerize(path, asset_dir, container_name)
-
+        asset_dir = self.import_and_containerize(
+            path, asset_dir, container_name
+        )
         self.imprint(
             folder_path,
             asset_dir,
@@ -149,7 +149,7 @@ class TexturePNGLoader(plugin.Loader):
             asset_name,
             context["representation"],
             context["product"]["productType"],
-            context["project"]["name"]
+            context["project"]["name"],
         )
 
         asset_contents = unreal.EditorAssetLibrary.list_assets(
@@ -164,22 +164,23 @@ class TexturePNGLoader(plugin.Loader):
         folder_path = context["folder"]["path"]
         product_type = context["product"]["productType"]
         repre_entity = context["representation"]
-        path = get_representation_path(repre_entity)
+        path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
 
         # Create directory for asset and Ayon container
         suffix = "_CON"
-        asset_root, asset_name = format_asset_directory(context, self.loaded_asset_dir)
 
+        asset_root, asset_name = format_asset_directory(
+            context, self.loaded_asset_dir,
+        )
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
 
         container_name += suffix
-        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            unreal.EditorAssetLibrary.make_directory(asset_dir)
-
-        self.import_and_containerize(path, asset_dir, container_name)
+        asset_dir = self.import_and_containerize(
+            path, asset_dir, container_name
+        )
 
         self.imprint(
             folder_path,
