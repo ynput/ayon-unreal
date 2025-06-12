@@ -1,5 +1,4 @@
 import os
-
 import unreal
 
 from ayon_core.settings import get_project_settings
@@ -131,7 +130,7 @@ def start_rendering():
 
     for i in instances:
         data = pipeline.parse_container(i.get_path_name())
-        if data["productType"] == "render":
+        if data["productType"] == "render" or "editorial_pkg":
             inst_data.append(data)
 
     try:
@@ -161,6 +160,8 @@ def start_rendering():
     current_level_name = current_level.get_outer().get_path_name()
 
     for i in inst_data:
+        if i["productType"] == "editorial_pkg":
+            render_dir = f"{root}/{project_name}/editorial_pkg"
         sequence = ar.get_asset_by_object_path(i["sequence"]).get_asset()
 
         sequences = [{
@@ -178,12 +179,15 @@ def start_rendering():
         for seq in sequences:
             subscenes = pipeline.get_subsequences(seq.get('sequence'))
 
-            if subscenes:
+            if subscenes and i["productType"] != "editorial_pkg":
                 for sub_seq in subscenes:
+                    sub_seq_obj = sub_seq.get_sequence()
+                    if sub_seq_obj is None:
+                        continue
                     sequences.append({
-                        "sequence": sub_seq.get_sequence(),
+                        "sequence": sub_seq_obj,
                         "output": (f"{seq.get('output')}/"
-                                   f"{sub_seq.get_sequence().get_name()}"),
+                                f"{sub_seq_obj.get_name()}"),
                         "frame_range": (
                             sub_seq.get_start_frame(), sub_seq.get_end_frame())
                     })
@@ -215,7 +219,6 @@ def start_rendering():
             # read in the job's OnJobFinished callback. We could,
             # for instance, pass the AyonPublishInstance's path to the job.
             # job.user_data = ""
-
             output_dir = render_setting.get('output')
             shot_name = render_setting.get('sequence').get_name()
 
