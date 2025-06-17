@@ -526,6 +526,30 @@ def get_subsequences(sequence: unreal.LevelSequence):
     return []
 
 
+def get_movie_shot_tracks(sequence: unreal.LevelSequence):
+    """Get list of movie shot tracks from sequence.
+
+    Args:
+        sequence (unreal.LevelSequence): Sequence
+
+    Returns:
+        list(unreal.LevelSequence): List of movie shot tracks
+
+    """
+    tracks = sequence.find_master_tracks_by_type(unreal.MovieSceneSubTrack)
+    subscene_track = next(
+        (
+            t
+            for t in tracks
+            if t.get_class() == unreal.MovieSceneCinematicShotTrack.static_class()
+        ),
+        None,
+    )
+    if subscene_track is not None and subscene_track.get_sections():
+        return subscene_track.get_sections()
+    return []
+
+
 def set_sequence_hierarchy(
     seq_i, seq_j, max_frame_i, min_frame_j, max_frame_j, map_paths
 ):
@@ -949,6 +973,38 @@ def get_sequence(files):
             "This is a bug.")
 
     return [os.path.basename(filename) for filename in collections[0]]
+
+
+def get_sequence_for_otio(files):
+    """Get sequence from filename.
+
+    This will only return files if they exist on disk as it tries
+    to collect the sequence using the filename pattern and searching
+    for them on disk.
+
+    Supports negative frame ranges like -001, 0000, 0001 and -0001,
+    0000, 0001.
+
+    Arguments:
+        files (str): List of files
+
+    Returns:
+        Optional[list[str]]: file sequence.
+        Optional[str]: file head.
+
+    """
+    base_filenames = [os.path.basename(filename) for filename in files]
+    collections, _remainder = clique.assemble(
+        base_filenames,
+        patterns=[clique.PATTERNS["frames"]],
+        minimum_items=1)
+
+    if len(collections) > 1:
+        raise ValueError(
+            f"Multiple collections found for {collections}. "
+            "This is a bug.")
+    filename_padding = collections[0].padding
+    return filename_padding
 
 
 def find_camera_actors_in_camera_tracks(sequence) -> list[Any]:
