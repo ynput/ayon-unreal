@@ -5,10 +5,7 @@ from unreal import (
     EditorAssetLibrary,
     EditorLevelLibrary
 )
-from ayon_core.pipeline import (
-    AYON_CONTAINER_ID,
-    get_representation_path,
-)
+from ayon_core.pipeline import AYON_CONTAINER_ID
 from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
     generate_master_level_sequence,
@@ -39,8 +36,9 @@ class CameraLoader(plugin.Loader):
             project_settings
         )
         cls.loaded_asset_dir = (
-            project_settings["unreal"].get(
-                "loaded_asset_dir", cls.loaded_asset_dir)
+            project_settings["unreal"]
+                            ["import_settings"]
+                            ["loaded_asset_dir"]
         )
 
     def _import_camera(
@@ -79,7 +77,9 @@ class CameraLoader(plugin.Loader):
         representation,
         folder_name,
         product_type,
-        folder_entity):
+        folder_entity,
+        project_name
+    ):
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
@@ -95,7 +95,8 @@ class CameraLoader(plugin.Loader):
             "asset": folder_name,
             "family": product_type,
             "frameStart": folder_entity["attrib"]["frameStart"],
-            "frameEnd": folder_entity["attrib"]["frameEnd"]
+            "frameEnd": folder_entity["attrib"]["frameEnd"],
+            "project_name": project_name
         }
         imprint(f"{asset_dir}/{container_name}", data)
 
@@ -214,7 +215,8 @@ class CameraLoader(plugin.Loader):
             context["representation"],
             folder_name,
             context["product"]["productType"],
-            folder_entity
+            folder_entity,
+            context["project"]["name"]
         )
 
         EditorLevelLibrary.save_all_dirty_levels()
@@ -232,7 +234,6 @@ class CameraLoader(plugin.Loader):
 
     def update(self, container, context):
         # Create directory for asset and Ayon container
-        repre_entity = context["representation"]
         folder_entity = context["folder"]
         folder_path = folder_entity["path"]
         asset_root, asset_name = format_asset_directory(
@@ -248,11 +249,11 @@ class CameraLoader(plugin.Loader):
         master_level = None
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
             EditorAssetLibrary.make_directory(asset_dir)
-            path = get_representation_path(repre_entity)
-            master_level = self._create_map_camera(
-                context, path, tools, hierarchy_dir,
-                master_dir_name, asset_dir, asset_name
-            )
+        path = self.filepath_from_context(context)
+        master_level = self._create_map_camera(
+            context, path, tools, hierarchy_dir,
+            master_dir_name, asset_dir, asset_name
+        )
 
         # Create Asset Container
         if not unreal.EditorAssetLibrary.does_asset_exist(
@@ -269,7 +270,8 @@ class CameraLoader(plugin.Loader):
             context["representation"],
             folder_entity["name"],
             context["product"]["productType"],
-            folder_entity
+            folder_entity,
+            context["project"]["name"]
         )
 
         EditorLevelLibrary.save_all_dirty_levels()

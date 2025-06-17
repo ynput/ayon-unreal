@@ -4,8 +4,9 @@ import json
 import os
 import ayon_api
 import unreal
-from ayon_core.pipeline import (AYON_CONTAINER_ID, get_current_project_name,
-                                get_representation_path, load_container,
+from ayon_core.pipeline import (AYON_CONTAINER_ID,
+                                get_current_project_name,
+                                load_container,
                                 discover_loader_plugins,
                                 loaders_from_representation)
 from ayon_core.pipeline.context_tools import get_current_folder_entity
@@ -33,16 +34,9 @@ class AnimationFBXLoader(plugin.Loader):
     def apply_settings(cls, project_settings):
         super(AnimationFBXLoader, cls).apply_settings(project_settings)
         # Apply import settings
-        unreal_settings = project_settings.get("unreal", {})
-        if unreal_settings.get("loaded_asset_dir", cls.loaded_asset_dir):
-            cls.loaded_asset_dir = unreal_settings.get(
-                    "loaded_asset_dir", cls.loaded_asset_dir)
-        # Apply import settings
-        import_settings = (
-            project_settings.get("unreal", {}).get("import_settings", {})
-        )
-
-        cls.show_dialog = import_settings.get("show_dialog", cls.show_dialog)
+        unreal_settings = project_settings["unreal"]["import_settings"]
+        cls.loaded_asset_dir = unreal_settings["loaded_asset_dir"]
+        cls.show_dialog = unreal_settings["show_dialog"]
 
     def _import_latest_skeleton(self, version_ids):
         version_ids = set(version_ids)
@@ -131,8 +125,13 @@ class AnimationFBXLoader(plugin.Loader):
             'convert_scene', True)
         task.options.anim_sequence_import_data.set_editor_property(
             'force_front_x_axis', False)
-        task.options.anim_sequence_import_data.set_editor_property(
-            'import_rotation', unreal.Rotator(roll=90.0, pitch=0.0, yaw=0.0))
+        if unreal_pipeline.UNREAL_VERSION.major == 5 and (
+            unreal_pipeline.UNREAL_VERSION.minor <=4
+            ):
+                task.options.anim_sequence_import_data.set_editor_property(
+                    'import_rotation',
+                    unreal.Rotator(roll=90.0, pitch=0.0, yaw=0.0)
+                )
 
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
 
@@ -260,8 +259,6 @@ class AnimationFBXLoader(plugin.Loader):
             project_name, version_id=version_id)
         entities = [v_link["entityId"] for v_link in v_links]
         linked_versions = list(server.get_versions(project_name, entities))
-        unreal.log("linked_versions")
-        unreal.log(linked_versions)
         rigs = [
             version["id"] for version in linked_versions
             if "rig" in version["attrib"]["families"]]
@@ -273,7 +270,7 @@ class AnimationFBXLoader(plugin.Loader):
         containers = unreal_pipeline.ls()
         for container in containers:
             self.log.debug(f"Checking container: {container}")
-            if container["parent"] not in rigs:
+            if container["parent"] in rigs:
                 unreal.log("{}".format(container["parent"]))
                 # we found loaded version of the linked rigs
                 if container["loader"] != "SkeletalMeshFBXLoader":
@@ -285,6 +282,14 @@ class AnimationFBXLoader(plugin.Loader):
                     package_paths=[namespace],
                     recursive_paths=False)
                 if skeletons := ar.get_assets(_filter):
+                    skeleton = skeletons[0].get_asset()
+                    break
+
+                # Check if the asset exists in the content plugin
+                _content_filter = (
+                    self._get_content_plugin_filter(ar, namespace)
+                )
+                if skeletons := ar.get_assets(_content_filter):
                     skeleton = skeletons[0].get_asset()
                     break
 
@@ -300,19 +305,33 @@ class AnimationFBXLoader(plugin.Loader):
             raise LoadError("Selected asset is not a skeleton.")
 
         self.log.info(f"Using skeleton: {skeleton.get_name()}")
+
         self._import_animation(
             path, asset_dir, asset_name,
-            skeleton, True, loaded_options=loaded_options)
+            skeleton, True, loaded_options=loaded_options
+        )
+
+    def _get_content_plugin_filter(self, asset_registry, namespace):
+        asset_template = namespace.replace("/Game", "")
+        for package in asset_registry.get_all_assets():
+            package_dir = str(package.package_path)
+            if asset_template in package_dir:
+                _content_plugin_filter = unreal.ARFilter(
+                class_names=["Skeleton"],
+                package_paths=[package_dir],
+                recursive_paths=False)
+                return _content_plugin_filter
+        return None
 
     def _import_animation_with_json(self, path, context, hierarchy,
                                     asset_dir, folder_name,
-                                    asset_name, asset_path=None,
-                                    loaded_options=None):
+                                    asset_name, loaded_options=None):
             libpath = path.replace(".fbx", ".json")
 
             master_level = None
-            if asset_path:
-                asset_dir = unreal.Paths.split(asset_path)[0]
+
+            if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
+                EditorAssetLibrary.make_directory(asset_dir)
             # check if json file exists.
             if os.path.exists(libpath):
                 ar = unreal.AssetRegistryHelpers.get_asset_registry()
@@ -342,14 +361,23 @@ class AnimationFBXLoader(plugin.Loader):
                 self._load_from_json(
                     libpath, path, asset_dir, asset_name, hierarchy_dir)
             else:
-                version_id = context["representation"]["versionId"]
-                if not unreal.EditorAssetLibrary.does_asset_exist(
-                    f"{asset_dir}/{asset_name}"):
-                        self._load_standalone_animation(
-                            path, asset_dir, asset_name,
-                            version_id, loaded_options=loaded_options)
+                should_use_layout = loaded_options.get("layout", False)
+                if should_use_layout and (
+                    existing_asset_dir := (
+                        unreal_pipeline.get_dir_from_existing_asset(
+                            asset_dir, asset_name)
+                        )
+                    ):
+                        asset_dir = existing_asset_dir
+                else:
+                    version_id = context["representation"]["versionId"]
+                    if not unreal.EditorAssetLibrary.does_asset_exist(
+                        f"{asset_dir}/{asset_name}"):
+                            self._load_standalone_animation(
+                                path, asset_dir, asset_name,
+                                version_id, loaded_options)
 
-            return master_level
+            return master_level, asset_dir
 
     def imprint(
         self,
@@ -359,7 +387,9 @@ class AnimationFBXLoader(plugin.Loader):
         asset_name,
         representation,
         product_type,
-        folder_entity
+        folder_entity,
+        project_name,
+        layout
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -376,8 +406,11 @@ class AnimationFBXLoader(plugin.Loader):
             "asset": folder_path,
             "family": product_type,
             "frameStart": folder_entity["attrib"]["frameStart"],
-            "frameEnd": folder_entity["attrib"]["frameEnd"]
+            "frameEnd": folder_entity["attrib"]["frameEnd"],
+            "project_name": project_name,
+            "layout": layout
         }
+
         unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
 
     def load(self, context, name, namespace, options):
@@ -413,34 +446,31 @@ class AnimationFBXLoader(plugin.Loader):
 
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        asset_root, asset_name = unreal_pipeline.format_asset_directory(context, self.loaded_asset_dir)
+
+        asset_root, asset_name = unreal_pipeline.format_asset_directory(
+            context, self.loaded_asset_dir
+        )
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
 
         container_name += suffix
-        asset_path = unreal_pipeline.has_asset_directory_pattern_matched(asset_name, asset_dir, name)
-        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            EditorAssetLibrary.make_directory(asset_dir)
+        should_use_layout = options.get("layout", False)
         loaded_options = {
             "frameStart": folder_entity["attrib"]["frameStart"],
-            "frameEnd": folder_entity["attrib"]["frameEnd"]
+            "frameEnd": folder_entity["attrib"]["frameEnd"],
+            "layout": should_use_layout
         }
-        master_level = self._import_animation_with_json(
+        master_level, asset_dir = self._import_animation_with_json(
             path, context, hierarchy,
-            asset_dir, folder_name,
-            asset_name, asset_path=asset_path,
+            asset_dir, folder_name, asset_name,
             loaded_options=loaded_options
         )
         if not unreal.EditorAssetLibrary.does_asset_exist(
             f"{asset_dir}/{container_name}"):
                 unreal_pipeline.create_container(
                     container=container_name, path=asset_dir)
-        if asset_path:
-            unreal.EditorAssetLibrary.rename_asset(
-                f"{asset_path}",
-                f"{asset_dir}/{asset_name}.{asset_name}"
-            )
+
         self.imprint(
             folder_path,
             asset_dir,
@@ -448,7 +478,9 @@ class AnimationFBXLoader(plugin.Loader):
             asset_name,
             context["representation"],
             product_type,
-            folder_entity
+            folder_entity,
+            context["project"]["name"],
+            should_use_layout
         )
 
         imported_content = EditorAssetLibrary.list_assets(
@@ -479,20 +511,26 @@ class AnimationFBXLoader(plugin.Loader):
         folder_entity = context["folder"]
 
         suffix = "_CON"
-        source_path = get_representation_path(repre_entity)
+        source_path = self.filepath_from_context(context)
         ext = os.path.splitext(source_path)[-1].lstrip(".")
-        asset_root, asset_name = unreal_pipeline.format_asset_directory(context, self.loaded_asset_dir)
+        asset_root, asset_name = unreal_pipeline.format_asset_directory(
+            context, self.loaded_asset_dir
+        )
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
 
         container_name += suffix
-        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            EditorAssetLibrary.make_directory(asset_dir)
-
-        master_level = self._import_animation_with_json(
+        should_use_layout = container.get("layout", False)
+        loaded_options = {
+            "frameStart": folder_entity["attrib"]["frameStart"],
+            "frameEnd": folder_entity["attrib"]["frameEnd"],
+            "layout": should_use_layout
+        }
+        master_level, asset_dir = self._import_animation_with_json(
             source_path, context, hierarchy,
-            asset_dir, folder_name, asset_name
+            asset_dir, folder_name, asset_name,
+            loaded_options=loaded_options
         )
         if not unreal.EditorAssetLibrary.does_asset_exist(
             f"{asset_dir}/{container_name}"):
@@ -500,6 +538,7 @@ class AnimationFBXLoader(plugin.Loader):
                 unreal_pipeline.create_container(
                     container=container_name, path=asset_dir
                 )
+
         # update metadata
         self.imprint(
             folder_path,
@@ -508,7 +547,9 @@ class AnimationFBXLoader(plugin.Loader):
             asset_name,
             repre_entity,
             product_type,
-            folder_entity
+            folder_entity,
+            context["project"]["name"],
+            should_use_layout
         )
 
         asset_content = EditorAssetLibrary.list_assets(

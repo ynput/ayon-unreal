@@ -10,10 +10,7 @@ from unreal import (
 )
 import ayon_api
 
-from ayon_core.pipeline import (
-    get_representation_path,
-    get_current_project_name,
-)
+from ayon_core.pipeline import get_current_project_name
 from ayon_core.settings import get_current_project_settings
 from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
@@ -25,7 +22,8 @@ from ayon_unreal.api.pipeline import (
     get_top_hierarchy_folder,
     generate_hierarchy_path,
     update_container,
-    remove_map_and_sequence
+    remove_map_and_sequence,
+    get_tracks
 )
 from ayon_unreal.api.lib import (
     import_animation
@@ -37,41 +35,28 @@ class LayoutLoader(plugin.LayoutLoader):
     """Load Layout from a JSON file"""
 
     label = "Load Layout"
-    folder_representation_type = "json"
     force_loaded = False
+    folder_representation_type = "json"
     level_sequences_for_layouts = True
 
     @classmethod
     def apply_settings(cls, project_settings):
         super(LayoutLoader, cls).apply_settings(project_settings)
         # Apply import settings
+        import_settings = project_settings["unreal"]["import_settings"]
+        cls.force_loaded = import_settings["force_loaded"]
         cls.folder_representation_type = (
-            project_settings["unreal"].get(
-                "folder_representation_type",
-                cls.folder_representation_type)
-        )
-        cls.use_force_loaded = (
-            project_settings["unreal"].get(
-                "force_loaded", cls.force_loaded)
+            import_settings["folder_representation_type"]
         )
         cls.level_sequences_for_layouts = (
-            project_settings["unreal"].get(
-                "level_sequences_for_layouts",
-                cls.level_sequences_for_layouts)
+            import_settings["level_sequences_for_layouts"]
         )
-        cls.loaded_layout_dir = (
-            project_settings["unreal"].get(
-                "loaded_layout_dir", cls.loaded_layout_dir)
-        )
-        cls.remove_loaded_assets = (
-            project_settings["unreal"].get(
-                "remove_loaded_assets",
-                cls.remove_loaded_assets)
-        )
+        cls.loaded_layout_dir = import_settings["loaded_layout_dir"]
+        cls.remove_loaded_assets = import_settings["remove_loaded_assets"]
 
     @classmethod
     def get_options(cls, contexts):
-        defs = []
+        defs = super().get_options(contexts)
         if cls.force_loaded:
             defs.append(
                 EnumDef(
@@ -88,7 +73,7 @@ class LayoutLoader(plugin.LayoutLoader):
         return defs
 
     def _process_family(
-        self, assets, class_name, transform, basis, sequence, inst_name=None,
+        self, assets, class_name, transform, basis, sequence,
         rotation=None, unreal_import=False
     ):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
@@ -199,8 +184,8 @@ class LayoutLoader(plugin.LayoutLoader):
                     product_type = element.get("family")
 
                 assets = self._load_assets(
-                    instance_name, repre_id,
-                    product_type, repr_format)
+                    instance_name, repre_id, product_type, repr_format
+                )
 
                 container = None
 
@@ -210,8 +195,8 @@ class LayoutLoader(plugin.LayoutLoader):
                         container = obj
                     if obj.get_class().get_name() == 'Skeleton':
                         skeleton = obj
-
-                loaded_assets.append(container.get_path_name())
+                    if container is not None:
+                        loaded_assets.append(container.get_path_name())
 
                 instances = [
                     item for item in data
@@ -233,12 +218,12 @@ class LayoutLoader(plugin.LayoutLoader):
                     if product_type in ['model', 'staticMesh']:
                         actors, _ = self._process_family(
                             assets, 'StaticMesh', transform, basis,
-                            sequence, inst, rotation, unreal_import=unreal_import
+                            sequence, rotation, unreal_import=unreal_import
                         )
                     elif product_type in ['rig', 'skeletalMesh']:
                         actors, bindings = self._process_family(
                             assets, 'SkeletalMesh', transform, basis,
-                            sequence, inst, rotation, unreal_import=unreal_import
+                            sequence, rotation, unreal_import=unreal_import
                         )
                         actors_dict[inst] = actors
                         bindings_dict[inst] = bindings
@@ -280,8 +265,9 @@ class LayoutLoader(plugin.LayoutLoader):
             list(str): list of container content
         """
         data = get_current_project_settings()
-        create_sequences = data["unreal"]["level_sequences_for_layouts"]
-
+        create_sequences = (
+            data["unreal"]["import_settings"]["level_sequences_for_layouts"]
+        )
         # Create directory for asset and Ayon container
         folder_entity = context["folder"]
         folder_path = folder_entity["path"]
@@ -299,6 +285,9 @@ class LayoutLoader(plugin.LayoutLoader):
         asset_level = f"{asset_dir}/{folder_name}_map.{folder_name}_map"
         if not EditorAssetLibrary.does_asset_exist(asset_level):
             EditorLevelLibrary.new_level(f"{asset_dir}/{folder_name}_map")
+
+        shot = None
+        sequences = []
         if create_sequences:
             shot, _, asset_level, sequences, frame_ranges = (
                 generate_master_level_sequence(
@@ -339,7 +328,8 @@ class LayoutLoader(plugin.LayoutLoader):
         loaded_assets = self._process(
             path, project_name, asset_dir, shot,
             loaded_extension=extension,
-            force_loaded=self.force_loaded)
+            force_loaded=self.force_loaded
+        )
 
         for s in sequences:
             EditorAssetLibrary.save_asset(s.get_path_name())
@@ -358,6 +348,7 @@ class LayoutLoader(plugin.LayoutLoader):
             asset_dir,
             asset_name,
             container_name,
+            context["project"]["name"],
             hierarchy_dir=hierarchy_dir
         )
         save_dir = hierarchy_dir if create_sequences else asset_dir
@@ -371,9 +362,11 @@ class LayoutLoader(plugin.LayoutLoader):
         return asset_content
 
     def update(self, container, context):
+        project_name = context["project"]["name"]
         data = get_current_project_settings()
-        create_sequences = data["unreal"]["level_sequences_for_layouts"]
-
+        create_sequences = (
+            data["unreal"]["import_settings"]["level_sequences_for_layouts"]
+        )
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
         curr_level_sequence = LevelSequenceLib.get_current_level_sequence()
@@ -388,8 +381,8 @@ class LayoutLoader(plugin.LayoutLoader):
         sequence = None
         master_level = None
         hierarchy_dir = container.get("master_directory", "")
+        master_dir_name = get_top_hierarchy_folder(asset_dir)
         if not hierarchy_dir:
-            master_dir_name = get_top_hierarchy_folder(asset_dir)
             hierarchy_dir = f"{AYON_ROOT_DIR}/{master_dir_name}"
         if create_sequences:
             master_level = f"{hierarchy_dir}/{master_dir_name}_map.{master_dir_name}_map"
@@ -429,15 +422,14 @@ class LayoutLoader(plugin.LayoutLoader):
 
         if create_sequences:
             EditorLevelLibrary.save_current_level()
-        project_name = get_current_project_name()
-        source_path = get_representation_path(repre_entity)
-
+        source_path = self.filepath_from_context(context)
         loaded_assets = self._process(
             source_path, project_name, asset_dir, sequence,
             loaded_extension=self.folder_representation_type,
-            force_loaded=self.force_loaded)
+            force_loaded=self.force_loaded
+        )
 
-        update_container(container, repre_entity, loaded_assets=loaded_assets)
+        update_container(container, project_name, repre_entity, loaded_assets=loaded_assets)
 
         EditorLevelLibrary.save_current_level()
 
@@ -485,7 +477,7 @@ class LayoutLoader(plugin.LayoutLoader):
 
             parent = None
             for s in sequences:
-                tracks = s.get_master_tracks()
+                tracks = get_tracks(s)
                 subscene_track = None
                 visibility_track = None
                 for t in tracks:

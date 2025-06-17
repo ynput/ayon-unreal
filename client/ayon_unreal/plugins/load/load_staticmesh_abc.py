@@ -2,18 +2,16 @@
 """Loader for Static Mesh alembics."""
 import os
 
-from ayon_core.pipeline import (
-    get_representation_path,
-    AYON_CONTAINER_ID
-)
+from ayon_core.pipeline import AYON_CONTAINER_ID
 from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
     create_container,
     imprint,
-    has_asset_directory_pattern_matched,
     format_asset_directory,
-    UNREAL_VERSION
+    UNREAL_VERSION,
+    get_dir_from_existing_asset
 )
+from ayon_core.settings import get_current_project_settings
 from ayon_core.lib import EnumDef, BoolDef
 import unreal  # noqa
 
@@ -31,31 +29,26 @@ class StaticMeshAlembicLoader(plugin.Loader):
     loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
     show_dialog = False
 
-
     @classmethod
     def apply_settings(cls, project_settings):
         super(StaticMeshAlembicLoader, cls).apply_settings(project_settings)
         # Apply import settings
-        unreal_settings = project_settings.get("unreal", {})
-        if unreal_settings.get("abc_conversion_preset", cls.abc_conversion_preset):
-            cls.abc_conversion_preset = unreal_settings.get(
-                "abc_conversion_preset", cls.abc_conversion_preset)
-        if unreal_settings.get("loaded_asset_dir", cls.loaded_asset_dir):
-            cls.loaded_asset_dir = unreal_settings.get(
-                    "loaded_asset_dir", cls.loaded_asset_dir)
-        if unreal_settings.get("show_dialog", cls.show_dialog):
-            cls.show_dialog = unreal_settings.get(
-                "show_dialog", cls.show_dialog)
+        unreal_settings = project_settings["unreal"]["import_settings"]
+        cls.abc_conversion_preset = unreal_settings["abc_conversion_preset"]
+        cls.loaded_asset_dir = unreal_settings["loaded_asset_dir"]
+        cls.show_dialog = unreal_settings["show_dialog"]
 
     @classmethod
     def get_options(cls, contexts):
+
         return [
             EnumDef(
                 "abc_conversion_preset",
                 label="Alembic Conversion Preset",
                 items={
-                    "custom": "custom",
-                    "maya": "maya"
+                    "3dsmax": "3dsmax",
+                    "maya": "maya",
+                    "custom": "custom"
                 },
                 default=cls.abc_conversion_preset
             ),
@@ -124,12 +117,36 @@ class StaticMeshAlembicLoader(plugin.Loader):
                         flip_u=False, flip_v=True,
                         rotation=[90.0, 0.0, 0.0],
                         scale=[1.0, -1.0, 1.0])
+            elif abc_conversion_preset == "3dsmax":
+                if UNREAL_VERSION.major >= 5:
+                    conversion_settings = unreal.AbcConversionSettings(
+                        preset=unreal.AbcConversionPreset.MAX)
+                else:
+                    conversion_settings = unreal.AbcConversionSettings(
+                        preset=unreal.AbcConversionPreset.CUSTOM,
+                        flip_u=False, flip_v=True,
+                        rotation=[0.0, 0.0, 0.0],
+                        scale=[1.0, -1.0, 1.0])
             else:
+                data = get_current_project_settings()
+                preset = (
+                    data["unreal"]["import_settings"]["custom"]
+                )
                 conversion_settings = unreal.AbcConversionSettings(
                     preset=unreal.AbcConversionPreset.CUSTOM,
-                    flip_u=False, flip_v=False,
-                    rotation=[0.0, 0.0, 0.0],
-                    scale=[1.0, 1.0, 1.0])
+                    flip_u=preset["flip_u"],
+                    flip_v=preset["flip_v"],
+                    rotation=[
+                        preset["rot_x"],
+                        preset["rot_y"],
+                        preset["rot_z"]
+                    ],
+                    scale=[
+                        preset["scl_x"],
+                        preset["scl_y"],
+                        preset["scl_z"]
+                    ]
+                )
             options.conversion_settings = conversion_settings
 
         options.static_mesh_settings = sm_settings
@@ -139,25 +156,31 @@ class StaticMeshAlembicLoader(plugin.Loader):
         return task
 
     def import_and_containerize(
-        self, filepath, asset_dir, asset_name, container_name,
-        loaded_options, asset_path=None
+        self, filepath, asset_dir, asset_name,
+        container_name, loaded_options
     ):
+        """
+        Import the asset and create a container for it.
+        Handle asset loading based on settings.
+        """
         task = None
-        if asset_path:
-            loaded_asset_dir = unreal.Paths.split(asset_path)[0]
+        # If the asset does not exist, create a new one
+        if not unreal.EditorAssetLibrary.does_asset_exist(
+            f"{asset_dir}/{asset_name}"
+        ):
             task = self.get_task(
-                filepath, loaded_asset_dir, asset_name, True, loaded_options)
-        else:
-            if not unreal.EditorAssetLibrary.does_asset_exist(
-                f"{asset_dir}/{asset_name}"):
-                    task = self.get_task(
-                        filepath, asset_dir, asset_name, False, loaded_options)
+                filepath, asset_dir, asset_name, False, loaded_options
+            )
 
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+
         if not unreal.EditorAssetLibrary.does_asset_exist(
-            f"{asset_dir}/{container_name}"):
-                # Create Asset Container
-                create_container(container=container_name, path=asset_dir)
+            f"{asset_dir}/{container_name}"
+        ):
+            # Create Asset Container
+            create_container(container=container_name, path=asset_dir)
+
+        return asset_dir
 
     def imprint(
         self,
@@ -166,7 +189,9 @@ class StaticMeshAlembicLoader(plugin.Loader):
         container_name,
         asset_name,
         representation,
-        product_type
+        product_type,
+        project_name,
+        layout
     ):
         data = {
             "schema": "ayon:container-2.0",
@@ -181,7 +206,9 @@ class StaticMeshAlembicLoader(plugin.Loader):
             "product_type": product_type,
             # TODO these should be probably removed
             "asset": folder_path,
-            "family": product_type
+            "family": product_type,
+            "project_name": project_name,
+            "layout": layout
         }
         imprint(f"{asset_dir}/{container_name}", data)
 
@@ -206,28 +233,37 @@ class StaticMeshAlembicLoader(plugin.Loader):
         suffix = "_CON"
         path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        asset_root, asset_name = format_asset_directory(context, self.loaded_asset_dir)
-        loaded_options = {
-            "default_conversion": options.get("default_conversion", False),
-            "abc_conversion_preset": options.get(
-                "abc_conversion_preset", self.abc_conversion_preset),
-            "abc_material_settings": options.get("abc_material_settings", "no_material"),
-            "merge_meshes": options.get("merge_meshes", True),
-            "show_dialog": options.get("show_dialog", self.show_dialog),
-        }
 
+        asset_root, asset_name = format_asset_directory(
+            context, self.loaded_asset_dir
+        )
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
 
         container_name += suffix
-        asset_path = has_asset_directory_pattern_matched(
-            asset_name, asset_dir, name, extension=ext)
-        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            unreal.EditorAssetLibrary.make_directory(asset_dir)
-            self.import_and_containerize(path, asset_dir, asset_name,
-                                         container_name, loaded_options,
-                                         asset_path=asset_path)
+        should_use_layout = options.get("layout", False)
+        # Get existing asset dir if possible, otherwise import & containerize
+        if should_use_layout and (
+            existing_asset_dir := get_dir_from_existing_asset(
+                asset_dir, asset_name)
+            ):
+                asset_dir = existing_asset_dir
+        else:
+            loaded_options = {
+                "default_conversion": options.get(
+                    "default_conversion", False),
+                "abc_conversion_preset": options.get(
+                    "abc_conversion_preset", self.abc_conversion_preset),
+                "abc_material_settings": options.get(
+                    "abc_material_settings", "no_material"),
+                "merge_meshes": options.get("merge_meshes", True),
+                "show_dialog": options.get("show_dialog", self.show_dialog),
+            }
+            asset_dir = self.import_and_containerize(
+                path, asset_dir, asset_name,
+                container_name, loaded_options
+            )
 
         product_type = context["product"]["productType"]
         self.imprint(
@@ -236,13 +272,11 @@ class StaticMeshAlembicLoader(plugin.Loader):
             container_name,
             asset_name,
             context["representation"],
-            product_type
+            product_type,
+            context["project"]["name"],
+            should_use_layout
         )
-        if asset_path:
-            unreal.EditorAssetLibrary.rename_asset(
-                f"{asset_path}",
-                f"{asset_dir}/{asset_name}.{asset_name}"
-            )
+
         asset_content = unreal.EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=False
         )
@@ -255,25 +289,36 @@ class StaticMeshAlembicLoader(plugin.Loader):
         folder_path = context["folder"]["path"]
         product_type = context["product"]["productType"]
         repre_entity = context["representation"]
-
         # Create directory for asset and Ayon container
         suffix = "_CON"
-        path = get_representation_path(repre_entity)
+        path = self.filepath_from_context(context)
         ext = os.path.splitext(path)[-1].lstrip(".")
-        asset_root, asset_name = format_asset_directory(context, self.loaded_asset_dir)
+
+        asset_root, asset_name = format_asset_directory(
+            context, self.loaded_asset_dir
+        )
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
             asset_root, suffix=f"_{ext}")
 
         container_name += suffix
-        if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            unreal.EditorAssetLibrary.make_directory(asset_dir)
-        loaded_options = {
-            "default_conversion": False,
-            "abc_conversion_preset": self.abc_conversion_preset
-        }
-        self.import_and_containerize(path, asset_dir, asset_name,
-                                     container_name, loaded_options)
+        should_use_layout = container.get("layout", False)
+
+        # Get existing asset dir if possible, otherwise import & containerize
+        if should_use_layout and (
+            existing_asset_dir := get_dir_from_existing_asset(
+                asset_dir, asset_name)
+            ):
+                asset_dir = existing_asset_dir
+        else:
+            loaded_options = {
+                "default_conversion": False,
+                "abc_conversion_preset": self.abc_conversion_preset
+            }
+            asset_dir = self.import_and_containerize(
+                path, asset_dir, asset_name,
+                container_name, loaded_options
+            )
 
         self.imprint(
             folder_path,
@@ -281,7 +326,9 @@ class StaticMeshAlembicLoader(plugin.Loader):
             container_name,
             asset_name,
             repre_entity,
-            product_type
+            product_type,
+            context["project"]["name"],
+            should_use_layout
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(

@@ -5,9 +5,6 @@ import unreal
 from unreal import EditorLevelLibrary
 import ayon_api
 from ayon_core.pipeline.load import LoadError
-from ayon_core.pipeline import (
-    get_representation_path
-)
 from ayon_unreal.api import plugin
 from ayon_unreal.api import pipeline as upipeline
 
@@ -25,17 +22,12 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
         super(ExistingLayoutLoader, cls).apply_settings(
             project_settings
         )
+        import_settings = project_settings["unreal"]["import_settings"]
         cls.delete_unmatched_assets = (
-            project_settings["unreal"]["delete_unmatched_assets"]
+            import_settings["delete_unmatched_assets"]
         )
-        cls.loaded_layout_dir = (
-            project_settings["unreal"].get(
-                "loaded_layout_dir", cls.loaded_layout_dir)
-        )
-        cls.remove_loaded_assets = (
-            project_settings["unreal"].get(
-                "remove_loaded_assets", cls.remove_loaded_assets)
-        )
+        cls.loaded_layout_dir = import_settings["loaded_layout_dir"]
+        cls.remove_loaded_assets = import_settings["remove_loaded_assets"]
 
     def _spawn_actor(self, obj, lasset, sequence):
         actor = EditorLevelLibrary.spawn_actor_from_object(
@@ -58,7 +50,13 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
                 roll=rotation["x"], pitch=rotation["z"],
                 yaw=-rotation["y"])
             actor.set_actor_rotation(actor_rotation, False)
-        sequence.add_possessable(actor)
+        if sequence is not None:
+            sequence.add_possessable(actor)
+        else:
+            self.log.warning(
+                "No Level Sequence found for current level. "
+                "Skipping to add spawned actor into the sequence."
+            )
 
     def _load_asset(self, repr_data, instance_name, family, extension):
         repre_entity = next((repre_entity for repre_entity in repr_data
@@ -69,7 +67,8 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
         repr_format = repre_entity.get('name')
         representation = repre_entity.get('id')
         assets = self._load_assets(
-            instance_name, representation, family, repr_format)
+            instance_name, representation, family, repr_format
+        )
         return assets
 
     def _process(self, lib_path, project_name, sequence):
@@ -290,13 +289,13 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
 
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
         sequence = next((asset.get_asset() for asset in ar.get_assets(level_seq_filter)), None)
-        if not sequence:
-            raise LoadError("No Level Sequence found for current level")
         if not curr_level:
             raise LoadError("Current level not saved")
 
         project_name = context["project"]["name"]
         path = self.filepath_from_context(context)
+
+
         loaded_assets = self._process(path, project_name, sequence)
 
         container_name += suffix
@@ -312,7 +311,8 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
             loaded_assets,
             curr_asset_dir,
             asset_name,
-            container_name
+            container_name,
+            context["project"]["name"]
         )
 
     def update(self, container, context):
@@ -327,7 +327,8 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
 
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
         sequence = next((asset for asset in ar.get_assets(level_seq_filter)), None)
-        source_path = get_representation_path(repre_entity)
+        source_path = self.filepath_from_context(context)
+
         loaded_assets = self._process(source_path, project_name, sequence)
 
         upipeline.update_container(

@@ -1,12 +1,7 @@
 # -*- coding: utf-8 -*-
 import ast
 import collections
-import sys
-import six
-from abc import (
-    ABC,
-    ABCMeta,
-)
+from abc import ABC
 
 import unreal
 import ayon_api
@@ -20,7 +15,7 @@ from .pipeline import (
 from .lib import remove_loaded_asset
 from ayon_core.lib import (
     BoolDef,
-    UILabelDef
+    UILabelDef,
 )
 from ayon_core.pipeline import (
     AutoCreator,
@@ -152,11 +147,8 @@ class UnrealCreateLogic():
 
             return instance
 
-        except Exception as er:
-            six.reraise(
-                CreatorError,
-                CreatorError(f"Creator error: {er}"),
-                sys.exc_info()[2])
+        except Exception as exc:
+            raise CreatorError(f"Creator error: {exc}") from exc
 
 
 class UnrealBaseAutoCreator(AutoCreator, UnrealCreateLogic):
@@ -219,11 +211,8 @@ class UnrealAssetCreator(UnrealBaseCreator):
                 instance_data,
                 pre_create_data)
 
-        except Exception as er:
-            six.reraise(
-                CreatorError,
-                CreatorError(f"Creator error: {er}"),
-                sys.exc_info()[2])
+        except Exception as exc:
+            raise CreatorError(f"Creator error: {exc}") from exc
 
     def get_pre_create_attr_defs(self):
         return [
@@ -231,7 +220,6 @@ class UnrealAssetCreator(UnrealBaseCreator):
         ]
 
 
-@six.add_metaclass(ABCMeta)
 class UnrealActorCreator(UnrealBaseCreator):
     """Base class for Unreal creator plugins based on actors."""
 
@@ -272,11 +260,8 @@ class UnrealActorCreator(UnrealBaseCreator):
                 instance_data,
                 pre_create_data)
 
-        except Exception as er:
-            six.reraise(
-                CreatorError,
-                CreatorError(f"Creator error: {er}"),
-                sys.exc_info()[2])
+        except Exception as exc:
+            raise CreatorError(f"Creator error: {exc}") from exc
 
     def get_pre_create_attr_defs(self):
         return [
@@ -328,7 +313,8 @@ class LayoutLoader(Loader):
             name = "SkeletalMeshAlembicLoader"
         elif family in ['model', 'staticMesh']:
             name = "StaticMeshAlembicLoader"
-
+        elif family in ["animation"]:
+            name = "AnimationAlembicLoader"
         if name == "":
             return None
 
@@ -412,6 +398,7 @@ class LayoutLoader(Loader):
         asset_dir,
         asset_name,
         container_name,
+        project_name,
         hierarchy_dir=None
     ):
         data = {
@@ -427,6 +414,7 @@ class LayoutLoader(Loader):
             "parent": context["representation"]["versionId"],
             "family": context["product"]["productType"],
             "loaded_assets": loaded_assets,
+            "project_name": project_name
         }
         if hierarchy_dir is not None:
             data["master_directory"] = hierarchy_dir
@@ -459,15 +447,14 @@ class LayoutLoader(Loader):
                     f"{product_type}")
             return
 
-        options = {
-            # "asset_dir": asset_dir
+        import_options = {
+            "layout": True
         }
-
         assets = load_container(
             loader,
             repre_id,
             namespace=instance_name,
-            options=options
+            options=import_options
         )
         return assets
 
