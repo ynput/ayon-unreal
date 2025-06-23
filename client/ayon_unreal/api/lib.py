@@ -5,7 +5,8 @@ from ayon_core.pipeline import (
 )
 from ayon_unreal.api.pipeline import (
     get_camera_tracks,
-    ls
+    ls,
+    UNREAL_VERSION
 )
 from ayon_core.pipeline.context_tools import get_current_folder_entity
 import ayon_api
@@ -313,11 +314,19 @@ def get_shot_track_names(sel_objects=None, get_name=True):
         a for a in sel_objects
         if a.get_class().get_name() == "LevelSequence"
     ]
-
-    sub_sequence_tracks = [
-        track for sel in selection for track in
-        sel.find_master_tracks_by_type(unreal.MovieSceneSubTrack)
-    ]
+    if (
+        UNREAL_VERSION.major == 5
+        and UNREAL_VERSION.minor > 4
+    ):
+        sub_sequence_tracks = [
+            track for sel in selection for track in
+            sel.find_tracks_by_type(unreal.MovieSceneSubTrack)
+        ]
+    else:
+        sub_sequence_tracks = [
+            track for sel in selection for track in
+            sel.find_master_tracks_by_type(unreal.MovieSceneSubTrack)
+        ]
 
     if get_name:
         return [shot_tracks.get_display_name() for shot_tracks in

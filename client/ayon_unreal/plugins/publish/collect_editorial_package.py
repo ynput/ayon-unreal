@@ -14,7 +14,7 @@ class CollectEditorialPackage(pyblish.api.InstancePlugin):
     Collect neccessary data for editorial package publish
     """
 
-    order = pyblish.api.CollectorOrder - 0.49
+    order = pyblish.api.CollectorOrder
     hosts = ["unreal"]
     families = ["editorial_pkg"]
     label = "Collect Editorial Package"
@@ -44,14 +44,14 @@ class CollectEditorialPackage(pyblish.api.InstancePlugin):
 
             instance.data["version"] = version
 
-            ar = unreal.AssetRegistryHelpers.get_asset_registry()
-            sequence = ar.get_asset_by_object_path(
-                instance.data.get('sequence')).get_asset()
-            instance.data["frameStart"] = int(sequence.get_playback_start())
-            instance.data["frameEnd"] = int(sequence.get_playback_end())
-            frame_rate_obj = sequence.get_display_rate()
-            frame_rate = frame_rate_obj.numerator / frame_rate_obj.denominator
-            instance.data["fps"] = frame_rate
+        ar = unreal.AssetRegistryHelpers.get_asset_registry()
+        sequence = ar.get_asset_by_object_path(
+            instance.data.get('sequence')).get_asset()
+        instance.data["frameStart"] = int(sequence.get_playback_start())
+        instance.data["frameEnd"] = int(sequence.get_playback_end())
+        frame_rate_obj = sequence.get_display_rate()
+        frame_rate = frame_rate_obj.numerator / frame_rate_obj.denominator
+        instance.data["fps"] = float(frame_rate)
 
         try:
             project = get_current_project_name()
