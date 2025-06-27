@@ -1142,15 +1142,14 @@ def generate_master_level_sequence(tools, asset_dir, asset_name,
             f"{asset_dir}/{asset_name}_map_{suffix}.{asset_name}_map_{suffix}"
         )
 
-    unreal.log(f"asset_level: {asset_level}")
     if not unreal.EditorAssetLibrary.does_asset_exist(asset_level):
         unreal.EditorLevelLibrary.new_level(asset_level)
-        unreal.EditorLevelLibrary.load_level(master_level)
-        unreal.EditorLevelUtils.add_level_to_world(
-            unreal.EditorLevelLibrary.get_editor_world(),
-            asset_level,
-            unreal.LevelStreamingDynamic
-        )
+    unreal.EditorLevelLibrary.load_level(master_level)
+    unreal.EditorLevelUtils.add_level_to_world(
+        unreal.EditorLevelLibrary.get_editor_world(),
+        asset_level,
+        unreal.LevelStreamingDynamic
+    )
     sequences = []
     frame_ranges = []
     root_content = unreal.EditorAssetLibrary.list_assets(
