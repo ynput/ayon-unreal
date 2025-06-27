@@ -12,6 +12,7 @@ import opentimelineio as otio
 
 TRACK_TYPES = {
     "MovieSceneCinematicShotTrack": otio.schema.TrackKind.Video,
+    "MovieSceneSubTrack": otio.schema.TrackKind.Video,
     "MovieSceneCameraCutTrack": otio.schema.TrackKind.Video,
     "MovieSceneAudioTrack": otio.schema.TrackKind.Audio
 }
