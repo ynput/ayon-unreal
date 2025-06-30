@@ -45,7 +45,10 @@ def create_otio_reference(instance, section, section_number,
     project = get_current_project_name()
     anatomy = Anatomy(project)
     root = anatomy.roots['renders']
-    track_name = section.get_shot_display_name()
+    if isinstance(section, unreal.MovieSceneCinematicShotSection):
+        track_name = section.get_shot_display_name()
+    else:
+        track_name = section.get_sequence().get_name()
     render_dir = f"{root}/{project}/editorial_pkg/{instance.data.get('output')}"
     render_dir = f"{render_dir}/{track_name}_{section_number + 1}"
     render_path = Path(render_dir)
