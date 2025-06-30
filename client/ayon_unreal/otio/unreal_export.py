@@ -45,10 +45,7 @@ def create_otio_reference(instance, section, section_number,
     project = get_current_project_name()
     anatomy = Anatomy(project)
     root = anatomy.roots['renders']
-    if isinstance(section, unreal.MovieSceneCinematicShotSection):
-        track_name = section.get_shot_display_name()
-    else:
-        track_name = section.get_sequence().get_name()
+    track_name = section.get_sequence().get_name()
     render_dir = f"{root}/{project}/editorial_pkg/{instance.data.get('output')}"
     render_dir = f"{render_dir}/{track_name}_{section_number + 1}"
     render_path = Path(render_dir)
@@ -126,7 +123,9 @@ def create_otio_clip(instance, target_track):
         fps = CTX.project_fps
         name = section.get_shot_display_name()
 
-        media_reference = create_otio_reference(instance, section, section_number, shot_start, duration)
+        media_reference = create_otio_reference(
+            instance, section, section_number, shot_start, duration
+        )
         source_range = create_otio_time_range(
             int(shot_start),
             int(duration),
