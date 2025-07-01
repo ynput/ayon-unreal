@@ -59,7 +59,7 @@ class UnrealImportModel(BaseSettingsModel):
         description="Presets for converting the loaded alembic "
                     "with correct UV and transform",
         enum_resolver=_abc_conversion_presets_enum,
-        conditionalEnum=True,
+        conditional_enum=True,
         section="Load Alembic Settings"
     )
     custom: CustomAlembicPresetsModel = SettingsField(
