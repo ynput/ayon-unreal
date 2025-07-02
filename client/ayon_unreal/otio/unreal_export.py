@@ -124,7 +124,10 @@ def create_otio_clip(instance, target_track):
         duration = int(section.get_end_frame() - section.get_start_frame()) + 1
 
         fps = CTX.project_fps
-        name = section.get_shot_display_name()
+        if section.get_class().get_name() == "MovieSceneCinematicShotTrack":
+            name = section.get_shot_display_name()
+        else:
+            name = section.get_sequence().get_name()
 
         media_reference = create_otio_reference(
             instance, section, section_number, shot_start, duration
