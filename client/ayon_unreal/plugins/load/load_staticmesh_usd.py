@@ -17,10 +17,15 @@ import unreal  # noqa
 class StaticMeshUSDLoader(plugin.Loader):
     """Load Unreal StaticMesh from USD."""
 
-    product_types = {"usd", "staticMesh"}
+    #product_types = {"usd", "staticMesh"}
     #product_types = {"model", "staticMesh"}
-    label = "Import USD Static Mesh"
-    representations = {"usd"}
+    #representations = {"usd"}
+
+    label = "Import USD"
+    representations = {"*"}
+    extensions = {"usd", "usda", "usdc", "usdz"}
+    product_types = {"*"}
+
     icon = "cube"
     color = "orange"
 
