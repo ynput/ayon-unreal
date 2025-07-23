@@ -140,6 +140,7 @@ class UEProjectGenerationWorker(UEWorker):
         user_dir = Path(os.path.expanduser("~"))
 
         if "." in user_dir.stem:
+            cmdlet_tmp.cleanup()
             cmdlet_tmp_str.replace(
                 str(user_dir), f"{user_dir.parent / 'Public'}"
             )
