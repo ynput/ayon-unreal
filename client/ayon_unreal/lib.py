@@ -76,8 +76,36 @@ def get_engine_versions(env=None):
 
     return OrderedDict()
 
+def get_editor_exe_path(
+        project_name: str,
+        engine_path: Path,
+        engine_version: str) -> Path:
+    """Get UE Editor executable path.
+    Attempt to retrieve from project settings first."""
+    platform = platform.system().lower()
 
-def get_editor_exe_path(engine_path: Path, engine_version: str) -> Path:
+    try:
+        apps = get_project_settings(project_name)["applications"]
+        variants = apps["applications"]["unreal"]["variants"]
+        platform_variants = [
+            var["executables"][platform] for var in variants
+            if var["executables"][platform]
+        ]
+
+        # return first valid variant for OS.
+        for ue_exe in platform_variants:
+            for exec_item in ue_exe:
+                if Path(exec_item).exists():
+                    return Path(exec_item)
+        raise RuntimeError("No suitable executables found in project setting variants.")
+    except (KeyError, RuntimeError):
+        print("---- Falling back to older method of retrieval ----")
+        exe_path = get_editor_exe_path_fallback(engine_path, engine_version)
+        if exe_path.exists()
+            return exe_path
+        raise RuntimeError(f"Unreal engine couldn't be located at: {exe_path}")
+
+def get_editor_exe_path_fallback(engine_path: Path, engine_version: str) -> Path:
     """Get UE Editor executable path."""
     ue_path = engine_path / "Engine/Binaries"
 
@@ -234,7 +262,7 @@ def create_unreal_project(project_name: str,
 
     # engine_path should be the location of UE_X.X folder
 
-    ue_editor_exe: Path = get_editor_exe_path(engine_path, ue_version)
+    ue_editor_exe: Path = get_editor_exe_path(project_name, engine_path, ue_version)
     cmdlet_project: Path = get_path_to_cmdlet_project(ue_version)
 
     project_file = pr_dir / f"{unreal_project_name}.uproject"
