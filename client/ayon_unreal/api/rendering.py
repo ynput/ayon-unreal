@@ -191,10 +191,28 @@ def start_rendering():
                         "frame_range": (
                             sub_seq.get_start_frame(), sub_seq.get_end_frame())
                     })
+            elif subscenes:
+                for sub_seq in subscenes:
+                    sub_seq_obj = sub_seq.get_sequence()
+                    if sub_seq_obj is None:
+                        continue
+                    render_list.append({
+                        "sequence": seq.get('sequence'),
+                        "section": sub_seq_obj,
+                        "output": (f"{seq.get('output')}/"
+                                f"{sub_seq_obj.get_name()}"),
+                        "frame_range": (
+                            sub_seq.get_start_frame(), sub_seq.get_end_frame())
+                    })
             else:
                 # Avoid rendering camera sequences
                 if "_camera" not in seq.get('sequence').get_name():
-                    render_list.append(seq)
+                    render_list.append({
+                        "sequence": seq.get('sequence'),
+                        "output": seq.get('output'),
+                        "frame_range": seq.get('frame_range'),
+                        "section": seq.get('sequence')
+                    })
 
         if i["master_level"] != current_level_name:
             unreal.log_warning(
@@ -219,8 +237,8 @@ def start_rendering():
             # read in the job's OnJobFinished callback. We could,
             # for instance, pass the AyonPublishInstance's path to the job.
             # job.user_data = ""
-            output_dir = render_setting.get('output')
-            shot_name = render_setting.get('sequence').get_name()
+            output_name = render_setting.get('output')
+            shot_name = render_setting.get('section').get_name()
 
             settings = job_config.find_or_add_setting_by_class(
                 unreal.MoviePipelineOutputSetting)
@@ -229,7 +247,7 @@ def start_rendering():
             settings.custom_end_frame = render_setting.get("frame_range")[1]
             settings.use_custom_playback_range = True
             settings.file_name_format = f"{shot_name}" + ".{frame_number}"
-            settings.output_directory.path = f"{render_dir}/{output_dir}"
+            settings.output_directory.path = f"{render_dir}/{output_name}"
 
             job_config.find_or_add_setting_by_class(
                 unreal.MoviePipelineDeferredPassBase)

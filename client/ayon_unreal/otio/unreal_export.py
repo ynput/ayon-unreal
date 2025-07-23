@@ -38,19 +38,17 @@ def create_otio_time_range(start_frame, frame_duration, fps):
     )
 
 
-def create_otio_reference(instance, section, section_number,
-                          frame_start, frame_duration, is_sequence=False):
+def create_otio_reference(instance, section, frame_start,
+                          frame_duration, is_sequence=False):
     metadata = {}
 
     project = get_current_project_name()
     anatomy = Anatomy(project)
     root = anatomy.roots['renders']
-    if section.get_class().get_name() == "MovieSceneCinematicShotTrack":
-        track_name = section.get_shot_display_name()
-    else:
-        track_name = section.get_sequence().get_name()
+    # if section.get_class().get_name() == "MovieSceneCinematicShotTrack":
+    track_name = section.get_sequence().get_name()
     render_dir = f"{root}/{project}/editorial_pkg/{instance.data.get('output')}"
-    render_dir = f"{render_dir}/{track_name}_{section_number + 1}"
+    render_dir = f"{render_dir}/{track_name}"
     render_path = Path(render_dir)
     frames = [str(x) for x in render_path.iterdir() if x.is_file()]
     # get padding and other file infos
@@ -118,19 +116,15 @@ def create_otio_reference(instance, section, section_number,
 
 
 def create_otio_clip(instance, target_track):
-     for section_number, section in enumerate(target_track.get_sections()):
+     for section in target_track.get_sections():
         # flip if speed is in minus
         shot_start = section.get_start_frame()
         duration = int(section.get_end_frame() - section.get_start_frame()) + 1
 
         fps = CTX.project_fps
-        if section.get_class().get_name() == "MovieSceneCinematicShotTrack":
-            name = section.get_shot_display_name()
-        else:
-            name = section.get_sequence().get_name()
-
+        name = section.get_sequence().get_name()
         media_reference = create_otio_reference(
-            instance, section, section_number, shot_start, duration
+            instance, section, shot_start, duration
         )
         source_range = create_otio_time_range(
             int(shot_start),
@@ -143,11 +137,6 @@ def create_otio_clip(instance, target_track):
             source_range=source_range,
             media_reference=media_reference
         )
-
-        # # only if video
-        # if not clip.mediaSource().hasAudio():
-        #     # Add effects to clips
-        #     create_time_effects(otio_clip, track_item)
 
         return otio_clip
 
