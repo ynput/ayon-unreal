@@ -82,15 +82,15 @@ def get_editor_exe_path(
 ) -> Path:
     """Get UE Editor executable path.
     Attempt to retrieve from project settings first."""
-    platform = platform.system().lower()
+    this_os = platform.system().lower()
 
     try:
         apps = get_project_settings(project_name)["applications"]
         variants = apps["applications"]["unreal"]["variants"]
         platform_variants = [
-            var["executables"][platform]
+            var["executables"][this_os]
             for var in variants
-            if var["executables"][platform]
+            if var["executables"][this_os]
         ]
 
         # return first valid variant for OS.
