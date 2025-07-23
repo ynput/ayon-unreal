@@ -10,7 +10,7 @@ class ValidateNoDependencies(pyblish.api.InstancePlugin):
 
     order = pyblish.api.ValidatorOrder
     label = "Validate Model Content"
-    families = ["staticMesh"]
+    families = ["staticMesh", "staticMeshUSD"]
     hosts = ["unreal"]
 
     def process(self, instance):
