@@ -9,10 +9,10 @@ from distutils.dir_util import copy_tree
 from pathlib import Path
 from typing import List, Union
 
+from ayon_core.settings import get_project_settings
 from qtpy import QtCore
 
 import ayon_unreal.lib as ue_lib
-from ayon_core.settings import get_project_settings
 
 
 def parse_comp_progress(line: str, progress_signal: QtCore.Signal(int)):
@@ -57,6 +57,7 @@ class UEWorker(QtCore.QObject):
             self.execute()
         except Exception as e:
             import traceback
+
             self.log.emit(str(e))
             self.log.emit(traceback.format_exc())
             self.failed.emit(str(e), 1)
@@ -71,13 +72,16 @@ class UEProjectGenerationWorker(UEWorker):
     project_dir: Path = None
     dev_mode = False
 
-    def setup(self, ue_version: str,
-              project_name: str,
-              unreal_project_name,
-              engine_path: Path,
-              project_dir: Path,
-              dev_mode: bool = False,
-              env: dict = None):
+    def setup(
+        self,
+        ue_version: str,
+        project_name: str,
+        unreal_project_name,
+        engine_path: Path,
+        project_dir: Path,
+        dev_mode: bool = False,
+        env: dict = None,
+    ):
         """Set the worker with necessary parameters.
 
         Args:
@@ -107,8 +111,9 @@ class UEProjectGenerationWorker(UEWorker):
     def execute(self):
         # engine_path should be the location of UE_X.X folder
 
-        ue_editor_exe = ue_lib.get_editor_exe_path(self.engine_path,
-                                                   self.ue_version)
+        ue_editor_exe = ue_lib.get_editor_exe_path(
+            self.engine_path, self.ue_version
+        )
         cmdlet_project = ue_lib.get_path_to_cmdlet_project(self.ue_version)
         project_file = self.project_dir / f"{self.project_name}.uproject"
 
@@ -119,19 +124,34 @@ class UEProjectGenerationWorker(UEWorker):
             stage_count = 4
 
         self.stage_begin.emit(
-            ("Generating a new UE project ... 1 out of "
-             f"{stage_count}"))
+            (f"Generating a new UE project ... 1 out of {stage_count}")
+        )
 
         # Need to copy the commandlet project to a temporary folder where
         # users don't need admin rights to write to.
         cmdlet_tmp = tempfile.TemporaryDirectory()
+        cmdlet_tmp_str = cmdlet_tmp.name
+
+        # Unreal engine can not handle dots in paths, so lets redirect
+        # the temp folder when the username has a "."
+
+        # OS agnostic diversion to home/Public, C:/Users/Public
+        # on dot in username.
+        user_dir = Path(os.path.expanduser("~"))
+
+        if "." in user_dir.stem:
+            cmdlet_tmp_str.replace(
+                str(user_dir), f"{user_dir.parent / 'Public'}"
+            )
+            Path(cmdlet_tmp_str).mkdir(parents=True, exist_ok=True)
+            cmdlet_tmp.name = cmdlet_tmp_str
+
         cmdlet_filename = cmdlet_project.name
         cmdlet_dir = cmdlet_project.parent.as_posix()
-        cmdlet_tmp_name = Path(cmdlet_tmp.name)
+        cmdlet_tmp_name = Path(cmdlet_tmp_str)
+
         cmdlet_tmp_file = cmdlet_tmp_name.joinpath(cmdlet_filename)
-        copy_tree(
-            cmdlet_dir,
-            cmdlet_tmp_name.as_posix())
+        copy_tree(cmdlet_dir, cmdlet_tmp_name.as_posix())
 
         commandlet_cmd = [
             f"{ue_editor_exe.as_posix()}",
@@ -143,9 +163,9 @@ class UEProjectGenerationWorker(UEWorker):
         if self.dev_mode:
             commandlet_cmd.append("-GenerateCode")
 
-        gen_process = subprocess.Popen(commandlet_cmd,
-                                       stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE)
+        gen_process = subprocess.Popen(
+            commandlet_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
 
         for line in gen_process.stdout:
             decoded_line = line.decode(errors="replace")
@@ -166,20 +186,24 @@ class UEProjectGenerationWorker(UEWorker):
 
         print("--- Project has been generated successfully.")
         self.stage_begin.emit(
-            (f"Writing the Engine ID of the build UE ... 1"
-             f" out of {stage_count}"))
+            (
+                f"Writing the Engine ID of the build UE ... 1"
+                f" out of {stage_count}"
+            )
+        )
 
         if not project_file.is_file():
-            msg = ("Failed to write the Engine ID into .uproject file! Can "
-                   "not read!")
+            msg = (
+                "Failed to write the Engine ID into .uproject file! Can "
+                "not read!"
+            )
             self.failed.emit(msg)
             raise RuntimeError(msg)
 
         with open(project_file.as_posix(), mode="r+") as pf:
             pf_json = json.load(pf)
             pf_json["EngineAssociation"] = ue_lib.get_build_id(
-                self.engine_path,
-                self.ue_version
+                self.engine_path, self.ue_version
             )
             print(pf_json["EngineAssociation"])
             pf.seek(0)
@@ -191,12 +215,13 @@ class UEProjectGenerationWorker(UEWorker):
         if self.dev_mode:
             # 2nd stage
             self.stage_begin.emit(
-                (f"Generating project files ... 2 out of "
-                 f"{stage_count}"))
+                (f"Generating project files ... 2 out of {stage_count}")
+            )
 
             self.progress.emit(0)
-            ubt_path = ue_lib.get_path_to_ubt(self.engine_path,
-                                              self.ue_version)
+            ubt_path = ue_lib.get_path_to_ubt(
+                self.engine_path, self.ue_version
+            )
 
             arch = "Win64"
             if platform.system().lower() == "windows":
@@ -207,13 +232,17 @@ class UEProjectGenerationWorker(UEWorker):
                 # we need to test this out
                 arch = "Mac"
 
-            gen_prj_files_cmd = [ubt_path.as_posix(),
-                                 "-projectfiles",
-                                 f"-project={project_file}",
-                                 "-progress"]
-            gen_proc = subprocess.Popen(gen_prj_files_cmd,
-                                        stdout=subprocess.PIPE,
-                                        stderr=subprocess.PIPE)
+            gen_prj_files_cmd = [
+                ubt_path.as_posix(),
+                "-projectfiles",
+                f"-project={project_file}",
+                "-progress",
+            ]
+            gen_proc = subprocess.Popen(
+                gen_prj_files_cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
             for line in gen_proc.stdout:
                 decoded_line: str = line.decode(errors="replace")
                 print(decoded_line, end="")
@@ -224,27 +253,32 @@ class UEProjectGenerationWorker(UEWorker):
             return_code = gen_proc.wait()
 
             if return_code and return_code != 0:
-                msg = ("Failed to generate project files! "
-                       f"Exited with return code {return_code}")
+                msg = (
+                    "Failed to generate project files! "
+                    f"Exited with return code {return_code}"
+                )
                 self.failed.emit(msg, return_code)
                 raise RuntimeError(msg)
 
             self.stage_begin.emit(
-                f"Building the project ... 3 out of {stage_count}")
+                f"Building the project ... 3 out of {stage_count}"
+            )
             self.progress.emit(0)
             # 3rd stage
-            build_prj_cmd = [ubt_path.as_posix(),
-                             f"-ModuleWithSuffix={self.project_name},3555",
-                             arch,
-                             "Development",
-                             "-TargetType=Editor",
-                             f"-Project={project_file}",
-                             f"{project_file}",
-                             "-IgnoreJunk"]
+            build_prj_cmd = [
+                ubt_path.as_posix(),
+                f"-ModuleWithSuffix={self.project_name},3555",
+                arch,
+                "Development",
+                "-TargetType=Editor",
+                f"-Project={project_file}",
+                f"{project_file}",
+                "-IgnoreJunk",
+            ]
 
-            build_prj_proc = subprocess.Popen(build_prj_cmd,
-                                              stdout=subprocess.PIPE,
-                                              stderr=subprocess.PIPE)
+            build_prj_proc = subprocess.Popen(
+                build_prj_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
             for line in build_prj_proc.stdout:
                 decoded_line: str = line.decode(errors="replace")
                 print(decoded_line, end="")
@@ -255,8 +289,10 @@ class UEProjectGenerationWorker(UEWorker):
             return_code = build_prj_proc.wait()
 
             if return_code and return_code != 0:
-                msg = ("Failed to build project! "
-                       f"Exited with return code {return_code}")
+                msg = (
+                    "Failed to build project! "
+                    f"Exited with return code {return_code}"
+                )
                 self.failed.emit(msg, return_code)
                 raise RuntimeError(msg)
 
@@ -267,7 +303,11 @@ class UEProjectGenerationWorker(UEWorker):
 class UEPluginInstallWorker(UEWorker):
     installing = QtCore.Signal(str)
 
-    def setup(self, engine_path: Path, env: dict = None, ):
+    def setup(
+        self,
+        engine_path: Path,
+        env: dict = None,
+    ):
         self.engine_path = engine_path
         self.env = env or os.environ
 
@@ -291,14 +331,16 @@ class UEPluginInstallWorker(UEWorker):
 
         # in order to successfully build the plugin,
         # It must be built outside the Engine directory and then moved
-        build_plugin_cmd: List[str] = [f"{uat_path.as_posix()}",
-                                       "BuildPlugin",
-                                       f"-Plugin={uplugin_path.as_posix()}",
-                                       f"-Package={temp_dir.as_posix()}"]
+        build_plugin_cmd: List[str] = [
+            f"{uat_path.as_posix()}",
+            "BuildPlugin",
+            f"-Plugin={uplugin_path.as_posix()}",
+            f"-Package={temp_dir.as_posix()}",
+        ]
 
-        build_proc = subprocess.Popen(build_plugin_cmd,
-                                      stdout=subprocess.PIPE,
-                                      stderr=subprocess.PIPE)
+        build_proc = subprocess.Popen(
+            build_plugin_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
         return_code: Union[None, int] = None
         for line in build_proc.stdout:
             decoded_line: str = line.decode(errors="replace")
@@ -312,24 +354,27 @@ class UEPluginInstallWorker(UEWorker):
         build_proc.wait()
 
         if return_code and return_code != 0:
-            msg = ("Failed to build plugin"
-                   f" project! Exited with return code {return_code}")
+            msg = (
+                "Failed to build plugin"
+                f" project! Exited with return code {return_code}"
+            )
             dir_util.remove_tree(temp_dir.as_posix())
             self.failed.emit(msg, return_code)
             raise RuntimeError(msg)
 
         # Copy the contents of the 'Temp' dir into the
         # 'Ayon' directory in the engine
-        dir_util.copy_tree(temp_dir.as_posix(),
-                           plugin_build_path.as_posix())
+        dir_util.copy_tree(temp_dir.as_posix(), plugin_build_path.as_posix())
 
         # We need to also copy the config folder.
         # The UAT doesn't include the Config folder in the build
         plugin_install_config_path: Path = plugin_build_path / "Config"
         src_plugin_config_path = src_plugin_dir / "Config"
 
-        dir_util.copy_tree(src_plugin_config_path.as_posix(),
-                           plugin_install_config_path.as_posix())
+        dir_util.copy_tree(
+            src_plugin_config_path.as_posix(),
+            plugin_install_config_path.as_posix(),
+        )
 
         dir_util.remove_tree(temp_dir.as_posix())
 
@@ -358,7 +403,8 @@ class UEPluginInstallWorker(UEWorker):
             self.installing.emit(
                 "AYON plugin not found in Unreal plugin directory: "
                 f"{op_plugin_path.as_posix()}. We will try to build "
-                "the plugin from the source files.")
+                "the plugin from the source files."
+            )
             # raise RuntimeError("AYON plugin not found in Marketplace directory!")
             op_plugin_path = op_plugin_path / "Ayon"
         else:
@@ -369,8 +415,10 @@ class UEPluginInstallWorker(UEWorker):
 
         dir_util._path_created = {}
 
-        if not (op_plugin_path / "Binaries").is_dir() \
-                or not (op_plugin_path / "Intermediate").is_dir():
+        if (
+            not (op_plugin_path / "Binaries").is_dir()
+            or not (op_plugin_path / "Intermediate").is_dir()
+        ):
             self.installing.emit("Building the plugin ...")
             print("--- Building the plugin...")
 
