@@ -50,13 +50,34 @@ class StaticMeshUSDLoader(plugin.Loader):
 
         unreal.log(f"🔄 Starting USD import from: {filepath}")
 
+        # ADDED INTERCHANGE OPTIONS
+        editor_asset_subsystem = unreal.get_editor_subsystem(unreal.EditorAssetSubsystem)
+
+        transient_path = "/Interchange/Pipelines/Transient/"
+        transient_pipeline_path = transient_path + "MyAutomationPipeline"
+
+        # Duplicate Pipeline Asset Config
+        pipeline = editor_asset_subsystem.duplicate_asset("/Interchange/Pipelines/DefaultAssetsPipeline",
+                                                          transient_pipeline_path)
+
+        # Set pipeline defaults
+        pipeline.mesh_pipeline.combine_static_meshes = False
+        pipeline.material_pipeline.import_materials = True
+        pipeline.material_pipeline.texture_pipeline.import_textures = True
+
         import_params = unreal.ImportAssetParameters()
-        import_params.is_automated = not cls.show_dialog
+        import_params.is_automated = False
+        # Overide pipeline path
+        import_params.override_pipelines.append(unreal.SoftObjectPath(transient_pipeline_path + ".MyAutomationPipeline"))
+        ### END INTERCHANGE OPTIONS
 
         source_data = unreal.InterchangeManager.create_source_data(filepath)
         manager = unreal.InterchangeManager.get_interchange_manager_scripted()
 
         imported_assets = manager.import_asset(asset_dir, source_data, import_params)
+
+        ##Delete Transient Path
+        editor_asset_subsystem.delete_directory(transient_path)
 
         if not imported_assets:
             unreal.log_warning(f"❌ USD Import failed or no assets found at: {filepath}")
@@ -140,8 +161,9 @@ class StaticMeshUSDLoader(plugin.Loader):
         asset_content = unreal.EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=True)
 
-        for a in asset_content:
-            unreal.EditorAssetLibrary.save_asset(a)
+        ## Skip Save to avoid Perforce issues
+        # for a in asset_content:
+        #     unreal.EditorAssetLibrary.save_asset(a)
 
         return asset_content
 
@@ -184,8 +206,9 @@ class StaticMeshUSDLoader(plugin.Loader):
         asset_content = unreal.EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=False)
 
-        for a in asset_content:
-            unreal.EditorAssetLibrary.save_asset(a)
+        ## Skip Save to avoid Perforce issues
+        # for a in asset_content:
+        #     unreal.EditorAssetLibrary.save_asset(a)
 
     def remove(self, container):
         path = container["namespace"]
