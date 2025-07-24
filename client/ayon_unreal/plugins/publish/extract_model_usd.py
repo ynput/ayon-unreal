@@ -9,7 +9,7 @@ class ExtractUsd(publish.Extractor):
 
     label = "Extract USD (Static Mesh)"
     hosts = ["unreal"]
-    families = ["staticMeshUSD"]
+    families = ["staticMesh.USD"]
 
     def process(self, instance):
         staging_dir = self.staging_dir(instance)

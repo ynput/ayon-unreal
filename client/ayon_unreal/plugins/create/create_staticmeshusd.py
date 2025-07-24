@@ -11,3 +11,7 @@ class CreateStaticMeshUSD(UnrealAssetCreator):
     label = "Static Mesh (USD)"
     product_type = "staticMeshUSD"
     icon = "cube"
+
+    def get_publish_families(self) -> list[str]:
+        """Return the families that this creator supports."""
+        return ["staticMesh", "staticMesh.USD"]

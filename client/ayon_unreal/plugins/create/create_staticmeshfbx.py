@@ -11,3 +11,7 @@ class CreateStaticMeshFBX(UnrealAssetCreator):
     label = "Static Mesh (FBX)"
     product_type = "staticMesh"
     icon = "cube"
+
+    def get_publish_families(self) -> list[str]:
+        """Return the families that this creator supports."""
+        return ["staticMesh", "staticMesh.FBX"]

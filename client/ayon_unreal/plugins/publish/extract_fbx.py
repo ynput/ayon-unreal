@@ -9,7 +9,7 @@ class ExtractFbx(publish.Extractor):
 
     label = "Extract Fbx (Static Mesh)"
     hosts = ["unreal"]
-    families = ["staticMesh"]
+    families = ["staticMesh.FBX"]
 
     def process(self, instance):
         staging_dir = self.staging_dir(instance)

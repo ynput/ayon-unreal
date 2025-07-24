@@ -88,6 +88,14 @@ class UnrealCreateLogic():
                 instance.get('families', '[]'))
             instance['active'] = ast.literal_eval(
                 instance.get('active', ''))
+            
+            # Add families from the creator if not already present
+            families = self.get_publish_families()
+            if families:
+                instance['families'] = instance['families'] + list(
+                    set(families + set(instance["families"])))
+
+
             created_instance = CreatedInstance.from_existing(instance, self)
             self._add_instance_to_context(created_instance)
 
@@ -117,6 +125,21 @@ class UnrealCreateLogic():
 
             self._remove_instance_from_context(instance)
 
+    def get_publish_families(self):
+        """Return families for the instances of this creator.
+
+        Allow a Creator to define multiple families so that a creator can
+        e.g. specify `usd` and `usdMaya` and another USD creator can also
+        specify `usd` but apply different extractors like `usdMultiverse`.
+
+        There is no need to override this method if you only have the
+        'product_type' required for publish filtering.
+
+        Returns:
+            list: families for instances of this creator
+
+        """
+        return []
 
     def create_unreal(self, product_name, instance_data, pre_create_data):
         try:
@@ -125,6 +148,14 @@ class UnrealCreateLogic():
 
             instance_data["product_name"] = product_name
             instance_data["instance_path"] = f"{self.root}/{instance_name}"
+
+            # Allow a Creator to define multiple families
+            publish_families = self.get_publish_families()
+            if publish_families:
+                families = instance_data.setdefault("families", [])
+                for family in publish_families:
+                    if family not in families:
+                        families.append(family)
 
             instance = CreatedInstance(
                 self.product_type,
