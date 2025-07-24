@@ -35,7 +35,7 @@ class ExtractUsd(publish.Extractor):
         members = set(instance.data.get("members", []))
         asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
 
-        print("Members:")
+        print("ExtractUsd Members:")
         print(list(dict.fromkeys(members)))
 
         for member in members:

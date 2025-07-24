@@ -26,6 +26,10 @@ class ExtractFbx(publish.Extractor):
         task.exporter = fbx_exporter
         task.options = options
         members = set(instance.data.get("members", []))
+
+        print("ExtractFbx members:")
+        print(list(dict.fromkeys(members)))
+
         asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
         for member in members:
             task.object = asset_registry.get_asset_by_object_path(member).get_asset()

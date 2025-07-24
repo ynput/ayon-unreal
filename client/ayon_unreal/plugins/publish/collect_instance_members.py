@@ -44,3 +44,7 @@ class CollectInstanceMembers(pyblish.api.InstancePlugin):
         self.log.debug(f"Members: {members}")
 
         instance.data["members"] = members
+
+        print("CollectInstanceMembers members:")
+        print(list(dict.fromkeys(members)))
+
