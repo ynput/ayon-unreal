@@ -10,12 +10,16 @@ class ValidateNoDependencies(pyblish.api.InstancePlugin):
 
     order = pyblish.api.ValidatorOrder
     label = "Validate Model Content"
-    families = ["staticMesh"]
+    families = ["staticMesh", "staticMeshUSD"]
     hosts = ["unreal"]
 
     def process(self, instance):
         invalid_asset = []
         members = set(instance.data.get("members", []))
+
+        print("ValidateNoDependencies members:")
+        print(list(dict.fromkeys(members)))
+
         asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
         for member in members:
             asset = asset_registry.get_asset_by_object_path(member).get_asset()
