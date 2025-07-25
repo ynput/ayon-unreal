@@ -135,7 +135,6 @@ class LayoutLoader(plugin.LayoutLoader):
         skeleton_dict = {}
         actors_dict = {}
         bindings_dict = {}
-
         loaded_assets = []
 
         repre_entities_by_version_id = self._get_repre_entities_by_version_id(
