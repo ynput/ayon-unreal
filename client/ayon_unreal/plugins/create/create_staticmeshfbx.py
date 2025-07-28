@@ -11,3 +11,4 @@ class CreateStaticMeshFBX(UnrealAssetCreator):
     label = "Static Mesh (FBX)"
     product_type = "staticMesh"
     icon = "cube"
+    default_variants = ["Main"]

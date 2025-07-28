@@ -154,6 +154,8 @@ class UnrealCreateLogic():
 class UnrealBaseAutoCreator(AutoCreator, UnrealCreateLogic):
     """Base class for Unreal auto creator plugins."""
 
+    settings_category = "unreal"
+
     def collect_instances(self):
         return self._default_collect_instances()
 
@@ -166,6 +168,8 @@ class UnrealBaseAutoCreator(AutoCreator, UnrealCreateLogic):
 
 class UnrealBaseCreator(UnrealCreateLogic, Creator):
     """Base class for Unreal creator plugins."""
+
+    settings_category = "unreal"
 
     def create(self, subset_name, instance_data, pre_create_data):
         self.create_unreal(subset_name, instance_data, pre_create_data)
