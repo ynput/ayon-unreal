@@ -1,9 +1,9 @@
-from pathlib import Path
 import shutil
+from pathlib import Path
 
 import unreal
-
 from ayon_core.pipeline import publish
+from ayon_unreal.api.helpers import UnrealTemporaryFolderSafeguard
 
 
 class ExtractUAsset(publish.Extractor):
@@ -16,11 +16,13 @@ class ExtractUAsset(publish.Extractor):
 
     def process(self, instance):
         extension = (
-            "umap" if "umap" in instance.data.get("families") else "uasset")
+            "umap" if "umap" in instance.data.get("families") else "uasset"
+        )
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
         self.log.debug("Performing extraction..")
-        staging_dir = self.staging_dir(instance)
+        with UnrealTemporaryFolderSafeguard():
+            staging_dir = self.staging_dir(instance)
 
         members = instance.data.get("members", [])
 
