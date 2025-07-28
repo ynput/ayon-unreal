@@ -1,47 +1,9 @@
 # -*- coding: utf-8 -*-
 import unreal  # noqa
-import os
-from tempfile import TemporaryDirectory
 
 
 class AyonUnrealException(Exception):
     pass
-
-
-class UnrealTemporaryFolderSafeguard:
-    """Context manager that redirects tempdir to a Public folder,
-    if a '.' is present.
-
-    Modifies AYON_TMPDIR if `os.path.expanduser('~')` resolves
-    to a path containing a '.'
-    """
-
-    def __init__(self):
-        self.usr_path = os.path.expanduser("~")
-        self.ayon_tmpdir = os.environ.get("AYON_TMPDIR", None)
-
-        self.usr_path_has_dot = "." in self.usr_path
-        self.ayon_tmpdir_has_dot = "." in self.ayon_tmpdir
-
-        self.use_env = bool(self.ayon_tmpdir) and not self.ayon_tmpdir_has_dot
-
-    def __enter__(self):
-        # Both cases are already entirely valid
-        if self.use_env or not self.usr_path_has_dot:
-            return
-
-        pub_path = os.path.expanduser("~Public")
-        new_tmp_path = None
-        with TemporaryDirectory() as tmp:
-            new_tmp_path = tmp.replace(self.usr_path, pub_path)
-
-        # set custom env variable to be created/managed later.
-        os.environ["AYON_TMPDIR"] = new_tmp_path
-
-    def __exit__(self, *_):
-        # cleanup if we had an environment set temp dir
-        if self.ayon_tmpdir:
-            os.environ["AYON_TMPDIR"] = self.ayon_tmpdir
 
 
 @unreal.uclass()
