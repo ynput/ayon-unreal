@@ -27,6 +27,7 @@ class CreateRender(UnrealAssetCreator):
     label = "Render"
     product_type = "render"
     icon = "eye"
+    default_variants = ["Main"]
 
     def create_instance(
             self, instance_data, product_name, pre_create_data,

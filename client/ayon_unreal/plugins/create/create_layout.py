@@ -12,6 +12,7 @@ class CreateLayout(UnrealActorCreator):
     label = "Layout"
     product_type = "layout"
     icon = "cubes"
+    default_variants = ["Main"]
 
     def get_pre_create_attr_defs(self):
         defs = super(CreateLayout, self).get_pre_create_attr_defs()

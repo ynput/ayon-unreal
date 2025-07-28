@@ -15,6 +15,7 @@ class CreateCamera(UnrealAssetCreator):
     label = "Camera"
     product_type = "camera"
     icon = "fa.camera"
+    default_variants = ["Main"]
 
     def create(self, product_name, instance_data, pre_create_data):
         if pre_create_data.get("use_selection"):
