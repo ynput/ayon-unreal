@@ -92,9 +92,7 @@ class UnrealCreateLogic():
             # Add families from the creator if not already present
             families = self.get_publish_families()
             if families:
-                instance['families'] = instance['families'] + list(
-                    set(families + set(instance["families"])))
-
+                instance["families"] = list(set(families) | set(instance["families"]))
 
             created_instance = CreatedInstance.from_existing(instance, self)
             self._add_instance_to_context(created_instance)
