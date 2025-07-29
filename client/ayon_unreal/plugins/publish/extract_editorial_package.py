@@ -153,7 +153,7 @@ class ExtractEditorialPackage(publish.Extractor):
 
         anatomy = instance.context.data["anatomy"]
         template_data["root"] = anatomy.roots
-        template = anatomy.get_template_item("publish", "default", "path")
+        template = anatomy.get_template_item("publish", "render", "path")
         template_filled = template.format_strict(template_data)
         file_path = Path(template_filled)
         return file_path.as_posix()
