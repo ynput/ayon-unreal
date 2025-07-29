@@ -2,6 +2,7 @@ from ayon_server.settings import BaseSettingsModel, SettingsField
 from .imageio import UnrealImageIOModel
 from .import_settings import UnrealImportModel, DEFAULT_IMPORT_SETTINGS
 from .pre_launch_settings import UnrealPreLaunchSetting, DEFAULT_PRELAUNCH_SETTINGS
+from .creators import CreatorsModel, DEFAULT_CREATOR_SETTINGS
 
 
 def _render_format_enum():
@@ -71,6 +72,9 @@ class UnrealSettings(BaseSettingsModel):
         default_factory=ProjectSetup,
         title="Project Setup",
     )
+    create: CreatorsModel = SettingsField(
+        default_factory=CreatorsModel, title="Creators"
+    )
 
 
 DEFAULT_VALUES = {
@@ -84,5 +88,6 @@ DEFAULT_VALUES = {
     },
     "project_setup": {
         "dev_mode": False
-    }
+    },
+    "create": DEFAULT_CREATOR_SETTINGS,
 }
