@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 """Hook to launch Unreal and prepare projects."""
 import os
+import sys
 import copy
 import shutil
 import tempfile
 import platform
 from pathlib import Path
 
-from qtpy import QtCore
+from qtpy import QtCore, QtWidgets
 
 from ayon_core import resources
 from ayon_applications import (
@@ -79,6 +80,8 @@ class UnrealPrelaunchHook(PreLaunchHook):
     def exec_plugin_install(self, engine_path: Path, env: dict = None):
         # set up the QThread and worker with necessary signals
         env = env or os.environ
+        if not QtWidgets.QApplication.instance():
+            QtWidgets.QApplication(sys.argv)
         q_thread = QtCore.QThread()
         ue_plugin_worker = UEPluginInstallWorker()
 
@@ -116,6 +119,8 @@ class UnrealPrelaunchHook(PreLaunchHook):
             f"{self.signature} Creating unreal "
             f"project [ {unreal_project_name} ]"
         ))
+        if not QtWidgets.QApplication.instance():
+            QtWidgets.QApplication(sys.argv)
 
         q_thread = QtCore.QThread()
         ue_project_worker = UEProjectGenerationWorker()
