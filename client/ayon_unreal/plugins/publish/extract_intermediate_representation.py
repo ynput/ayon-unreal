@@ -56,6 +56,6 @@ class ExtractIntermediateRepresentation(publish.Extractor):
             'ext': image_format,
             'files': frames,
             'stagingDir': render_dir,
-            'tags': ['review', 'remove']
+            'tags': ['review']
         }
         instance.data["representations"].append(representation)

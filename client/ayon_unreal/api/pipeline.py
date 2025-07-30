@@ -962,7 +962,7 @@ def get_sequence(files):
         Optional[list[str]]: file sequence.
 
     """
-    collections, _remainder = clique.assemble(
+    collections, _ = clique.assemble(
         files,
         patterns=[clique.PATTERNS["frames"]],
         minimum_items=1)

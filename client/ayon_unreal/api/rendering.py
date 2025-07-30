@@ -191,14 +191,17 @@ def start_rendering():
                         "frame_range": (
                             sub_seq.get_start_frame(), sub_seq.get_end_frame())
                     })
+            # remove all the codes unnecssary for the editorial package
             elif subscenes:
                 for sub_seq in subscenes:
                     sub_seq_obj = sub_seq.get_sequence()
                     if sub_seq_obj is None:
                         continue
+                    # exclude camera-related sequence
+                    elif "_camera" in sub_seq_obj.get_name():
+                        continue
                     render_list.append({
                         "sequence": seq.get('sequence'),
-                        "section": sub_seq_obj,
                         "output": (f"{seq.get('output')}/"
                                 f"{sub_seq_obj.get_name()}"),
                         "frame_range": (
@@ -210,8 +213,7 @@ def start_rendering():
                     render_list.append({
                         "sequence": seq.get('sequence'),
                         "output": seq.get('output'),
-                        "frame_range": seq.get('frame_range'),
-                        "section": seq.get('sequence')
+                        "frame_range": seq.get('frame_range')
                     })
 
         if i["master_level"] != current_level_name:
@@ -238,7 +240,7 @@ def start_rendering():
             # for instance, pass the AyonPublishInstance's path to the job.
             # job.user_data = ""
             output_name = render_setting.get('output')
-            shot_name = render_setting.get('section').get_name()
+            shot_name = render_setting.get('sequence').get_name()
 
             settings = job_config.find_or_add_setting_by_class(
                 unreal.MoviePipelineOutputSetting)
@@ -246,6 +248,7 @@ def start_rendering():
             settings.custom_start_frame = render_setting.get("frame_range")[0]
             settings.custom_end_frame = render_setting.get("frame_range")[1]
             settings.use_custom_playback_range = True
+            # make sure all sequences share the same filename
             settings.file_name_format = f"{shot_name}" + ".{frame_number}"
             settings.output_directory.path = f"{render_dir}/{output_name}"
 

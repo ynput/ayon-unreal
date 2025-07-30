@@ -44,6 +44,9 @@ class ExtractEditorialPackage(publish.Extractor):
         for repre in instance.data["representations"]:
             if repre["name"] == "intermediate":
                 published_file_path = self._get_published_path(instance, repre)
+                instance.data["is_sequence"] = (
+                    False if repre["ext"] in ["mp4", "mov"] else True
+                )
                 break
 
         if published_file_path is None:
@@ -148,12 +151,12 @@ class ExtractEditorialPackage(publish.Extractor):
         template_data = instance.data.get("anatomyData")
 
         template_data["representation"] = representation["name"]
-        template_data["ext"] = "mp4"
+        template_data["ext"] = representation["ext"]
         template_data["comment"] = None
 
         anatomy = instance.context.data["anatomy"]
         template_data["root"] = anatomy.roots
-        template = anatomy.get_template_item("publish", "render", "path")
+        template = anatomy.get_template_item("publish", "default", "path")
         template_filled = template.format_strict(template_data)
         file_path = Path(template_filled)
         return file_path.as_posix()

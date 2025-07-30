@@ -39,7 +39,7 @@ def create_otio_time_range(start_frame, frame_duration, fps):
 
 
 def create_otio_reference(instance, section, frame_start,
-                          frame_duration, is_sequence=False):
+                          frame_duration):
     metadata = {}
 
     project = get_current_project_name()
@@ -61,7 +61,7 @@ def create_otio_reference(instance, section, frame_start,
     published_dir = os.path.dirname(published_file_path)
     file_head, extension = os.path.splitext(os.path.basename(published_file_path))
     fps = CTX.project_fps
-
+    is_sequence = instance.data.get("is_sequence", False)
     if is_sequence:
         metadata.update({
             "isSequence": True,
