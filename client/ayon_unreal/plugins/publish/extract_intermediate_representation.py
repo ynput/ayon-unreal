@@ -39,6 +39,7 @@ class ExtractIntermediateRepresentation(publish.Extractor):
             self.log.error(msg)
             raise PublishError(msg, title="Render directory not found.")
         self.log.debug(f"Collecting render path: {render_path}")
+        # use os.walk to get all files in the directory
         frames = [str(x) for x in render_path.iterdir() if x.is_file()]
         frames = pipeline.get_sequence(frames)
         image_format = next((os.path.splitext(x)[-1].lstrip(".")
@@ -56,6 +57,6 @@ class ExtractIntermediateRepresentation(publish.Extractor):
             'ext': image_format,
             'files': frames,
             'stagingDir': render_dir,
-            'tags': ['review']
+            'tags': ['review', 'remove']
         }
         instance.data["representations"].append(representation)

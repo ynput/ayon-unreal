@@ -202,8 +202,7 @@ def start_rendering():
                         continue
                     render_list.append({
                         "sequence": seq.get('sequence'),
-                        "output": (f"{seq.get('output')}/"
-                                f"{sub_seq_obj.get_name()}"),
+                        "output": (f"{seq.get('output')}"),
                         "frame_range": (
                             sub_seq.get_start_frame(), sub_seq.get_end_frame())
                     })

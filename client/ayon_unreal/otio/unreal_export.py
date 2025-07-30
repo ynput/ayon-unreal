@@ -38,17 +38,14 @@ def create_otio_time_range(start_frame, frame_duration, fps):
     )
 
 
-def create_otio_reference(instance, section, frame_start,
+def create_otio_reference(instance, frame_start,
                           frame_duration):
     metadata = {}
 
     project = get_current_project_name()
     anatomy = Anatomy(project)
     root = anatomy.roots['renders']
-    # if section.get_class().get_name() == "MovieSceneCinematicShotTrack":
-    track_name = section.get_sequence().get_name()
     render_dir = f"{root}/{project}/editorial_pkg/{instance.data.get('output')}"
-    render_dir = f"{render_dir}/{track_name}"
     render_path = Path(render_dir)
     frames = [str(x) for x in render_path.iterdir() if x.is_file()]
     # get padding and other file infos
@@ -124,7 +121,7 @@ def create_otio_clip(instance, target_track):
         fps = CTX.project_fps
         name = section.get_sequence().get_name()
         media_reference = create_otio_reference(
-            instance, section, shot_start, duration
+            instance, shot_start, duration
         )
         source_range = create_otio_time_range(
             int(shot_start),
