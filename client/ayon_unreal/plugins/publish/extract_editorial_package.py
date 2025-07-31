@@ -78,14 +78,7 @@ class ExtractEditorialPackage(publish.Extractor):
 
                 if hasattr(clip.media_reference, "target_url"):
                     path_to_media = Path(published_file_path)
-                    # remove root from path
-                    success, rootless_path = anatomy.find_root_template_from_path(  # noqa
-                        path_to_media.as_posix()
-                    )
-                    if success:
-                        media_source_path = rootless_path
-                    else:
-                        media_source_path = path_to_media.as_posix()
+                    media_source_path = path_to_media.as_posix()
                     new_media_reference = otio.schema.ExternalReference(
                         target_url=media_source_path,
                         available_range=otio.opentime.TimeRange(
@@ -148,7 +141,6 @@ class ExtractEditorialPackage(publish.Extractor):
         """Calculates expected `publish` folder"""
         # determine published path from Anatomy.
         template_data = instance.data.get("anatomyData")
-
         template_data["representation"] = representation["name"]
         template_data["ext"] = "mp4"
         template_data["comment"] = None
@@ -163,6 +155,7 @@ class ExtractEditorialPackage(publish.Extractor):
         filename, extension = os.path.splitext(filename)
         templated_filename = f"{filename}_{encoded_format}{extension}"
         template_filled = os.path.join(directory, templated_filename)
+        self.log.debug(f"Final file path: {template_filled}")
         file_path = Path(template_filled)
         return file_path.as_posix()
 
