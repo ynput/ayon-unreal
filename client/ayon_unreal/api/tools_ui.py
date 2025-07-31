@@ -20,6 +20,8 @@ from ayon_core.tools.utils.lib import qt_app_context
 from ayon_unreal.api import rendering
 from ayon_unreal.api import hierarchy
 
+import unreal
+
 
 class ToolsBtnsWidget(QtWidgets.QWidget):
     """Widget containing buttons which are clickable."""
@@ -103,8 +105,7 @@ class ToolsBtnsWidget(QtWidgets.QWidget):
             task_entity=task_entity,
         )
 
-        print(f"Context changed to: {new_context}")
-        WindowCache._first_show = True
+        unreal.log(f"Context changed to: {new_context}")
         self.context_btn.setText(
             f"Context: {new_context['task_name']} - "
             f"{new_context['folder_path']}"
