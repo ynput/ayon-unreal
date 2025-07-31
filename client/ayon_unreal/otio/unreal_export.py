@@ -119,6 +119,9 @@ def create_otio_clip(instance, target_track):
 
         fps = CTX.project_fps
         name = section.get_sequence().get_name()
+        if "_camera" in name:
+            continue
+
         media_reference = create_otio_reference(
             instance, shot_start, duration
         )
