@@ -41,7 +41,6 @@ def create_otio_time_range(start_frame, frame_duration, fps):
 def create_otio_reference(instance, frame_start,
                           frame_duration, is_sequence=False):
     metadata = {}
-
     project = get_current_project_name()
     anatomy = Anatomy(project)
     root = anatomy.roots['renders']
@@ -112,7 +111,8 @@ def create_otio_reference(instance, frame_start,
 
 
 def create_otio_clip(instance, target_track):
-     for section in target_track.get_sections():
+    otio_clips = []
+    for section in target_track.get_sections():
         # flip if speed is in minus
         shot_start = section.get_start_frame()
         duration = int(section.get_end_frame() - section.get_start_frame()) + 1
@@ -133,8 +133,9 @@ def create_otio_clip(instance, target_track):
             source_range=source_range,
             media_reference=media_reference
         )
+        otio_clips.append(otio_clip)
 
-        return otio_clip
+    return otio_clips
 
 
 def create_otio_gap(gap_start, clip_start, tl_start_frame, fps):
@@ -215,7 +216,7 @@ def create_otio_timeline(instance):
 
         # create otio clip and add it to track
         otio_clip = create_otio_clip(instance, target_track)
-        otio_track.append(otio_clip)
+        otio_track.extend(otio_clip)
 
         # add track to otio timeline
         otio_timeline.tracks.append(otio_track)
