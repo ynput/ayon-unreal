@@ -22,7 +22,6 @@ class ExtractEditorialPackage(publish.Extractor):
         # create representation data
         if "representations" not in instance.data:
             instance.data["representations"] = []
-        anatomy = instance.context.data["anatomy"]
         folder_path = instance.data["folderPath"]
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
         sequence = ar.get_asset_by_object_path(
