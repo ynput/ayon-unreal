@@ -45,6 +45,13 @@ class ProjectSetup(BaseSettingsModel):
             "Disable when using external source control (Perforce)"
         )
     )
+    force_existing_project: bool = SettingsField(
+        True,
+        title="Force existing project",
+        description=(
+            "If enabled, the project must exist for Unreal to launch."
+        )
+    )
     dev_mode: bool = SettingsField(
         False,
         title="Dev mode"
@@ -87,7 +94,8 @@ DEFAULT_VALUES = {
         "render_format": "exr",
     },
     "project_setup": {
-        "dev_mode": False
+        "dev_mode": False,
+        "force_existing_project": False,
     },
     "create": DEFAULT_CREATOR_SETTINGS,
 }
