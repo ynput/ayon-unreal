@@ -11,7 +11,10 @@ from distutils import dir_util
 from pathlib import Path
 from typing import List
 
-from ayon_core.settings import get_project_settings
+from ayon_core.settings import (
+    get_current_project_settings,
+    get_project_settings,
+)
 
 
 def get_engine_versions(env=None):
@@ -77,15 +80,14 @@ def get_engine_versions(env=None):
     return OrderedDict()
 
 
-def get_editor_exe_path(
-    project_name: str, engine_path: Path, engine_version: str
-) -> Path:
+def get_editor_exe_path(engine_path: Path, engine_version: str) -> Path:
     """Get UE Editor executable path.
     Attempt to retrieve from project settings first."""
     this_os = platform.system().lower()
 
     try:
-        apps = get_project_settings(project_name)["applications"]
+        project_settings = get_current_project_settings()
+        apps = project_settings["applications"]
         variants = apps["applications"]["unreal"]["variants"]
         platform_variants = [
             var["executables"][this_os]
@@ -270,9 +272,7 @@ def create_unreal_project(
 
     # engine_path should be the location of UE_X.X folder
 
-    ue_editor_exe: Path = get_editor_exe_path(
-        project_name, engine_path, ue_version
-    )
+    ue_editor_exe: Path = get_editor_exe_path(engine_path, ue_version)
     cmdlet_project: Path = get_path_to_cmdlet_project(ue_version)
 
     project_file = pr_dir / f"{unreal_project_name}.uproject"
