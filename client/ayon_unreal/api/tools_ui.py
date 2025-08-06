@@ -5,10 +5,22 @@ from ayon_core import (
     resources,
     style
 )
+
+from ayon_core.pipeline import (
+    get_current_folder_path,
+    get_current_task_name,
+)
+
+import ayon_api
+
+from ayon_core.pipeline.context_tools import change_current_context
 from ayon_core.tools.utils import host_tools
+from ayon_core.tools import context_dialog
 from ayon_core.tools.utils.lib import qt_app_context
 from ayon_unreal.api import rendering
 from ayon_unreal.api import hierarchy
+
+import unreal
 
 
 class ToolsBtnsWidget(QtWidgets.QWidget):
@@ -18,6 +30,14 @@ class ToolsBtnsWidget(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(ToolsBtnsWidget, self).__init__(parent)
 
+        current_context_string = (
+            f"Context: {get_current_task_name()} - "
+            f"{get_current_folder_path()}"
+        )
+        self.context_btn = QtWidgets.QPushButton(current_context_string, self)
+        self.context_btn.setToolTip(
+            "Open context dialog to set up current project, task and folder."
+        )
         load_btn = QtWidgets.QPushButton("Load...", self)
         publish_btn = QtWidgets.QPushButton("Publish...", self)
         manage_btn = QtWidgets.QPushButton("Manage...", self)
@@ -30,6 +50,8 @@ class ToolsBtnsWidget(QtWidgets.QWidget):
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.context_btn, 0)
+        layout.addSpacing(4)
         layout.addWidget(load_btn, 0)
         layout.addWidget(manage_btn, 0)
         layout.addWidget(render_btn, 0)
@@ -44,6 +66,7 @@ class ToolsBtnsWidget(QtWidgets.QWidget):
         publish_btn.clicked.connect(self._on_publish)
         sequence_btn.clicked.connect(self._on_sequence)
         experimental_tools_btn.clicked.connect(self._on_experimental)
+        self.context_btn.clicked.connect(self._on_context_change)
 
     def _on_create(self):
         self.tool_required.emit("creator")
@@ -65,6 +88,28 @@ class ToolsBtnsWidget(QtWidgets.QWidget):
 
     def _on_experimental(self):
         self.tool_required.emit("experimental_tools")
+
+    def _on_context_change(self):
+        """Open a context dialog to change the current context."""
+        context = context_dialog.ask_for_context()
+
+        if context is None:
+            return
+
+        folder_entity = ayon_api.get_folder_by_id(
+            context["project_name"], folder_id=context["folder_id"])
+        task_entity = ayon_api.get_task_by_id(
+            context["project_name"], task_id=context["task_id"])
+        new_context = change_current_context(
+            folder_entity=folder_entity,
+            task_entity=task_entity,
+        )
+
+        unreal.log(f"Context changed to: {new_context}")
+        self.context_btn.setText(
+            f"Context: {new_context['task_name']} - "
+            f"{new_context['folder_path']}"
+        )
 
 
 class ToolsDialog(QtWidgets.QDialog):
