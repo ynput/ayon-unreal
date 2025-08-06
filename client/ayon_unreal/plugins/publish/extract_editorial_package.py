@@ -22,6 +22,8 @@ class ExtractEditorialPackage(publish.Extractor):
         # create representation data
         if "representations" not in instance.data:
             instance.data["representations"] = []
+
+        anatomy = instance.context.data["anatomy"]
         folder_path = instance.data["folderPath"]
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
         sequence = ar.get_asset_by_object_path(
@@ -77,7 +79,15 @@ class ExtractEditorialPackage(publish.Extractor):
 
                 if hasattr(clip.media_reference, "target_url"):
                     path_to_media = Path(published_file_path)
-                    media_source_path = path_to_media.as_posix()
+                    # remove root from path
+                    success, rootless_path = anatomy.find_root_template_from_path(  # noqa
+                        path_to_media.as_posix()
+                    )
+                    if success:
+                        media_source_path = rootless_path
+                    else:
+                        media_source_path = path_to_media.as_posix()
+
                     new_media_reference = otio.schema.ExternalReference(
                         target_url=media_source_path,
                         available_range=otio.opentime.TimeRange(
