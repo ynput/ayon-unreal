@@ -161,7 +161,7 @@ class UnrealPrelaunchHook(PreLaunchHook):
         engine_version = self.app_name.split("/")[-1].replace("-", ".")
         try:
             if int(engine_version.split(".")[0]) < 4 and \
-                    int(engine_version.split(".")[1]) < 26:
+                        int(engine_version.split(".")[1]) < 26:
                 raise ApplicationLaunchFailed((
                     f"{self.signature} Old unsupported version of UE "
                     f"detected - {engine_version}"))
@@ -244,9 +244,11 @@ class UnrealPrelaunchHook(PreLaunchHook):
 
         project_file = project_path / unreal_project_filename
 
+        self.launch_context.env["AYON_UNREAL_VERSION"] = engine_version
+
         if not project_file.is_file():
 
-            #Get project settings -> allow project creation
+            # Get project settings -> allow project creation
             current_project = get_current_project_name()
             unreal_settings = get_project_settings(current_project).get("unreal")
             allow_project_creation = unreal_settings["project_setup"].get(
@@ -270,15 +272,21 @@ class UnrealPrelaunchHook(PreLaunchHook):
                             f"{self.signature} Cannot copy directory {temp_dir} "
                             f"to {project_path.as_posix()} - {e}"
                         )) from e
-            else:
-                raise ApplicationLaunchFailed(
-                    f"Could not open project; Project file not found.\n\n"
-                    f"'{project_path.as_posix()}' \n\n"
-                    f"Please contact administrator.\n"
-                    f"Make sure the project is in the correct folder. Or enable 'allow project creation' in studio settings"
-                )
 
-        self.launch_context.env["AYON_UNREAL_VERSION"] = engine_version
-        # Append project file to launch arguments
+            elif unreal_settings["project_setup"].get(
+                    "force_existing_project"):
+                msg = (
+                    "Could not open project; Project file not found.\n\n"
+                    f"'{project_path.as_posix()}' \n\n"
+                    "Please contact administrator.\n"
+                    "Make sure the project is in the correct folder. "
+                    "Or enable 'allow project creation' in studio "
+                    "settings."
+                )
+                raise ApplicationLaunchFailed(msg)
+            else:
+                return
+
+        # Append the project file to launch arguments
         self.launch_context.launch_args.append(
             f"\"{project_file.as_posix()}\"")
