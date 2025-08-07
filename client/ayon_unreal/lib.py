@@ -11,10 +11,8 @@ from distutils import dir_util
 from pathlib import Path
 from typing import List
 
-from ayon_core.settings import (
-    get_current_project_settings,
-    get_project_settings,
-)
+from ayon_core.pipeline.context_tools import get_current_project_settings
+from ayon_core.settings import get_project_settings
 
 
 def get_engine_versions(env=None):
@@ -111,9 +109,7 @@ def get_editor_exe_path(engine_path: Path, engine_version: str) -> Path:
         raise RuntimeError(f"Unreal engine couldn't be located at: {exe_path}")
 
 
-def get_editor_exe_path_fallback(
-    engine_path: Path, engine_version: str
-) -> Path:
+def get_editor_exe_path_fallback(engine_path: Path, engine_version: str) -> Path:
     """Get UE Editor executable path."""
     ue_path = engine_path / "Engine/Binaries"
 
@@ -124,7 +120,7 @@ def get_editor_exe_path_fallback(
         ue_name = "UE4Editor"
 
     if platform.system().lower() == "windows":
-        ue_path /= f"Win64/{ue_name}.exe"
+            ue_path /= f"Win64/{ue_name}.exe"
 
     elif platform.system().lower() == "linux":
         ue_path /= f"Linux/{ue_name}"
@@ -217,15 +213,13 @@ def _parse_launcher_locations(install_json_path: str) -> dict:
     return engine_locations
 
 
-def create_unreal_project(
-    project_name: str,
-    unreal_project_name: str,
-    ue_version: str,
-    pr_dir: Path,
-    engine_path: Path,
-    dev_mode: bool = False,
-    env: dict = None,
-) -> None:
+def create_unreal_project(project_name: str,
+                          unreal_project_name: str,
+                          ue_version: str,
+                          pr_dir: Path,
+                          engine_path: Path,
+                          dev_mode: bool = False,
+                          env: dict = None) -> None:
     """This will create `.uproject` file at specified location.
 
     As there is no way I know to create a project via command line, this is
@@ -282,28 +276,25 @@ def create_unreal_project(
         ue_editor_exe.as_posix(),
         cmdlet_project.as_posix(),
         "-run=AyonGenerateProject",
-        project_file.resolve().as_posix(),
+        project_file.resolve().as_posix()
     ]
 
     if dev_mode or preset["dev_mode"]:
-        commandlet_cmd.append("-GenerateCode")
+        commandlet_cmd.append('-GenerateCode')
 
-    gen_process = subprocess.Popen(
-        commandlet_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    )
+    gen_process = subprocess.Popen(commandlet_cmd,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
 
     for line in gen_process.stdout:
-        print(line.decode(), end="")
+        print(line.decode(), end='')
     gen_process.stdout.close()
     return_code = gen_process.wait()
 
     if return_code and return_code != 0:
         raise RuntimeError(
-            (
-                f"Failed to generate '{unreal_project_name}' project! "
-                f"Exited with return code {return_code}"
-            )
-        )
+            (f"Failed to generate '{unreal_project_name}' project! "
+             f"Exited with return code {return_code}"))
 
     print("--- Project has been generated successfully.")
 
@@ -331,7 +322,7 @@ def create_unreal_project(
             u_build_tool.as_posix(),
             "-projectfiles",
             f"-project={project_file}",
-            "-progress",
+            "-progress"
         ]
 
         subprocess.run(command1)
@@ -344,7 +335,7 @@ def create_unreal_project(
             "-TargetType=Editor",
             f"-Project={project_file}",
             project_file,
-            "-IgnoreJunk",
+            "-IgnoreJunk"
         ]
 
         subprocess.run(command2)
@@ -359,8 +350,7 @@ def get_path_to_uat(engine_path: Path) -> Path:
 
 
 def get_compatible_integration(
-    ue_version: str, integration_root: Path
-) -> List[Path]:
+        ue_version: str, integration_root: Path) -> List[Path]:
     """Get path to compatible version of integration plugin.
 
     This will try to get the closest compatible versions to the one
@@ -376,15 +366,15 @@ def get_compatible_integration(
 
     """
     major, minor = ue_version.split(".")
-    integration_paths = [p for p in integration_root.iterdir() if p.is_dir()]
+    integration_paths = [p for p in integration_root.iterdir()
+                         if p.is_dir()]
 
     compatible_versions = []
     for i in integration_paths:
         # parse version from path
         try:
             i_major, i_minor = re.search(
-                r"(?P<major>\d+).(?P<minor>\d+)$", i.name
-            ).groups()
+                r"(?P<major>\d+).(?P<minor>\d+)$", i.name).groups()
         except AttributeError:
             # in case there is no match, just skip to next
             continue
@@ -401,7 +391,8 @@ def get_compatible_integration(
 
 
 def get_path_to_cmdlet_project(ue_version: str) -> Path:
-    cmd_project = Path(os.path.dirname(os.path.abspath(__file__)))
+    cmd_project = Path(
+        os.path.dirname(os.path.abspath(__file__)))
 
     # For now, only tested on Windows (For Linux and Mac
     # it has to be implemented)
@@ -415,18 +406,12 @@ def get_path_to_cmdlet_project(ue_version: str) -> Path:
     if compatible_versions := get_compatible_integration(
         ue_version, cmd_project.parent
     ):
-        return (
-            compatible_versions[-1]
-            / "CommandletProject/CommandletProject.uproject"
-        )  # noqa: E501
+        return compatible_versions[-1] / "CommandletProject/CommandletProject.uproject"  # noqa: E501
     else:
         raise RuntimeError(
-            (
-                "There are no compatible versions of Unreal "
-                "integration plugin compatible with running version "
-                f"of Unreal Engine {ue_version}"
-            )
-        )
+            ("There are no compatible versions of Unreal "
+             "integration plugin compatible with running version "
+             f"of Unreal Engine {ue_version}"))
 
 
 def get_path_to_ubt(engine_path: Path, ue_version: str) -> Path:
@@ -451,18 +436,12 @@ def get_build_id(engine_path: Path, ue_version: str) -> str:
         ue_modules = Path(ue_modules_path)
 
     if platform.system().lower() == "linux":
-        ue_modules = Path(
-            os.path.join(
-                engine_path, "Engine", "Binaries", "Linux", "UE4Editor.modules"
-            )
-        )
+        ue_modules = Path(os.path.join(engine_path, "Engine", "Binaries",
+                                       "Linux", "UE4Editor.modules"))
 
     if platform.system().lower() == "darwin":
-        ue_modules = Path(
-            os.path.join(
-                engine_path, "Engine", "Binaries", "Mac", "UE4Editor.modules"
-            )
-        )
+        ue_modules = Path(os.path.join(engine_path, "Engine", "Binaries",
+                                       "Mac", "UE4Editor.modules"))
 
     if ue_modules.exists():
         print("--- Loading Engine ID from modules file ...")
@@ -482,10 +461,8 @@ def check_built_plugin_existance(plugin_path) -> bool:
     if not integration_plugin_path.is_dir():
         raise RuntimeError("Path to the integration plugin is null!")
 
-    if (
-        not (integration_plugin_path / "Binaries").is_dir()
-        or not (integration_plugin_path / "Intermediate").is_dir()
-    ):
+    if not (integration_plugin_path / "Binaries").is_dir() \
+            or not (integration_plugin_path / "Intermediate").is_dir():
         return False
 
     return True
@@ -518,10 +495,8 @@ def check_plugin_existence(engine_path: Path, env: dict = None) -> bool:
     if not op_plugin_path.is_dir():
         return False
 
-    if (
-        not (op_plugin_path / "Binaries").is_dir()
-        or not (op_plugin_path / "Intermediate").is_dir()
-    ):
+    if not (op_plugin_path / "Binaries").is_dir() \
+            or not (op_plugin_path / "Intermediate").is_dir():
         return False
 
     return True
@@ -546,16 +521,14 @@ def try_installing_plugin(engine_path: Path, env: dict = None) -> None:
 
         dir_util._path_created = {}
 
-    if (
-        not (op_plugin_path / "Binaries").is_dir()
-        or not (op_plugin_path / "Intermediate").is_dir()
-    ):
+    if not (op_plugin_path / "Binaries").is_dir() \
+            or not (op_plugin_path / "Intermediate").is_dir():
         _build_and_move_plugin(engine_path, op_plugin_path, env)
 
 
-def _build_and_move_plugin(
-    engine_path: Path, plugin_build_path: Path, env: dict = None
-) -> None:
+def _build_and_move_plugin(engine_path: Path,
+                           plugin_build_path: Path,
+                           env: dict = None) -> None:
     uat_path: Path = get_path_to_uat(engine_path)
 
     env = env or os.environ
@@ -568,12 +541,10 @@ def _build_and_move_plugin(
 
         # in order to successfully build the plugin,
         # It must be built outside the Engine directory and then moved
-        build_plugin_cmd: List[str] = [
-            f"{uat_path.as_posix()}",
-            "BuildPlugin",
-            f"-Plugin={uplugin_path.as_posix()}",
-            f"-Package={temp_dir.as_posix()}",
-        ]
+        build_plugin_cmd: List[str] = [f'{uat_path.as_posix()}',
+                                       'BuildPlugin',
+                                       f'-Plugin={uplugin_path.as_posix()}',
+                                       f'-Package={temp_dir.as_posix()}']
         subprocess.run(build_plugin_cmd)
 
         # Copy the contents of the 'Temp' dir into the
@@ -585,9 +556,7 @@ def _build_and_move_plugin(
         plugin_install_config_path: Path = plugin_build_path / "Config"
         integration_plugin_config_path = integration_plugin_path / "Config"
 
-        dir_util.copy_tree(
-            integration_plugin_config_path.as_posix(),
-            plugin_install_config_path.as_posix(),
-        )
+        dir_util.copy_tree(integration_plugin_config_path.as_posix(),
+                           plugin_install_config_path.as_posix())
 
         dir_util.remove_tree(temp_dir.as_posix())
