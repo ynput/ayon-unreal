@@ -88,11 +88,12 @@ class ExtractEditorialPackage(publish.Extractor):
                     else:
                         media_source_path = path_to_media.as_posix()
 
+                    reformat_start_time = timeline_start_frame - timeline_start_frame
                     new_media_reference = otio.schema.ExternalReference(
                         target_url=media_source_path,
                         available_range=otio.opentime.TimeRange(
                             start_time=otio.opentime.RationalTime(
-                                value=timeline_start_frame, rate=frame_rate
+                                value=reformat_start_time, rate=frame_rate
                             ),
                             duration=otio.opentime.RationalTime(
                                 value=timeline_duration, rate=frame_rate
@@ -104,10 +105,7 @@ class ExtractEditorialPackage(publish.Extractor):
                     # replace clip source range with track parent range
                     clip.source_range = otio.opentime.TimeRange(
                         start_time=otio.opentime.RationalTime(
-                            value=(
-                                timeline_start_frame
-                                + clip.range_in_parent().start_time.value
-                            ),
+                            value=clip.range_in_parent().start_time.value,
                             rate=frame_rate,
                         ),
                         duration=clip.range_in_parent().duration,
