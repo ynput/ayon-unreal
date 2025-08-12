@@ -79,15 +79,7 @@ class ExtractEditorialPackage(publish.Extractor):
 
                 if hasattr(clip.media_reference, "target_url"):
                     path_to_media = Path(published_file_path)
-                    # remove root from path
-                    success, rootless_path = anatomy.find_root_template_from_path(  # noqa
-                        path_to_media.as_posix()
-                    )
-                    if success:
-                        media_source_path = rootless_path
-                    else:
-                        media_source_path = path_to_media.as_posix()
-
+                    media_source_path = path_to_media.as_posix()
                     reformat_start_time = timeline_start_frame - timeline_start_frame
                     new_media_reference = otio.schema.ExternalReference(
                         target_url=media_source_path,
