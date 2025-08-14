@@ -268,16 +268,15 @@ class UnrealPrelaunchHook(PreLaunchHook):
                     self.copy_project(existing_uproject_directory, project_path)
                     # rename the project folder and the uproject inside
                     # the project folder copied from existing_uproject directory
-                    new_project_name = unreal_project_filename
-                    project_path.rename(project_path.parent / new_project_name)
-                    for unproject_file in project_path.glob("*.uproject"):
+                    new_project_path = project_path.parent / unreal_project_name
+                    project_path.rename(new_project_path)
+                    for unproject_file in new_project_path.glob("*.uproject"):
                         # set the correct engine version
                         self.set_engine_version(unproject_file, engine_version)
-                        new_file_name = unreal_project_filename
-                        unproject_file.rename(project_path / new_file_name)
+                        unproject_file.rename(new_project_path / unreal_project_filename)
                         self.log.info((
                             f"{self.signature} Renamed {unproject_file.name} to "
-                            f"{new_file_name}"
+                            f"{unreal_project_filename}"
                         ))
                 else:
                     with tempfile.TemporaryDirectory() as temp_dir:
