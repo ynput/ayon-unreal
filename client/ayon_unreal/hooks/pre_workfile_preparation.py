@@ -261,23 +261,30 @@ class UnrealPrelaunchHook(PreLaunchHook):
                     unreal_settings["project_setup"].get(
                         "existing_uproject_directory")
                 )
+                uproject_files = list(existing_uproject_directory.glob("*.uproject"))
                 if (
                     existing_uproject_directory.exists() and
-                    any(existing_uproject_directory.glob("*.uproject"))
+                    uproject_files
                 ):
                     self.copy_project(existing_uproject_directory, project_path)
                     # rename the project folder and the uproject inside
                     # the project folder copied from existing_uproject directory
                     new_project_path = project_path.parent / unreal_project_name
                     project_path.rename(new_project_path)
-                    for unproject_file in new_project_path.glob("*.uproject"):
-                        # set the correct engine version
-                        self.set_engine_version(unproject_file, engine_version)
-                        unproject_file.rename(new_project_path / unreal_project_filename)
-                        self.log.info((
-                            f"{self.signature} Renamed {unproject_file.name} to "
-                            f"{unreal_project_filename}"
-                        ))
+                    if len(uproject_files) != 1:
+                        raise ApplicationLaunchFailed(
+                            f"{self.signature} Expected exactly one .uproject file in "
+                            f"{new_project_path}, but found {len(uproject_files)}. "
+                            "Please check the project directory."
+                        )
+                    unproject_file = uproject_files[0]
+                    # set the correct engine version
+                    self.set_engine_version(unproject_file, engine_version)
+                    unproject_file.rename(new_project_path / unreal_project_filename)
+                    self.log.info((
+                        f"{self.signature} Renamed {unproject_file.name} to "
+                        f"{unreal_project_filename}"
+                    ))
                 else:
                     with tempfile.TemporaryDirectory() as temp_dir:
                         self.exec_ue_project_gen(engine_version,
@@ -319,7 +326,14 @@ class UnrealPrelaunchHook(PreLaunchHook):
         if not uproject_path.is_file():
             raise FileNotFoundError(f"File not found: {uproject_path}")
 
-        data = json.loads(uproject_path.read_text(encoding="utf-8"))
+        try:
+            data = json.loads(uproject_path.read_text(encoding="utf-8"))
+
+        except json.JSONDecodeError as e:
+            raise ApplicationLaunchFailed(
+                f"{self.signature} Malformed .uproject file at {uproject_path}: {e}"
+            ) from e
+
         # Set the new engine version
         data["EngineAssociation"] = new_version
 
