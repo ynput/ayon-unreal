@@ -267,25 +267,26 @@ class UnrealPrelaunchHook(PreLaunchHook):
                     uproject_files
                 ):
                     self.copy_project(existing_uproject_directory, project_path)
-                    # rename the project folder and the uproject inside
-                    # the project folder copied from existing_uproject directory
+                    # rename the project folder copied from existing_uproject directory
                     new_project_path = project_path.parent / unreal_project_name
                     project_path.rename(new_project_path)
 
-                    # make sure only one uproject file exists
-                    if len(uproject_files) != 1:
+                    # find the copied uproject file in the new project directory
+                    copied_uproject_files = list(new_project_path.glob("*.uproject"))
+                    if len(copied_uproject_files) != 1:
                         raise ApplicationLaunchFailed(
                             f"{self.signature} Expected exactly one .uproject file in "
-                            f"{new_project_path}, but found {len(uproject_files)}. "
+                            f"{new_project_path}, but found {len(copied_uproject_files)}. "
                             "Please check the project directory."
                         )
-                    unproject_file = uproject_files[0]
+                    copied_uproject_file = copied_uproject_files[0]
+                    # set the correct engine version on the copied file
+                    self.set_engine_version(copied_uproject_file, engine_version)
 
-                    # set the correct engine version
-                    self.set_engine_version(unproject_file, engine_version)
-                    unproject_file.rename(new_project_path / unreal_project_filename)
+                    # rename the copied uproject file to match the expected filename
+                    copied_uproject_file.rename(new_project_path / unreal_project_filename)
                     self.log.info((
-                        f"{self.signature} Renamed {unproject_file.name} to "
+                        f"{self.signature} Renamed {copied_uproject_file.name} to "
                         f"{unreal_project_filename}"
                     ))
                 else:
