@@ -295,7 +295,7 @@ class UnrealPrelaunchHook(PreLaunchHook):
                                                  unreal_project_name,
                                                  engine_path,
                                                  Path(temp_dir))
-                        self.copy_project(temp_dir, project_path)
+                        self.copy_project(Path(temp_dir), project_path)
 
             # if the template path has been found with unreal project
             # copy that existing project to ayon work directory
@@ -356,14 +356,15 @@ class UnrealPrelaunchHook(PreLaunchHook):
         """
         try:
             self.log.info((
-                f"Moving from {source} to "
+                f"Moving from {source.as_posix()} to "
                 f"{destination.as_posix()}"
             ))
             shutil.copytree(
                 source, destination, dirs_exist_ok=True)
 
         except shutil.Error as e:
-            raise ApplicationLaunchFailed((
-                f"{self.signature} Cannot copy directory {source} "
+            msg = (
+                f"{self.signature} Cannot copy directory {source.as_posix()} "
                 f"to {destination.as_posix()} - {e}"
-            )) from e
+            )
+            raise ApplicationLaunchFailed(msg) from e
