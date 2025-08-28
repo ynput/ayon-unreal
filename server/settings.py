@@ -45,6 +45,14 @@ class ProjectSetup(BaseSettingsModel):
             "Disable when using external source control (Perforce)"
         )
     )
+    existing_uproject_directory : str = SettingsField(
+        "",
+        title="Use Existing UProject for Project Creation",
+        description=(
+            "Path to an existing .uproject file to use for "
+            "project creation."
+        )
+    )
     force_existing_project: bool = SettingsField(
         True,
         title="Force existing project",
@@ -94,6 +102,8 @@ DEFAULT_VALUES = {
         "render_format": "exr",
     },
     "project_setup": {
+        "allow_project_creation": True,
+        "existing_uproject_directory": "",
         "dev_mode": False,
         "force_existing_project": False,
     },
