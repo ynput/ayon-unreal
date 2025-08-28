@@ -734,14 +734,50 @@ def replace_skeletal_mesh_actors(old_assets, new_assets, selected):
     )
 
     for old_name, old_mesh in old_meshes.items():
+        print(f"Discovering mesh to be replaced: {old_mesh}")
         new_mesh = new_meshes.get(old_name)
-
+        print(f"Discovering target skeletal mesh for replacing: {new_mesh}")
         if not new_mesh:
             continue
 
         for comp in skeletal_mesh_comps:
             if comp.get_skeletal_mesh_asset() == old_mesh:
                 comp.set_skeletal_mesh_asset(new_mesh)
+                comp.set_animation_mode(unreal.AnimationMode.ANIMATION_SINGLE_NODE)
+                animation_sequence = get_animation_sequence(new_mesh)
+                print(
+                    "Discovering target animation sequence for "
+                    f"replacing: {animation_sequence}"
+                )
+                if animation_sequence:
+                    comp.override_animation_data(
+                        animation_sequence,
+                        is_looping=True,
+                        is_playing=True,
+                        position=0.000000,
+                        play_rate=1.000000
+                    )
+
+
+def get_animation_sequence(new_mesh):
+    """Get the animation sequence associated with a new skeletal mesh.
+
+    Args:
+        new_mesh (unreal.SkeletalMesh): The new skeletal mesh.
+
+    Returns:
+        unreal.AnimSequence: The animation sequence associated with the new
+        mesh, or None if not found.
+    """
+    mesh_path = new_mesh.get_path_name()
+    directory = unreal.Paths.split(mesh_path)[0]
+    asset_content = unreal.EditorAssetLibrary.list_assets(
+        directory, recursive=False, include_folder=True)
+    for asset in asset_content:
+        anim_asset_obj = unreal.EditorAssetLibrary.load_asset(asset)
+        if anim_asset_obj.get_class().get_name() == "AnimSequence":
+            return anim_asset_obj
+    return None
 
 
 def replace_geometry_cache_actors(old_assets, new_assets, selected):
@@ -755,12 +791,12 @@ def replace_geometry_cache_actors(old_assets, new_assets, selected):
 
     for old_name, old_mesh in old_caches.items():
         new_mesh = new_caches.get(old_name)
-
+        print(f"Discovering target geometry cache for replacing : {new_mesh}")
         if not new_mesh:
             continue
 
         for comp in geometry_cache_comps:
-            if comp.get_editor_property("geometry_cache") == old_mesh:
+            if comp.geometry_cache == old_mesh:
                 comp.set_geometry_cache(new_mesh)
 
 
