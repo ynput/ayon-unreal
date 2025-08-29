@@ -756,6 +756,31 @@ def replace_skeletal_mesh_actors(old_assets, new_assets, selected):
                         play_rate=1.000000
                     )
 
+def replace_fbx_skeletal_mesh_actors(old_assets, new_assets, selected):
+    skeletal_mesh_comps, old_meshes, new_meshes = _get_comps_and_assets(
+        unreal.SkeletalMeshComponent,
+        unreal.AnimSequence,
+        old_assets,
+        new_assets,
+        selected
+    )
+
+    for old_name, old_mesh in old_meshes.items():
+        new_mesh = new_meshes.get(old_name)
+        if not new_mesh:
+            continue
+
+        for comp in skeletal_mesh_comps:
+            target_animation_data = comp.animation_data.anim_to_play
+            if target_animation_data == old_mesh:
+                comp.override_animation_data(
+                    new_mesh,
+                    is_looping=True,
+                    `is_playing=True,
+                    position=0.000000,
+                    play_rate=1.000000
+                )
+
 
 def get_animation_sequence(new_mesh):
     """Get the animation sequence associated with a new skeletal mesh.

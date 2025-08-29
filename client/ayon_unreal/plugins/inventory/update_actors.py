@@ -5,6 +5,7 @@ from ayon_unreal.api.pipeline import (
     ls,
     replace_static_mesh_actors,
     replace_skeletal_mesh_actors,
+    replace_fbx_skeletal_mesh_actors,
     replace_geometry_cache_actors
 )
 from ayon_core.pipeline import InventoryAction
@@ -93,6 +94,9 @@ def update_assets(containers, selected):
             elif container.get("family") == "animation":
                 if container.get("loader") == "AnimationAlembicLoader":
                     replace_skeletal_mesh_actors(
+                        old_content, asset_content, selected)
+                elif container.get("loader") == "AnimationFBXLoader":
+                    replace_fbx_skeletal_mesh_actors(
                         old_content, asset_content, selected)
 
             unreal.EditorLevelLibrary.save_current_level()
