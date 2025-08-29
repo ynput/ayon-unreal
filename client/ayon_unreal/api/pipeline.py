@@ -771,8 +771,7 @@ def replace_fbx_skeletal_mesh_actors(old_assets, new_assets, selected):
             continue
 
         for comp in skeletal_mesh_comps:
-            target_animation_data = comp.animation_data.anim_to_play
-            if target_animation_data == old_mesh:
+            if comp.animation_data.anim_to_play == old_mesh:
                 comp.override_animation_data(
                     new_mesh,
                     is_looping=True,
