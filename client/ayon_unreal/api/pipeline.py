@@ -658,7 +658,7 @@ def generate_sequence(h, h_dir):
 
 def find_common_name(asset_name):
     # Find the common prefix
-    prefix_match = re.match(r"^(.*?)(\d+)(.*?)$", asset_name)
+    prefix_match = re.match(r"(.*?)([_]{1,2}v\d+)(.*?)$", asset_name)
     if not prefix_match:
         return
     name, _, ext = prefix_match.groups()
@@ -734,9 +734,7 @@ def replace_skeletal_mesh_actors(old_assets, new_assets, selected):
     )
 
     for old_name, old_mesh in old_meshes.items():
-        print(f"Discovering mesh to be replaced: {old_mesh}")
         new_mesh = new_meshes.get(old_name)
-        print(f"Discovering target skeletal mesh for replacing: {new_mesh}")
         if not new_mesh:
             continue
 

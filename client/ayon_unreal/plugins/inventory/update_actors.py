@@ -12,13 +12,13 @@ from ayon_core.pipeline import InventoryAction
 
 def find_common_parts(old_asset_name, new_asset_name):
     # Find the common prefix
-    prefix_match = re.match(r"^(.*?)(\d+)(.*?)$", old_asset_name)
+    prefix_match = re.match(r"(.*?)([_]{1,2}v\d+)(.*?)$", old_asset_name)
     if not prefix_match:
         return
     name, _, ext = prefix_match.groups()
 
     # Construct a dynamic pattern based on the common prefix and suffix
-    pattern = re.escape(name) + r"(\d+)" + re.escape(ext)
+    pattern = re.escape(name) + r"[_]{1,2}v\d+" + re.escape(ext)
 
     # Match the pattern in the second variable
     new_version_match = re.match(pattern, new_asset_name)
