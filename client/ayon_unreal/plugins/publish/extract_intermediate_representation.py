@@ -48,7 +48,7 @@ class ExtractIntermediateRepresentation(publish.Extractor):
         if "representations" not in instance.data:
             instance.data["representations"] = []
 
-        instance.data["families"].append("review")
+        # instance.data["families"].append("review")
 
         representation = {
             'frameStart': instance.data["frameStart"],
@@ -57,6 +57,6 @@ class ExtractIntermediateRepresentation(publish.Extractor):
             'ext': image_format,
             'files': frames,
             'stagingDir': render_dir,
-            'tags': ['review', 'remove']
+            # 'tags': ['review']
         }
         instance.data["representations"].append(representation)

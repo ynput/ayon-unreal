@@ -110,6 +110,8 @@ class ExtractEditorialPackage(publish.Extractor):
                         ),
                         duration=clip.range_in_parent().duration,
                     )
+                else:
+                    pass
         # reference video representations also needs to reframe available
         # frames and clip source
 
@@ -149,20 +151,20 @@ class ExtractEditorialPackage(publish.Extractor):
         # determine published path from Anatomy.
         template_data = instance.data.get("anatomyData")
         template_data["representation"] = representation["name"]
-        template_data["ext"] = "mp4"
+        template_data["ext"] = representation["ext"]
         template_data["comment"] = None
 
         anatomy = instance.context.data["anatomy"]
         template_data["root"] = anatomy.roots
         template = anatomy.get_template_item("publish", "default", "path")
-        encoded_format = self.get_encoding_settings(instance, template_data["ext"])
         template_filled = template.format_strict(template_data)
-        directory = os.path.dirname(template_filled)
-        filename = os.path.basename(template_filled)
-        filename, extension = os.path.splitext(filename)
-        templated_filename = f"{filename}_{encoded_format}{extension}"
-        template_filled = os.path.join(directory, templated_filename)
-        self.log.debug(f"Final file path: {template_filled}")
+        if template_data["ext"] == "mp4":
+            encoded_format = self.get_encoding_settings(instance, template_data["ext"])
+            directory = os.path.dirname(template_filled)
+            filename = os.path.basename(template_filled)
+            filename, extension = os.path.splitext(filename)
+            templated_filename = f"{filename}_{encoded_format}{extension}"
+            template_filled = os.path.join(directory, templated_filename)
         file_path = Path(template_filled)
         return file_path.as_posix()
 
