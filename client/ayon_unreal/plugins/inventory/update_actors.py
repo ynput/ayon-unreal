@@ -5,6 +5,7 @@ from ayon_unreal.api.pipeline import (
     ls,
     replace_static_mesh_actors,
     replace_skeletal_mesh_actors,
+    replace_fbx_skeletal_mesh_actors,
     replace_geometry_cache_actors
 )
 from ayon_core.pipeline import InventoryAction
@@ -12,13 +13,13 @@ from ayon_core.pipeline import InventoryAction
 
 def find_common_parts(old_asset_name, new_asset_name):
     # Find the common prefix
-    prefix_match = re.match(r"^(.*?)(\d+)(.*?)$", old_asset_name)
+    prefix_match = re.match(r"(.*?)([_]{1,2}v\d+)(.*?)$", old_asset_name)
     if not prefix_match:
         return
     name, _, ext = prefix_match.groups()
 
     # Construct a dynamic pattern based on the common prefix and suffix
-    pattern = re.escape(name) + r"(\d+)" + re.escape(ext)
+    pattern = re.escape(name) + r"[_]{1,2}v\d+" + re.escape(ext)
 
     # Match the pattern in the second variable
     new_version_match = re.match(pattern, new_asset_name)
@@ -58,7 +59,7 @@ def update_assets(containers, selected):
         asset_content = unreal.EditorAssetLibrary.list_assets(
             container_dir, recursive=True, include_folder=False
         )
-
+        print(f"Asset content after replaced: {asset_content}")
         # Update all actors in level
         for sa_cont in sa_containers:
             sa_dir = sa_cont.get("namespace")
@@ -67,6 +68,7 @@ def update_assets(containers, selected):
             old_content = unreal.EditorAssetLibrary.list_assets(
                 sa_dir, recursive=True, include_folder=False
             )
+            print(f"Old content to be replaced: {old_content}")
 
             if container.get("family") == "rig":
                 replace_skeletal_mesh_actors(
@@ -93,6 +95,9 @@ def update_assets(containers, selected):
             elif container.get("family") == "animation":
                 if container.get("loader") == "AnimationAlembicLoader":
                     replace_skeletal_mesh_actors(
+                        old_content, asset_content, selected)
+                elif container.get("loader") == "AnimationFBXLoader":
+                    replace_fbx_skeletal_mesh_actors(
                         old_content, asset_content, selected)
 
             unreal.EditorLevelLibrary.save_current_level()
