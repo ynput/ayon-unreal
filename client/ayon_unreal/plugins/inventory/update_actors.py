@@ -59,7 +59,7 @@ def update_assets(containers, selected):
         asset_content = unreal.EditorAssetLibrary.list_assets(
             container_dir, recursive=True, include_folder=False
         )
-
+        print(f"Asset content after replaced: {asset_content}")
         # Update all actors in level
         for sa_cont in sa_containers:
             sa_dir = sa_cont.get("namespace")
@@ -68,6 +68,7 @@ def update_assets(containers, selected):
             old_content = unreal.EditorAssetLibrary.list_assets(
                 sa_dir, recursive=True, include_folder=False
             )
+            print(f"Old content to be replaced: {old_content}")
 
             if container.get("family") == "rig":
                 replace_skeletal_mesh_actors(
