@@ -39,7 +39,7 @@ def create_otio_time_range(start_frame, frame_duration, fps):
 
 
 def create_otio_reference(instance, frame_start,
-                          frame_duration, is_sequence=False):
+                          frame_duration, is_sequence=True):
     metadata = {}
     project = get_current_project_name()
     anatomy = Anatomy(project)

@@ -110,8 +110,6 @@ class ExtractEditorialPackage(publish.Extractor):
                         ),
                         duration=clip.range_in_parent().duration,
                     )
-                else:
-                    pass
         # reference video representations also needs to reframe available
         # frames and clip source
 

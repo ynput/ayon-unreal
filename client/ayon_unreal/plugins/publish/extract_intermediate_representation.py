@@ -10,7 +10,7 @@ from ayon_unreal.api import pipeline
 
 class ExtractIntermediateRepresentation(publish.Extractor):
     """ This extractor will try to find
-    all the rendered frames, converting them into the mp4 file and publish it.
+    all the rendered frames, publish all sequences.
     """
 
     hosts = ["unreal"]
@@ -48,8 +48,6 @@ class ExtractIntermediateRepresentation(publish.Extractor):
         if "representations" not in instance.data:
             instance.data["representations"] = []
 
-        # instance.data["families"].append("review")
-
         representation = {
             'frameStart': instance.data["frameStart"],
             'frameEnd': instance.data["frameEnd"],
@@ -57,6 +55,5 @@ class ExtractIntermediateRepresentation(publish.Extractor):
             'ext': image_format,
             'files': frames,
             'stagingDir': render_dir,
-            # 'tags': ['review']
         }
         instance.data["representations"].append(representation)
