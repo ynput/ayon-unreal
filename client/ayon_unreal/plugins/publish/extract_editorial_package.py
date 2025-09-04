@@ -77,8 +77,9 @@ class ExtractEditorialPackage(publish.Extractor):
                     # get duration of gap
                     continue
 
+                path_to_media = Path(published_file_path)
+
                 if hasattr(clip.media_reference, "target_url"):
-                    path_to_media = Path(published_file_path)
                     # remove root from path
                     success, rootless_path = anatomy.find_root_template_from_path(  # noqa
                         path_to_media.as_posix()
@@ -100,16 +101,42 @@ class ExtractEditorialPackage(publish.Extractor):
                             ),
                         ),
                     )
-                    clip.media_reference = new_media_reference
+                else:
+                    try:
+                        media_source_path = path_to_media.as_posix()
+                        published_dir = os.path.dirname(media_source_path)
+                        file_head, extension = os.path.splitext(
+                            os.path.basename(media_source_path)
+                        )
+                        reformat_start_time = timeline_start_frame - timeline_start_frame
+                        new_media_reference = otio.schema.ImageSequenceReference(
+                            target_url_base=published_dir + os.sep,
+                            name_prefix=f"{file_head}.",
+                            name_suffix=extension,
+                            start_frame=clip.media_reference.start_frame,
+                            frame_zero_padding=clip.media_reference.frame_zero_padding,
+                            rate=clip.media_reference.rate,
+                            available_range=otio.opentime.TimeRange(
+                                start_time=otio.opentime.RationalTime(
+                                    value=reformat_start_time, rate=frame_rate
+                                ),
+                                duration=otio.opentime.RationalTime(
+                                    value=timeline_duration, rate=frame_rate
+                                ),
+                            ),
+                        )
+                    except AttributeError:
+                        pass
 
-                    # replace clip source range with track parent range
-                    clip.source_range = otio.opentime.TimeRange(
-                        start_time=otio.opentime.RationalTime(
-                            value=clip.range_in_parent().start_time.value,
-                            rate=frame_rate,
-                        ),
-                        duration=clip.range_in_parent().duration,
-                    )
+                clip.media_reference = new_media_reference
+                # replace clip source range with track parent range
+                clip.source_range = otio.opentime.TimeRange(
+                    start_time=otio.opentime.RationalTime(
+                        value=clip.range_in_parent().start_time.value,
+                        rate=frame_rate,
+                    ),
+                    duration=clip.range_in_parent().duration,
+                )
         # reference video representations also needs to reframe available
         # frames and clip source
 
@@ -149,7 +176,11 @@ class ExtractEditorialPackage(publish.Extractor):
         # determine published path from Anatomy.
         template_data = instance.data.get("anatomyData")
         template_data["representation"] = representation["name"]
-        template_data["ext"] = representation["ext"]
+        template_data["ext"] = (
+            representation["ext"]
+            if instance.data.get("use_sequence", False)
+            else "mp4"
+        )
         template_data["comment"] = None
 
         anatomy = instance.context.data["anatomy"]

@@ -10,7 +10,8 @@ from ayon_unreal.api import pipeline
 
 class ExtractIntermediateRepresentation(publish.Extractor):
     """ This extractor will try to find
-    all the rendered frames, publish all sequences.
+    all the rendered frames and publish all images sequences or
+    a video file.
     """
 
     hosts = ["unreal"]

@@ -39,7 +39,7 @@ def create_otio_time_range(start_frame, frame_duration, fps):
 
 
 def create_otio_reference(instance, frame_start,
-                          frame_duration, is_sequence=True):
+                          frame_duration, is_sequence=False):
     metadata = {}
     project = get_current_project_name()
     anatomy = Anatomy(project)
@@ -122,8 +122,9 @@ def create_otio_clip(instance, target_track):
         if "_camera" in name:
             continue
 
+        use_sequence = instance.data.get("use_sequence", False)
         media_reference = create_otio_reference(
-            instance, shot_start, duration
+            instance, shot_start, duration, is_sequence=use_sequence
         )
         source_range = create_otio_time_range(
             int(shot_start),
