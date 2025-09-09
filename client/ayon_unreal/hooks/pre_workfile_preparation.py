@@ -6,6 +6,7 @@ import copy
 import shutil
 import tempfile
 import platform
+import json
 from pathlib import Path
 
 from qtpy import QtCore, QtWidgets
@@ -253,26 +254,51 @@ class UnrealPrelaunchHook(PreLaunchHook):
             unreal_settings = get_project_settings(current_project).get("unreal")
             allow_project_creation = unreal_settings["project_setup"].get(
             "allow_project_creation")
+            # add the project template options
+            # add the custom path for the existing project
             if allow_project_creation:
-                with tempfile.TemporaryDirectory() as temp_dir:
-                    self.exec_ue_project_gen(engine_version,
-                                             unreal_project_name,
-                                             engine_path,
-                                             Path(temp_dir))
-                    try:
-                        self.log.info((
-                            f"Moving from {temp_dir} to "
-                            f"{project_path.as_posix()}"
-                        ))
-                        shutil.copytree(
-                            temp_dir, project_path, dirs_exist_ok=True)
+                existing_uproject_directory = Path(
+                    unreal_settings["project_setup"].get(
+                        "existing_uproject_directory")
+                )
+                uproject_files = list(existing_uproject_directory.glob("*.uproject"))
+                if (
+                    existing_uproject_directory.exists() and
+                    uproject_files
+                ):
+                    self.copy_project(existing_uproject_directory, project_path)
+                    # rename the project folder copied from existing_uproject directory
+                    new_project_path = project_path.parent / unreal_project_name
+                    project_path.rename(new_project_path)
 
-                    except shutil.Error as e:
-                        raise ApplicationLaunchFailed((
-                            f"{self.signature} Cannot copy directory {temp_dir} "
-                            f"to {project_path.as_posix()} - {e}"
-                        )) from e
+                    # find the copied uproject file in the new project directory
+                    copied_uproject_files = list(new_project_path.glob("*.uproject"))
+                    if len(copied_uproject_files) != 1:
+                        raise ApplicationLaunchFailed(
+                            f"{self.signature} Expected exactly one .uproject file in "
+                            f"{new_project_path}, but found {len(copied_uproject_files)}. "
+                            "Please check the project directory."
+                        )
+                    copied_uproject_file = copied_uproject_files[0]
+                    # set the correct engine version on the copied file
+                    self.set_engine_version(copied_uproject_file, engine_version)
 
+                    # rename the copied uproject file to match the expected filename
+                    copied_uproject_file.rename(new_project_path / unreal_project_filename)
+                    self.log.info((
+                        f"{self.signature} Renamed {copied_uproject_file.name} to "
+                        f"{unreal_project_filename}"
+                    ))
+                else:
+                    with tempfile.TemporaryDirectory() as temp_dir:
+                        self.exec_ue_project_gen(engine_version,
+                                                 unreal_project_name,
+                                                 engine_path,
+                                                 Path(temp_dir))
+                        self.copy_project(Path(temp_dir), project_path)
+
+            # if the template path has been found with unreal project
+            # copy that existing project to ayon work directory
             elif unreal_settings["project_setup"].get(
                     "force_existing_project"):
                 msg = (
@@ -290,3 +316,55 @@ class UnrealPrelaunchHook(PreLaunchHook):
         # Append the project file to launch arguments
         self.launch_context.launch_args.append(
             f"\"{project_file.as_posix()}\"")
+
+    def set_engine_version(self, uproject_path: Path, new_version: str):
+        """Set the engine version in a Unreal project file.
+
+        Args:
+            uproject_path (Path): The path to the .uproject file.
+            new_version (str): The new engine version to set.
+
+        Raises:
+            FileNotFoundError: If the .uproject file does not exist.
+        """
+        if not uproject_path.is_file():
+            raise FileNotFoundError(f"File not found: {uproject_path}")
+
+        try:
+            data = json.loads(uproject_path.read_text(encoding="utf-8"))
+
+        except json.JSONDecodeError as e:
+            raise ApplicationLaunchFailed(
+                f"{self.signature} Malformed .uproject file at {uproject_path}: {e}"
+            ) from e
+
+        # Set the new engine version
+        data["EngineAssociation"] = new_version
+
+        uproject_path.write_text(json.dumps(data, indent=4), encoding="utf-8")
+
+        self.log.info(
+            f"Engine version set to '{new_version}' for {uproject_path}"
+        )
+
+    def copy_project(self, source: Path, destination: Path):
+        """Copy an Unreal project directory.
+
+        Args:
+            source (Path): The source project directory.
+            destination (Path): The destination directory.
+        """
+        try:
+            self.log.info((
+                f"Moving from {source.as_posix()} to "
+                f"{destination.as_posix()}"
+            ))
+            shutil.copytree(
+                source, destination, dirs_exist_ok=True)
+
+        except shutil.Error as e:
+            msg = (
+                f"{self.signature} Cannot copy directory {source.as_posix()} "
+                f"to {destination.as_posix()} - {e}"
+            )
+            raise ApplicationLaunchFailed(msg) from e
