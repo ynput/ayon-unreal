@@ -899,11 +899,12 @@ def select_camera(sequence):
                 actor_subsys.set_actor_selection_state(actor, False)
 
 
-def format_asset_directory(context, directory_template):
+def format_asset_directory(context, directory_template, asset_name_template):
     """Setting up the asset directory path and name.
     Args:
         context (dict): context
         directory_template (str): directory template path
+        asset_name_template (str): asset name template
 
     Returns:
         tuple[str, str]: asset directory, asset name
@@ -939,36 +940,32 @@ def format_asset_directory(context, directory_template):
         data["version"]["version"] = "hero"
     else:
         data["version"]["version"] = f"v{version:03d}"
-    asset_name_with_version = set_asset_name(data)
+    asset_name_with_version = set_asset_name(data, asset_name_template)
     asset_dir = StringTemplate(directory_template).format_strict(data)
 
     return f"{AYON_ROOT_DIR}/{asset_dir}", asset_name_with_version
 
 
-def set_asset_name(data):
+def set_asset_name(data, asset_name_template):
     """Set the name of the asset during loading
 
     Args:
-        folder_name (str): folder name
-        name (str): instance name
-        extension (str): extension
+        data (dict): context data
+        asset_name_template (str): asset name template
 
     Returns:
         str: asset name
     """
-    asset_name = None,
-    name = data["product"]["name"]
-    version = data["version"]["version"]
     folder_name = data["folder"]["name"]
     extension = data["representation"]["name"]
     if not extension:
-        asset_name = name
-    elif folder_name:
-        asset_name = "{}_{}_{}_{}".format(
-            folder_name, name, version, extension)
-    else:
-        asset_name = "{}_{}_{}".format(name, version, extension)
-    return asset_name
+        asset_name_template = asset_name_template.replace(
+            "_{representation[name]}", "")
+    elif not folder_name:
+        asset_name_template = asset_name_template.replace(
+            "{folder[name]}_", "")
+
+    return StringTemplate(asset_name_template).format_strict(data)
 
 
 def show_audit_dialog(missing_asset):

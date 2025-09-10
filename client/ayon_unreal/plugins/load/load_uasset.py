@@ -42,6 +42,7 @@ class UAssetLoader(plugin.Loader):
     extension = "uasset"
 
     loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
+    loaded_asset_name = "{folder[name]}_{product[name]}_{version[version]}_{representation[name]}"       # noqa
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -71,7 +72,7 @@ class UAssetLoader(plugin.Loader):
         folder_path = context["folder"]["path"]
         suffix = "_CON"
         asset_root, asset_name = unreal_pipeline.format_asset_directory(
-            context, self.loaded_asset_dir
+            context, self.loaded_asset_dir, self.loaded_asset_name
         )
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(

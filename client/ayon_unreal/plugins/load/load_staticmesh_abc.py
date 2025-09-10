@@ -27,6 +27,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
 
     abc_conversion_preset = "maya"
     loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
+    loaded_asset_name = "{folder[name]}_{product[name]}_{version[version]}_{representation[name]}"      # noqa
     show_dialog = False
 
     @classmethod
@@ -36,6 +37,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
         unreal_settings = project_settings["unreal"]["import_settings"]
         cls.abc_conversion_preset = unreal_settings["abc_conversion_preset"]
         cls.loaded_asset_dir = unreal_settings["loaded_asset_dir"]
+        cls.loaded_asset_name = unreal_settings["loaded_asset_name"]
         cls.show_dialog = unreal_settings["show_dialog"]
 
     @classmethod
@@ -232,14 +234,12 @@ class StaticMeshAlembicLoader(plugin.Loader):
 
         suffix = "_CON"
         path = self.filepath_from_context(context)
-        ext = os.path.splitext(path)[-1].lstrip(".")
-
         asset_root, asset_name = format_asset_directory(
-            context, self.loaded_asset_dir
+            context, self.loaded_asset_dir, self.loaded_asset_name
         )
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            asset_root, suffix=f"_{ext}")
+            asset_root, suffix="")
 
         container_name += suffix
         should_use_layout = options.get("layout", False)
@@ -292,14 +292,12 @@ class StaticMeshAlembicLoader(plugin.Loader):
         # Create directory for asset and Ayon container
         suffix = "_CON"
         path = self.filepath_from_context(context)
-        ext = os.path.splitext(path)[-1].lstrip(".")
-
         asset_root, asset_name = format_asset_directory(
-            context, self.loaded_asset_dir
+            context, self.loaded_asset_dir, self.loaded_asset_name
         )
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            asset_root, suffix=f"_{ext}")
+            asset_root, suffix="")
 
         container_name += suffix
         should_use_layout = container.get("layout", False)

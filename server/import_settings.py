@@ -44,6 +44,11 @@ class UnrealImportModel(BaseSettingsModel):
         description="Asset directories to store the loaded assets",
 
     )
+    loaded_asset_name: str = SettingsField(
+        "{folder[name]}_{product[name]}_{version[version]}_{representation[name]}",
+        title="Asset name for loaded assets",
+        description="Asset name for the loaded assets",
+    )
     use_nanite: bool = SettingsField(True,
         title="Use nanite",
         description=(
@@ -105,6 +110,7 @@ class UnrealImportModel(BaseSettingsModel):
 
 DEFAULT_IMPORT_SETTINGS = {
     "loaded_asset_dir": "{folder[path]}/{product[name]}_{version[version]}",
+    "loaded_asset_name": "{folder[name]}_{product[name]}_{version[version]}_{representation[name]}",
     "asset_loading_location": "project",
     "use_nanite": True,
     "show_dialog": False,

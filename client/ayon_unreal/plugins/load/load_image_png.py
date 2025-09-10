@@ -25,6 +25,7 @@ class TexturePNGLoader(plugin.Loader):
     # Defined by settings
     show_dialog = False
     loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
+    loaded_asset_name = "{folder[name]}_{product[name]}_{version[version]}_{representation[name]}"      # noqa
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -33,6 +34,8 @@ class TexturePNGLoader(plugin.Loader):
         # Apply import settings
         import_settings = unreal_settings.get("import_settings", {})
         cls.show_dialog = import_settings.get("show_dialog", cls.show_dialog)
+        cls.loaded_asset_dir = import_settings.get("loaded_asset_dir", cls.loaded_asset_dir)
+        cls.loaded_asset_name = import_settings.get("loaded_asset_name", cls.loaded_asset_name)
 
     @classmethod
     def get_task(cls, filename, asset_dir, asset_name, replace):
@@ -129,13 +132,12 @@ class TexturePNGLoader(plugin.Loader):
         folder_path = context["folder"]["path"]
         suffix = "_CON"
         path = self.filepath_from_context(context)
-        ext = os.path.splitext(path)[-1].lstrip(".")
         asset_root, asset_name = format_asset_directory(
-            context, self.loaded_asset_dir
+            context, self.loaded_asset_dir, self.loaded_asset_name
         )
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            asset_root, suffix=f"_{ext}")
+            asset_root, suffix="")
 
         container_name += suffix
 
@@ -165,18 +167,16 @@ class TexturePNGLoader(plugin.Loader):
         product_type = context["product"]["productType"]
         repre_entity = context["representation"]
         path = self.filepath_from_context(context)
-        ext = os.path.splitext(path)[-1].lstrip(".")
 
         # Create directory for asset and Ayon container
         suffix = "_CON"
 
         asset_root, asset_name = format_asset_directory(
-            context, self.loaded_asset_dir,
+            context, self.loaded_asset_dir, self.loaded_asset_name
         )
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            asset_root, suffix=f"_{ext}")
-
+            asset_root, suffix="")
         container_name += suffix
         asset_dir = self.import_and_containerize(
             path, asset_dir, container_name
