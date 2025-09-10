@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """Loader for published alembics."""
-import os
 
 from ayon_core.pipeline import AYON_CONTAINER_ID
 from ayon_core.lib import EnumDef

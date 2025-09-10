@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """Load Static meshes form FBX."""
-import os
 
 from ayon_core.pipeline import AYON_CONTAINER_ID
 

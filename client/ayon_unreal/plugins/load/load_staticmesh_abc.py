@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """Loader for Static Mesh alembics."""
-import os
 
 from ayon_core.pipeline import AYON_CONTAINER_ID
 from ayon_unreal.api import plugin

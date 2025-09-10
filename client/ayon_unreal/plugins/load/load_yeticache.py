@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Loader for Yeti Cache."""
 import json
-import os
+
 from ayon_core.pipeline import AYON_CONTAINER_ID
 from ayon_unreal.api import plugin
 from ayon_unreal.api import pipeline as unreal_pipeline
