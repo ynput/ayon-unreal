@@ -1,4 +1,5 @@
 import os
+import ast
 from typing import Optional
 
 import unreal
@@ -77,7 +78,7 @@ def get_render_config(
         for preset in render_presets:
             if preset.asset_name == render_preset:
                 config = preset.get_asset()
-                config_path = preset.object_path
+                config_path = preset.package_path
                 break
 
     if config:
@@ -192,18 +193,22 @@ def start_rendering():
     project_settings = get_project_settings(project_name)
     render_settings = project_settings["unreal"]["render_setup"]
 
-    render_preset = inst_data["creator_attributes"].get(
-        "render_preset"
-    )
-
-    _, config = get_render_config(
-        project_name, render_preset, render_settings)
 
     les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
     current_level = les.get_current_level()
     current_level_name = current_level.get_outer().get_path_name()
 
     for i in inst_data:
+        # for some reason the instance data has strings, convert them
+        # back to their original types
+        render_preset = ast.literal_eval(i["creator_attributes"]).get(
+            "render_preset"
+        )
+
+        _, config = get_render_config(
+            project_name, render_preset, render_settings)
+
+
         sequence = ar.get_asset_by_object_path(i["sequence"]).get_asset()
 
         sequences = [{
@@ -222,18 +227,22 @@ def start_rendering():
             subscenes = pipeline.get_subsequences(seq.get('sequence'))
 
             if subscenes:
-                for sub_seq in subscenes:
-                    sequences.append({
+                sequences.extend(
+                    {
                         "sequence": sub_seq.get_sequence(),
-                        "output": (f"{seq.get('output')}/"
-                                   f"{sub_seq.get_sequence().get_name()}"),
+                        "output": (
+                            f"{seq.get('output')}/"
+                            f"{sub_seq.get_sequence().get_name()}"
+                        ),
                         "frame_range": (
-                            sub_seq.get_start_frame(), sub_seq.get_end_frame())
-                    })
-            else:
-                # Avoid rendering camera sequences
-                if "_camera" not in seq.get('sequence').get_name():
-                    render_list.append(seq)
+                            sub_seq.get_start_frame(),
+                            sub_seq.get_end_frame(),
+                        ),
+                    }
+                    for sub_seq in subscenes
+                )
+            elif "_camera" not in seq.get('sequence').get_name():
+                render_list.append(seq)
 
         if i["master_level"] != current_level_name:
             unreal.log_warning(
