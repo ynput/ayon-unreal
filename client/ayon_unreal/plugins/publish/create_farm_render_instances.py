@@ -37,6 +37,7 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
     order = pyblish.api.CollectorOrder + 0.21
     label = "Create Farm Render Instances"
     families = ["render"]
+    log = unreal.logger
 
     def preparing_rendering_instance(self, instance):
         context = instance.context
@@ -61,48 +62,51 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
             subscenes = pipeline.get_subsequences(s.get('sequence'))
 
             if subscenes:
-                for ss in subscenes:
-                    sequences.append({
+                sequences.extend(
+                    {
                         "sequence": ss.get_sequence(),
-                        "output": (f"{s.get('output')}/"
-                                   f"{ss.get_sequence().get_name()}"),
+                        "output": (
+                            f"{s.get('output')}/" f"{ss.get_sequence().get_name()}"
+                        ),
                         "frame_range": (
-                            ss.get_start_frame(), ss.get_end_frame() - 1)
-                    })
-            else:
-                # Avoid creating instances for camera sequences
-                if "_camera" not in s.get('sequence').get_name():
-                    seq = s.get('sequence')
-                    seq_name = seq.get_name()
+                            ss.get_start_frame(),
+                            ss.get_end_frame() - 1,
+                        ),
+                    }
+                    for ss in subscenes
+                )
+            elif "_camera" not in s.get('sequence').get_name():
+                seq = s.get('sequence')
+                seq_name = seq.get_name()
 
-                    product_type = "render"
-                    new_product_name = f"{data.get('productName')}_{seq_name}"
-                    new_instance = context.create_instance(
-                        new_product_name
-                    )
-                    new_instance[:] = seq_name
+                new_product_name = f"{data.get('productName')}_{seq_name}"
+                new_instance = context.create_instance(
+                    new_product_name
+                )
+                new_instance[:] = seq_name
 
-                    new_data = new_instance.data
+                new_data = new_instance.data
 
-                    new_data["folderPath"] = instance.data["folderPath"]
-                    new_data["setMembers"] = seq_name
-                    new_data["productName"] = new_product_name
-                    new_data["productType"] = product_type
-                    new_data["family"] = product_type
-                    new_data["families"] = [product_type, "review"]
-                    new_data["parent"] = data.get("parent")
-                    new_data["level"] = data.get("level")
-                    new_data["output"] = s['output']
-                    new_data["fps"] = seq.get_display_rate().numerator
-                    new_data["frameStart"] = int(s.get('frame_range')[0])
-                    new_data["frameEnd"] = int(s.get('frame_range')[1])
-                    new_data["sequence"] = seq.get_path_name()
-                    new_data["master_sequence"] = data["master_sequence"]
-                    new_data["master_level"] = data["master_level"]
-                    new_data["review"] = instance.data.get("review", False)
-                    new_data["farm"] = instance.data.get("farm", False)
+                new_data["folderPath"] = instance.data["folderPath"]
+                new_data["setMembers"] = seq_name
+                new_data["productName"] = new_product_name
+                product_type = "render"
+                new_data["productType"] = product_type
+                new_data["family"] = product_type
+                new_data["families"] = [product_type, "review"]
+                new_data["parent"] = data.get("parent")
+                new_data["level"] = data.get("level")
+                new_data["output"] = s['output']
+                new_data["fps"] = seq.get_display_rate().numerator
+                new_data["frameStart"] = int(s.get('frame_range')[0])
+                new_data["frameEnd"] = int(s.get('frame_range')[1])
+                new_data["sequence"] = seq.get_path_name()
+                new_data["master_sequence"] = data["master_sequence"]
+                new_data["master_level"] = data["master_level"]
+                new_data["review"] = instance.data.get("review", False)
+                new_data["farm"] = instance.data.get("farm", False)
 
-                    self.log.debug(f"new instance data: {new_data}")
+                self.log.debug(f"new instance data: {new_data}")
 
     def get_instances(self, context):
         instances = []

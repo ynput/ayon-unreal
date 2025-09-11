@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 
 import unreal
 
@@ -20,7 +21,7 @@ SUPPORTED_EXTENSION_MAP = {
 
 
 def _queue_finish_callback(exec, success):
-    unreal.log("Render completed. Success: " + str(success))
+    unreal.log(f"Render completed. Success: {str(success)}")
 
     # Delete our reference so we don't keep it alive.
     global executor
@@ -37,24 +38,60 @@ def _job_finish_callback(job, success):
     unreal.log("Individual job completed.")
 
 
-def get_render_config(project_name, project_render_settings=None):
+def get_render_config(
+        project_name: str,
+        render_preset: Optional[str] = None,
+        project_render_settings=None):
     """Returns Unreal asset from render config.
 
     Expects configured location of render config set in Settings. This path
-    must contain stored render config in Unreal project
+    must contain stored render config in Unreal project.
+
+    Render config in the settings are deprecated, use render preset
+    on the instance instead.
+
     Args:
         project_name (str):
-        project_settings (dict): Project render settings from get_project_settings
-    Returns
+        render_preset (str): Name of the render preset to
+            use from instance.
+        project_settings (dict): Project render settings from
+            get_project_settings.
+
+    Returns:
         (str, uasset): path and UAsset
+
     Raises:
         RuntimeError if no path to config is set
+
     """
+    ar = unreal.AssetRegistryHelpers.get_asset_registry()
+    config = None
+    config_path = None
+
+    if render_preset:
+        asset_filter = unreal.ARFilter(
+            class_names=["MoviePipelinePrimaryConfig"],
+            recursive_paths=True,
+        )
+        render_presets = ar.get_assets(asset_filter)
+        for preset in render_presets:
+            if preset.asset_name == render_preset:
+                config = preset.get_asset()
+                config_path = preset.object_path
+                break
+
+    if config:
+        unreal.log(f"Using render preset {render_preset}")
+        return config_path, config
+
+    unreal.log(
+        "No render preset found on instance, "
+        "falling back to project settings")
+
     if not project_render_settings:
         project_settings = get_project_settings(project_name)
         project_render_settings = project_settings["unreal"]["unreal_setup"]
 
-    ar = unreal.AssetRegistryHelpers.get_asset_registry()
     config_path = project_render_settings["render_config_path"]
 
     if not config_path:
@@ -154,7 +191,13 @@ def start_rendering():
 
     project_settings = get_project_settings(project_name)
     render_settings = project_settings["unreal"]["render_setup"]
-    _, config = get_render_config(project_name, render_settings)
+
+    render_preset = inst_data["creator_attributes"].get(
+        "render_preset"
+    )
+
+    _, config = get_render_config(
+        project_name, render_preset, render_settings)
 
     les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
     current_level = les.get_current_level()
@@ -205,6 +248,10 @@ def start_rendering():
             job.sequence = unreal.SoftObjectPath(i["master_sequence"])
             job.map = unreal.SoftObjectPath(i["master_level"])
             job.author = "Ayon"
+
+
+
+            job.set_configuration(config)
 
             # If we have a saved configuration, copy it to the job.
             if config:
