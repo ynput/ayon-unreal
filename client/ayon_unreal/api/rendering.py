@@ -249,8 +249,6 @@ def start_rendering():
             job.map = unreal.SoftObjectPath(i["master_level"])
             job.author = "Ayon"
 
-
-
             job.set_configuration(config)
 
             # If we have a saved configuration, copy it to the job.
