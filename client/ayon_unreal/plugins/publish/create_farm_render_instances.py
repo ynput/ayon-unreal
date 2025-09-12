@@ -37,7 +37,7 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
     order = pyblish.api.CollectorOrder + 0.21
     label = "Create Farm Render Instances"
     families = ["render"]
-    log = unreal.logger
+    log = unreal.log
 
     def preparing_rendering_instance(self, instance):
         context = instance.context
