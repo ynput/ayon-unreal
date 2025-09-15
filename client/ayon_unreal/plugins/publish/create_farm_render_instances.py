@@ -118,30 +118,42 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
         project_name = context.data["projectName"]
         project_settings = context.data['project_settings']
         render_settings = project_settings["unreal"]["render_setup"]
-        config_path, config = get_render_config(project_name, render_settings)
-        if not config:
-            raise RuntimeError("Please provide stored render config at path "
-                "set in `ayon+settings://unreal/render_setup/render_config_path`")
 
         output_ext_from_settings = render_settings["render_format"]
-        config = set_output_extension_from_settings(output_ext_from_settings,
-                                                    config)
-
-        ext = self._get_ext_from_config(config)
-        if not ext:
-            raise RuntimeError("Please provide output extension in config!")
-
-        output_settings = config.find_or_add_setting_by_class(
-            unreal.MoviePipelineOutputSetting)
-
-        resolution = output_settings.output_resolution
-        resolution_width = resolution.x
-        resolution_height = resolution.y
-
-        output_fps = output_settings.output_frame_rate
-        fps = f"{output_fps.denominator}.{output_fps.numerator}"
 
         for inst in context:
+            render_preset =inst.data.get("creator_attributes", {}).get(
+                "render_preset"
+            )
+            config_path, config = get_render_config(
+                project_name, render_preset, render_settings
+            )
+            if not config:
+                raise RuntimeError(
+                    "Please provide stored render config at path "
+                    "set in `ayon+settings://unreal/render_setup/render_config_path`"
+                )
+            config = set_output_extension_from_settings(
+                output_ext_from_settings, config
+            )
+
+            ext = self._get_ext_from_config(config)
+            if not ext:
+                raise RuntimeError(
+                    "Please provide output extension in config!"
+                )
+
+            output_settings = config.find_or_add_setting_by_class(
+                unreal.MoviePipelineOutputSetting
+            )
+
+            resolution = output_settings.output_resolution
+            resolution_width = resolution.x
+            resolution_height = resolution.y
+
+            output_fps = output_settings.output_frame_rate
+            fps = f"{output_fps.denominator}.{output_fps.numerator}"
+
             instance_families = inst.data.get("families", [])
             product_name = inst.data["productName"]
 
