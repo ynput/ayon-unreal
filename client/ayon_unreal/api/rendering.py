@@ -1,4 +1,7 @@
 import os
+import ast
+from typing import Optional
+
 import unreal
 
 from ayon_core.settings import get_project_settings
@@ -19,7 +22,7 @@ SUPPORTED_EXTENSION_MAP = {
 
 
 def _queue_finish_callback(exec, success):
-    unreal.log("Render completed. Success: " + str(success))
+    unreal.log(f"Render completed. Success: {str(success)}")
 
     # Delete our reference so we don't keep it alive.
     global executor
@@ -36,24 +39,60 @@ def _job_finish_callback(job, success):
     unreal.log("Individual job completed.")
 
 
-def get_render_config(project_name, project_render_settings=None):
+def get_render_config(
+        project_name: str,
+        render_preset: Optional[str] = None,
+        project_render_settings=None):
     """Returns Unreal asset from render config.
 
     Expects configured location of render config set in Settings. This path
-    must contain stored render config in Unreal project
+    must contain stored render config in Unreal project.
+
+    Render config in the settings are deprecated, use render preset
+    on the instance instead.
+
     Args:
         project_name (str):
-        project_settings (dict): Project render settings from get_project_settings
-    Returns
+        render_preset (str): Name of the render preset to
+            use from instance.
+        project_settings (dict): Project render settings from
+            get_project_settings.
+
+    Returns:
         (str, uasset): path and UAsset
+
     Raises:
         RuntimeError if no path to config is set
+
     """
+    ar = unreal.AssetRegistryHelpers.get_asset_registry()
+    config = None
+    config_path = None
+
+    if render_preset:
+        asset_filter = unreal.ARFilter(
+            class_names=["MoviePipelinePrimaryConfig"],
+            recursive_paths=True,
+        )
+        render_presets = ar.get_assets(asset_filter)
+        for preset in render_presets:
+            if preset.asset_name == render_preset:
+                config = preset.get_asset()
+                config_path = preset.package_path
+                break
+
+    if config:
+        unreal.log(f"Using render preset {render_preset}")
+        return config_path, config
+
+    unreal.log(
+        "No render preset found on instance, "
+        "falling back to project settings")
+
     if not project_render_settings:
         project_settings = get_project_settings(project_name)
         project_render_settings = project_settings["unreal"]["unreal_setup"]
 
-    ar = unreal.AssetRegistryHelpers.get_asset_registry()
     config_path = project_render_settings["render_config_path"]
 
     if not config_path:
@@ -153,7 +192,7 @@ def start_rendering():
 
     project_settings = get_project_settings(project_name)
     render_settings = project_settings["unreal"]["render_setup"]
-    _, config = get_render_config(project_name, render_settings)
+
 
     les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
     current_level = les.get_current_level()
@@ -162,6 +201,16 @@ def start_rendering():
     for i in inst_data:
         if i["productType"] == "editorial_pkg":
             render_dir = f"{root}/{project_name}/editorial_pkg"
+        # for some reason the instance data has strings, convert them
+        # back to their original types
+        render_preset = ast.literal_eval(i["creator_attributes"]).get(
+            "render_preset"
+        )
+
+        _, config = get_render_config(
+            project_name, render_preset, render_settings)
+
+
         sequence = ar.get_asset_by_object_path(i["sequence"]).get_asset()
 
         sequences = [{
@@ -180,17 +229,20 @@ def start_rendering():
             subscenes = pipeline.get_subsequences(seq.get('sequence'))
 
             if subscenes and i["productType"] != "editorial_pkg":
-                for sub_seq in subscenes:
-                    sub_seq_obj = sub_seq.get_sequence()
-                    if sub_seq_obj is None:
-                        continue
-                    sequences.append({
-                        "sequence": sub_seq_obj,
-                        "output": (f"{seq.get('output')}/"
-                                f"{sub_seq_obj.get_name()}"),
+                sequences.extend(
+                    {
+                        "sequence": sub_seq.get_sequence(),
+                        "output": (
+                            f"{seq.get('output')}/"
+                            f"{sub_seq.get_sequence().get_name()}"
+                        ),
                         "frame_range": (
-                            sub_seq.get_start_frame(), sub_seq.get_end_frame())
-                    })
+                            sub_seq.get_start_frame(),
+                            sub_seq.get_end_frame(),
+                        ),
+                    }
+                    for sub_seq in subscenes
+                )
             # remove all the codes unnecssary for the editorial package
             elif subscenes:
                 for sub_seq in subscenes:
@@ -204,16 +256,13 @@ def start_rendering():
                         "sequence": seq.get('sequence'),
                         "output": (f"{seq.get('output')}"),
                         "frame_range": (
-                            sub_seq.get_start_frame(), sub_seq.get_end_frame())
-                    })
-            else:
-                # Avoid rendering camera sequences
-                if "_camera" not in seq.get('sequence').get_name():
-                    render_list.append({
-                        "sequence": seq.get('sequence'),
-                        "output": seq.get('output'),
-                        "frame_range": seq.get('frame_range')
-                    })
+                            sub_seq.get_start_frame(),
+                            sub_seq.get_end_frame(),
+                        )
+                    }
+                )
+            elif "_camera" not in seq.get('sequence').get_name():
+                render_list.append(seq)
 
         if i["master_level"] != current_level_name:
             unreal.log_warning(
@@ -228,6 +277,8 @@ def start_rendering():
             job.sequence = unreal.SoftObjectPath(i["master_sequence"])
             job.map = unreal.SoftObjectPath(i["master_level"])
             job.author = "Ayon"
+
+            job.set_configuration(config)
 
             # If we have a saved configuration, copy it to the job.
             if config:
