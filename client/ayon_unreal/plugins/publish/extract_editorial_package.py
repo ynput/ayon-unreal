@@ -91,8 +91,11 @@ class ExtractEditorialPackage(publish.Extractor):
 
                     reformat_start_time = timeline_start_frame - timeline_start_frame
                     otio_directory = os.path.dirname(media_source_path)
+                    relative_media_source_path = os.path.relpath(
+                        media_source_path, start=otio_directory
+                    )
                     new_media_reference = otio.schema.ExternalReference(
-                        target_url=os.path.relpath(media_source_path, otio_directory),
+                        target_url=Path(relative_media_source_path).as_posix(),
                         available_range=otio.opentime.TimeRange(
                             start_time=otio.opentime.RationalTime(
                                 value=reformat_start_time, rate=frame_rate
@@ -110,7 +113,7 @@ class ExtractEditorialPackage(publish.Extractor):
                         )
                         reformat_start_time = timeline_start_frame - timeline_start_frame
                         new_media_reference = otio.schema.ImageSequenceReference(
-                            target_url_base="./",
+                            target_url_base=Path("./").as_posix(),
                             name_prefix=f"{file_head}.",
                             name_suffix=extension,
                             start_frame=clip.media_reference.start_frame,
@@ -122,8 +125,8 @@ class ExtractEditorialPackage(publish.Extractor):
                                     rate=frame_rate
                                 ),
                                 duration=clip.range_in_parent().duration
-                                ),
-                            )
+                            ),
+                        )
                     except AttributeError:
                         pass
 
