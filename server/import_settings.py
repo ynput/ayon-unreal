@@ -78,6 +78,11 @@ class UnrealImportModel(BaseSettingsModel):
         description="Directories to store the loaded layouts",
         section="Load Layout Settings"
     )
+    loaded_layout_name: str = SettingsField(
+        "{folder[name]}_{product[name]}_{version[version]}",
+        title="Layout name for loaded layouts",
+        description="Layout name for the loaded layouts",
+    )
     level_sequences_for_layouts: bool = SettingsField(
         True,
         title="Generate level sequences when loading layouts"
@@ -116,6 +121,7 @@ DEFAULT_IMPORT_SETTINGS = {
     "show_dialog": False,
     "abc_conversion_preset": "maya",
     "loaded_layout_dir": "{folder[path]}/{product[name]}",
+    "loaded_layout_name": "{folder[name]}_{product[name]}_{version[version]}",
     "level_sequences_for_layouts": True,
     "force_loaded": False,
     "folder_representation_type": "json",
