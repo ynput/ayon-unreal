@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from ayon_core.lib import BoolDef
 from ayon_core.pipeline.publish import PublishError
 
 import ayon_api

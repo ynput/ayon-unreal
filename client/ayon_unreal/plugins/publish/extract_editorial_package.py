@@ -4,7 +4,6 @@ import unreal
 import pyblish.api
 import opentimelineio as otio
 from ayon_core.pipeline import publish
-from ayon_core.settings import get_project_settings
 from ayon_unreal.otio import unreal_export
 
 
