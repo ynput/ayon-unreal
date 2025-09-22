@@ -940,32 +940,10 @@ def format_asset_directory(context, directory_template, asset_name_template):
         data["version"]["version"] = "hero"
     else:
         data["version"]["version"] = f"v{version:03d}"
-    asset_name_with_version = set_asset_name(data, asset_name_template)
+    asset_name_with_version = StringTemplate(asset_name_template).format_strict(data)
     asset_dir = StringTemplate(directory_template).format_strict(data)
 
     return f"{AYON_ROOT_DIR}/{asset_dir}", asset_name_with_version
-
-
-def set_asset_name(data, asset_name_template):
-    """Set the name of the asset during loading
-
-    Args:
-        data (dict): context data
-        asset_name_template (str): asset name template
-
-    Returns:
-        str: asset name
-    """
-    folder_name = data["folder"]["name"]
-    extension = data["representation"]["name"]
-    if not extension:
-        asset_name_template = asset_name_template.replace(
-            "_{representation[name]}", "")
-    elif not folder_name:
-        asset_name_template = asset_name_template.replace(
-            "{folder[name]}_", "")
-
-    return StringTemplate(asset_name_template).format_strict(data)
 
 
 def show_audit_dialog(missing_asset):
