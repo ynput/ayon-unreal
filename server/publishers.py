@@ -55,10 +55,7 @@ DEFAULT_PUBLISH_SETTINGS = {
             "output": [
                 "-pix_fmt yuv420p",
                 "-crf 18",
-                "-c:a aac",
-                "-b:a 192k",
-                "-g 1",
-                "-movflags faststart"
+                "-g 1"
             ]
         },
     }
