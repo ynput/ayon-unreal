@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Loader for Yeti Cache."""
 import json
-import os
+
 from ayon_core.pipeline import AYON_CONTAINER_ID
 from ayon_unreal.api import plugin
 from ayon_unreal.api import pipeline as unreal_pipeline
@@ -18,6 +18,7 @@ class YetiLoader(plugin.Loader):
     color = "orange"
 
     loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
+    loaded_asset_name = "{folder[name]}_{product[name]}_{version[version]}_{representation[name]}"      # noqa
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -25,6 +26,7 @@ class YetiLoader(plugin.Loader):
         # Apply import settings
         unreal_settings = project_settings["unreal"]["import_settings"]
         cls.loaded_asset_dir = unreal_settings["loaded_asset_dir"]
+        cls.loaded_asset_name = unreal_settings["loaded_asset_name"]
 
     @staticmethod
     def get_task(filename, asset_dir, asset_name, replace):
@@ -94,14 +96,13 @@ class YetiLoader(plugin.Loader):
         folder_path = context["folder"]["path"]
         suffix = "_CON"
         path = self.filepath_from_context(context)
-        ext = os.path.splitext(path)[-1].lstrip(".")
         asset_root, asset_name = unreal_pipeline.format_asset_directory(
-            context, self.loaded_asset_dir
+            context, self.loaded_asset_dir, self.loaded_asset_name
         )
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            asset_root, suffix=f"_{ext}")
+            asset_root, suffix="")
         container_name = f"{container_name}_{suffix}"
 
         should_use_layout = options.get("layout", False)
