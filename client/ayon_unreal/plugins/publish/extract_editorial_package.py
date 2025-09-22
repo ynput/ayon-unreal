@@ -178,34 +178,12 @@ class ExtractEditorialPackage(publish.Extractor):
         # determine published path from Anatomy.
         template_data = instance.data.get("anatomyData")
         template_data["representation"] = representation["name"]
-        template_data["ext"] = (
-            representation["ext"]
-            if instance.data.get("use_sequence", False)
-            else "mp4"
-        )
+        template_data["ext"] = representation["ext"]
         template_data["comment"] = None
 
         anatomy = instance.context.data["anatomy"]
         template_data["root"] = anatomy.roots
         template = anatomy.get_template_item("publish", "default", "path")
         template_filled = template.format_strict(template_data)
-        if template_data["ext"] == "mp4":
-            encoded_format = self.get_encoding_settings(instance, template_data["ext"])
-            directory = os.path.dirname(template_filled)
-            filename = os.path.basename(template_filled)
-            filename, extension = os.path.splitext(filename)
-            templated_filename = f"{filename}_{encoded_format}{extension}"
-            template_filled = os.path.join(directory, templated_filename)
-        file_path = Path(template_filled)
-        return file_path.as_posix()
 
-    def get_encoding_settings(self, instance, extension):
-        """Get encoding settings from project settings."""
-        project_name = instance.context.data["projectName"]
-        project_settings = get_project_settings(project_name)
-        review_settings = project_settings["core"]["publish"]["ExtractReview"]["profiles"]
-        for profile in review_settings:
-            if "editorial_pkg" in profile["product_types"] and "unreal" in profile["hosts"]:
-                for output in profile["outputs"]:
-                    if output["ext"] == extension:
-                        return output["name"]
+        return Path(template_filled).as_posix()

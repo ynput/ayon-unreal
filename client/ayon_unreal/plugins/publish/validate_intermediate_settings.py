@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import pyblish.api
-from ayon_core.settings import get_project_settings
 from ayon_core.pipeline.publish import PublishValidationError
 
 
@@ -14,48 +13,29 @@ class ValidateIntermediateSettings(pyblish.api.InstancePlugin):
     label = "Validate Intermediate Settings"
     hosts = ['unreal']
     families = ["editorial_pkg"]
+    video_exts = {"mov", "mp4"}
 
     def get_invalid(self, instance):
         invalid = []
-        project_name = instance.context.data["projectName"]
-        project_settings = get_project_settings(project_name)
-        review_settings = project_settings["core"]["publish"]["ExtractReview"]["profiles"]
-        found = False
-        for profile in review_settings:
-            if "editorial_pkg" in profile["product_types"] and "unreal" in profile["hosts"]:
-                found = True
-                mp4_found = False
-                for output in profile["outputs"]:
-                    if output["ext"] == "mp4":
-                        mp4_found = True
-                        name = output.get("name")
-                        if not name:
-                            invalid.append(
-                                f"Missing encoding settings for {output['ext']} "
-                                f"in profile: {profile['name']}"
-                            )
-                if not mp4_found:
-                    invalid.append(
-                        "No encoding settings found "
-                        "for mp4 in profile: {}".format(profile['name'])
-                    )
-
-        if not found:
+        unreal_settings = instance.context.data["project_settings"]["unreal"]
+        intermediate_settings = unreal_settings.get(
+            "ExtractIntermediateRepresentation", {}
+        )
+        extension = intermediate_settings.get("ext", "")
+        if not extension:
+            invalid.append("No intermediate file extension set in unreal setting.")
+        elif extension not in self.video_exts:
             invalid.append(
-                "No profile found with 'editorial_pkg' in "
-                "product_types and 'unreal' in hosts."
+                f"Invalid intermediate file extension '{extension}' set in unreal setting. "
+                f"Valid extensions are: {', '.join(self.video_exts)}"
             )
 
         return invalid
 
     def process(self, instance):
-        if instance.data.get("use_sequence", False):
-            self.log.debug(
-                "Skipping validate intermediate settings as use_sequence is enabled."
-            )
-            return
-
         invalid = self.get_invalid(instance)
         if invalid:
             report = "{}".format(err for err in invalid)
-            raise PublishValidationError(report, title="No Review Settings Found")
+            raise PublishValidationError(
+                report, title="Invalid Extension for Intermediate Settings Found"
+            )

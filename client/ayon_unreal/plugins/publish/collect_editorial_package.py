@@ -47,9 +47,6 @@ class CollectEditorialPackage(pyblish.api.InstancePlugin,
 
             instance.data["version"] = version
 
-        attr_values = self.get_attr_values_from_data(instance.data)
-        instance.data["use_sequence"] = attr_values.get("use_sequence")
-
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
         sequence = ar.get_asset_by_object_path(
             instance.data.get('sequence')).get_asset()
@@ -76,11 +73,3 @@ class CollectEditorialPackage(pyblish.api.InstancePlugin,
             )
             self.log.error(msg)
             raise PublishError(msg, title="Render directory not found.")
-
-    @classmethod
-    def get_attribute_defs(cls):
-        return [
-            BoolDef("use_sequence",
-                    label="Use Sequence",
-                    default=True),
-        ]

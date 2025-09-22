@@ -122,9 +122,8 @@ def create_otio_clip(instance, target_track):
         if "_camera" in name:
             continue
 
-        use_sequence = instance.data.get("use_sequence", False)
         media_reference = create_otio_reference(
-            instance, shot_start, duration, is_sequence=use_sequence
+            instance, shot_start, duration
         )
         source_range = create_otio_time_range(
             int(shot_start),

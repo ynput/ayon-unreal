@@ -11,8 +11,8 @@ from distutils import dir_util
 from pathlib import Path
 from typing import List
 
-from ayon_core.pipeline.context_tools import get_current_project_settings
 from ayon_core.settings import get_project_settings
+from ayon_core.pipeline import get_current_project_name
 
 
 def get_engine_versions(env=None):
@@ -84,7 +84,8 @@ def get_editor_exe_path(engine_path: Path, engine_version: str) -> Path:
     this_os = platform.system().lower()
 
     try:
-        project_settings = get_current_project_settings()
+        project_name = get_current_project_name()
+        project_settings = get_project_settings(project_name)
         apps = project_settings["applications"]
         variants = apps["applications"]["unreal"]["variants"]
         platform_variants = [

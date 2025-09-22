@@ -1007,6 +1007,20 @@ def show_audit_dialog(missing_asset):
     )
 
 
+def get_sequence_by_collection(files):
+    """Get sequence collection from filename.
+    Args:
+        files (str): List of files
+    Returns:
+        Optional[list[str]]: file sequence collection.
+    """
+    collections, _ = clique.assemble(
+    files,
+    patterns=[clique.PATTERNS["frames"]],
+    minimum_items=1)
+    return collections
+
+
 def get_sequence(files):
     """Get sequence from filename.
 
@@ -1024,10 +1038,7 @@ def get_sequence(files):
         Optional[list[str]]: file sequence.
 
     """
-    collections, _ = clique.assemble(
-        files,
-        patterns=[clique.PATTERNS["frames"]],
-        minimum_items=1)
+    collections, _ = get_sequence_by_collection(files)
 
     if len(collections) > 1:
         raise ValueError(
