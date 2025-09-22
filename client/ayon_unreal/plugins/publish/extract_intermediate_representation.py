@@ -97,16 +97,16 @@ class ExtractIntermediateRepresentation(publish.Extractor):
         default_input_args = [
             "-start_number", str(in_frame_start),
             "-framerate", str(sequence_fps),
-            "-i", input_path
         ]
         if input_args:
             default_input_args.extend(input_args)
+        default_input_args.extend(["-i", input_path])
         all_intput_args = self._split_ffmpeg_args(default_input_args)
         output_args = ffmpeg_args.get("output", [])
         video_filters = ffmpeg_args.get("video_filters", [])
         audio_filters = ffmpeg_args.get("audio_filters", [])
 
-        output_args = self.split_ffmpeg_args(output_args)
+        output_args = self._split_ffmpeg_args(output_args)
         video_args_dentifiers = ["-vf", "-filter:v"]
         audio_args_dentifiers = ["-af", "-filter:a"]
         for arg in tuple(output_args):
@@ -177,7 +177,11 @@ class ExtractIntermediateRepresentation(publish.Extractor):
         Returns:
             dict: The intermediate settings for the instance.
         """
-        unreal_settings = instance.context.data["project_settings"]["unreal"]
+        unreal_settings = (
+            instance.context.data["project_settings"]
+                                 ["unreal"]
+                                 ["publish"]
+        )
         intermediate_settings = unreal_settings.get(
             "ExtractIntermediateRepresentation", {}
         )

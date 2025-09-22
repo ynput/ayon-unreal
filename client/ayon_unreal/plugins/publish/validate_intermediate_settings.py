@@ -17,18 +17,26 @@ class ValidateIntermediateSettings(pyblish.api.InstancePlugin):
 
     def get_invalid(self, instance):
         invalid = []
-        unreal_settings = instance.context.data["project_settings"]["unreal"]
+        unreal_settings = (
+            instance.context.data["project_settings"]
+                                 ["unreal"]
+                                 ["publish"]
+        )
         intermediate_settings = unreal_settings.get(
             "ExtractIntermediateRepresentation", {}
         )
         extension = intermediate_settings.get("ext", "")
         if not extension:
-            invalid.append("No intermediate file extension set in unreal setting.")
+            msg = "No intermediate file extension set in unreal setting."
+            self.log.error(msg)
+            invalid.append(msg)
         elif extension not in self.video_exts:
-            invalid.append(
+            msg = (
                 f"Invalid intermediate file extension '{extension}' set in unreal setting. "
                 f"Valid extensions are: {', '.join(self.video_exts)}"
             )
+            self.log.error(msg)
+            invalid.append(msg)
 
         return invalid
 
