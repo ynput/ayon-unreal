@@ -658,7 +658,7 @@ def generate_sequence(h, h_dir):
 
 def find_common_name(asset_name):
     # Find the common prefix
-    prefix_match = re.match(r"^(.*?)(\d+)(.*?)$", asset_name)
+    prefix_match = re.match(r"(.*?)([_]{1,2}v\d+)(.*?)$", asset_name)
     if not prefix_match:
         return
     name, _, ext = prefix_match.groups()
@@ -735,13 +735,75 @@ def replace_skeletal_mesh_actors(old_assets, new_assets, selected):
 
     for old_name, old_mesh in old_meshes.items():
         new_mesh = new_meshes.get(old_name)
-
         if not new_mesh:
             continue
 
         for comp in skeletal_mesh_comps:
             if comp.get_skeletal_mesh_asset() == old_mesh:
                 comp.set_skeletal_mesh_asset(new_mesh)
+                comp.set_animation_mode(unreal.AnimationMode.ANIMATION_SINGLE_NODE)
+                animation_sequence = get_animation_sequence(new_mesh)
+                print(
+                    "Discovering target animation sequence for "
+                    f"replacing: {animation_sequence}"
+                )
+                if animation_sequence:
+                    comp.override_animation_data(
+                        animation_sequence,
+                        is_looping=True,
+                        is_playing=True,
+                        position=0.000000,
+                        play_rate=1.000000
+                    )
+
+def replace_fbx_skeletal_mesh_actors(old_assets, new_assets, selected):
+    skeletal_mesh_comps, old_meshes, new_meshes = _get_comps_and_assets(
+        unreal.SkeletalMeshComponent,
+        unreal.AnimSequence,
+        old_assets,
+        new_assets,
+        selected
+    )
+
+    for old_name, old_mesh in old_meshes.items():
+        new_mesh = new_meshes.get(old_name)
+        if not new_mesh:
+            continue
+
+        for comp in skeletal_mesh_comps:
+            if comp.animation_data.anim_to_play == old_mesh:
+                print(
+                    "Discovering target animation sequence for "
+                    f"replacing: {new_mesh}"
+                )
+                comp.override_animation_data(
+                    new_mesh,
+                    is_looping=True,
+                    is_playing=True,
+                    position=0.000000,
+                    play_rate=1.000000
+                )
+
+
+def get_animation_sequence(new_mesh):
+    """Get the animation sequence associated with a new skeletal mesh.
+
+    Args:
+        new_mesh (unreal.SkeletalMesh): The new skeletal mesh.
+
+    Returns:
+        unreal.AnimSequence: The animation sequence associated with the new
+        mesh, or None if not found.
+    """
+    mesh_path = new_mesh.get_path_name()
+    directory = unreal.Paths.split(mesh_path)[0]
+    asset_content = unreal.EditorAssetLibrary.list_assets(
+        directory, recursive=False, include_folder=True)
+    for asset in asset_content:
+        anim_asset_obj = unreal.EditorAssetLibrary.load_asset(asset)
+        if anim_asset_obj.get_class().get_name() == "AnimSequence":
+            return anim_asset_obj
+    return None
 
 
 def replace_geometry_cache_actors(old_assets, new_assets, selected):
@@ -755,12 +817,12 @@ def replace_geometry_cache_actors(old_assets, new_assets, selected):
 
     for old_name, old_mesh in old_caches.items():
         new_mesh = new_caches.get(old_name)
-
+        print(f"Discovering target geometry cache for replacing : {new_mesh}")
         if not new_mesh:
             continue
 
         for comp in geometry_cache_comps:
-            if comp.get_editor_property("geometry_cache") == old_mesh:
+            if comp.geometry_cache == old_mesh:
                 comp.set_geometry_cache(new_mesh)
 
 
@@ -837,11 +899,12 @@ def select_camera(sequence):
                 actor_subsys.set_actor_selection_state(actor, False)
 
 
-def format_asset_directory(context, directory_template):
+def format_asset_directory(context, directory_template, asset_name_template):
     """Setting up the asset directory path and name.
     Args:
         context (dict): context
         directory_template (str): directory template path
+        asset_name_template (str): asset name template
 
     Returns:
         tuple[str, str]: asset directory, asset name
@@ -877,36 +940,10 @@ def format_asset_directory(context, directory_template):
         data["version"]["version"] = "hero"
     else:
         data["version"]["version"] = f"v{version:03d}"
-    asset_name_with_version = set_asset_name(data)
+    asset_name_with_version = StringTemplate(asset_name_template).format_strict(data)
     asset_dir = StringTemplate(directory_template).format_strict(data)
 
     return f"{AYON_ROOT_DIR}/{asset_dir}", asset_name_with_version
-
-
-def set_asset_name(data):
-    """Set the name of the asset during loading
-
-    Args:
-        folder_name (str): folder name
-        name (str): instance name
-        extension (str): extension
-
-    Returns:
-        str: asset name
-    """
-    asset_name = None,
-    name = data["product"]["name"]
-    version = data["version"]["version"]
-    folder_name = data["folder"]["name"]
-    extension = data["representation"]["name"]
-    if not extension:
-        asset_name = name
-    elif folder_name:
-        asset_name = "{}_{}_{}_{}".format(
-            folder_name, name, version, extension)
-    else:
-        asset_name = "{}_{}_{}".format(name, version, extension)
-    return asset_name
 
 
 def show_audit_dialog(missing_asset):

@@ -16,6 +16,7 @@ class CreateUAsset(UnrealAssetCreator):
     label = "UAsset"
     product_type = "uasset"
     icon = "cube"
+    default_variants = ["Main"]
 
     extension = ".uasset"
 

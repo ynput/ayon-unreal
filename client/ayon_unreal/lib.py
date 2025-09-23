@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import List
 
 from ayon_core.settings import get_project_settings
+from ayon_core.pipeline import get_current_project_name
 
 
 def get_engine_versions(env=None):
@@ -78,6 +79,38 @@ def get_engine_versions(env=None):
 
 
 def get_editor_exe_path(engine_path: Path, engine_version: str) -> Path:
+    """Get UE Editor executable path.
+    Attempt to retrieve from project settings first."""
+    this_os = platform.system().lower()
+
+    try:
+        project_name = get_current_project_name()
+        project_settings = get_project_settings(project_name)
+        apps = project_settings["applications"]
+        variants = apps["applications"]["unreal"]["variants"]
+        platform_variants = [
+            var["executables"][this_os]
+            for var in variants
+            if var["executables"][this_os]
+        ]
+
+        # return first valid variant for OS.
+        for ue_exe in platform_variants:
+            for exec_item in ue_exe:
+                if Path(exec_item).exists():
+                    return Path(exec_item)
+        raise RuntimeError(
+            "No suitable executables found in project setting variants."
+        )
+    except (KeyError, RuntimeError):
+        print("---- Falling back to older method of retrieval ----")
+        exe_path = get_editor_exe_path_fallback(engine_path, engine_version)
+        if exe_path.exists():
+            return exe_path
+        raise RuntimeError(f"Unreal engine couldn't be located at: {exe_path}")
+
+
+def get_editor_exe_path_fallback(engine_path: Path, engine_version: str) -> Path:
     """Get UE Editor executable path."""
     ue_path = engine_path / "Engine/Binaries"
 

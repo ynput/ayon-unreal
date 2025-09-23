@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """Load Static meshes form FBX."""
-import os
 
 from ayon_core.pipeline import AYON_CONTAINER_ID
 
@@ -26,6 +25,7 @@ class StaticMeshFBXLoader(plugin.Loader):
     use_nanite = True
     show_dialog = False
     loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"
+    loaded_asset_name = "{folder[name]}_{product[name]}_{version[version]}_{representation[name]}"      # noqa
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -37,6 +37,8 @@ class StaticMeshFBXLoader(plugin.Loader):
         cls.use_nanite = import_settings.get("use_nanite", cls.use_nanite)
         cls.loaded_asset_dir = import_settings.get(
             "loaded_asset_dir", cls.loaded_asset_dir)
+        cls.loaded_asset_name = import_settings.get(
+            "loaded_asset_name", cls.loaded_asset_name)
 
     @classmethod
     def get_task(cls, filename, asset_dir, asset_name, replace):
@@ -138,14 +140,13 @@ class StaticMeshFBXLoader(plugin.Loader):
         folder_path = context["folder"]["path"]
         suffix = "_CON"
         path = self.filepath_from_context(context)
-        ext = os.path.splitext(path)[-1].lstrip(".")
         asset_root, asset_name = format_asset_directory(
-            context, self.loaded_asset_dir
+            context, self.loaded_asset_dir, self.loaded_asset_name
         )
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            asset_root, suffix=f"_{ext}")
+            asset_root, suffix="")
         container_name += suffix
 
         should_use_layout = options.get("layout", False)
@@ -189,14 +190,12 @@ class StaticMeshFBXLoader(plugin.Loader):
         # Create directory for asset and Ayon container
         suffix = "_CON"
         path = self.filepath_from_context(context)
-        ext = os.path.splitext(path)[-1].lstrip(".")
-
         asset_root, asset_name = format_asset_directory(
-            context, self.loaded_asset_dir
+            context, self.loaded_asset_dir, self.loaded_asset_name
         )
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            asset_root, suffix=f"_{ext}")
+            asset_root, suffix="")
 
         container_name += suffix
         should_use_layout = container.get("layout", False)

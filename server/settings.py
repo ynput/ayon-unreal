@@ -2,6 +2,7 @@ from ayon_server.settings import BaseSettingsModel, SettingsField
 from .imageio import UnrealImageIOModel
 from .import_settings import UnrealImportModel, DEFAULT_IMPORT_SETTINGS
 from .pre_launch_settings import UnrealPreLaunchSetting, DEFAULT_PRELAUNCH_SETTINGS
+from .creators import CreatorsModel, DEFAULT_CREATOR_SETTINGS
 
 
 def _render_format_enum():
@@ -44,6 +45,21 @@ class ProjectSetup(BaseSettingsModel):
             "Disable when using external source control (Perforce)"
         )
     )
+    existing_uproject_directory : str = SettingsField(
+        "",
+        title="Use Existing UProject for Project Creation",
+        description=(
+            "Path to an existing .uproject file to use for "
+            "project creation."
+        )
+    )
+    force_existing_project: bool = SettingsField(
+        True,
+        title="Force existing project",
+        description=(
+            "If enabled, the project must exist for Unreal to launch."
+        )
+    )
     dev_mode: bool = SettingsField(
         False,
         title="Dev mode"
@@ -71,6 +87,9 @@ class UnrealSettings(BaseSettingsModel):
         default_factory=ProjectSetup,
         title="Project Setup",
     )
+    create: CreatorsModel = SettingsField(
+        default_factory=CreatorsModel, title="Creators"
+    )
 
 
 DEFAULT_VALUES = {
@@ -83,6 +102,10 @@ DEFAULT_VALUES = {
         "render_format": "exr",
     },
     "project_setup": {
-        "dev_mode": False
-    }
+        "allow_project_creation": True,
+        "existing_uproject_directory": "",
+        "dev_mode": False,
+        "force_existing_project": False,
+    },
+    "create": DEFAULT_CREATOR_SETTINGS,
 }

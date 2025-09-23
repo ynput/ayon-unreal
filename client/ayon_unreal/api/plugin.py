@@ -154,6 +154,8 @@ class UnrealCreateLogic():
 class UnrealBaseAutoCreator(AutoCreator, UnrealCreateLogic):
     """Base class for Unreal auto creator plugins."""
 
+    settings_category = "unreal"
+
     def collect_instances(self):
         return self._default_collect_instances()
 
@@ -166,6 +168,8 @@ class UnrealBaseAutoCreator(AutoCreator, UnrealCreateLogic):
 
 class UnrealBaseCreator(UnrealCreateLogic, Creator):
     """Base class for Unreal creator plugins."""
+
+    settings_category = "unreal"
 
     def create(self, subset_name, instance_data, pre_create_data):
         self.create_unreal(subset_name, instance_data, pre_create_data)
@@ -284,6 +288,7 @@ class LayoutLoader(Loader):
     icon = "code-fork"
     color = "orange"
     loaded_layout_dir = "{folder[path]}/{product[name]}"
+    loaded_layout_name = "{folder[name]}_{product[name]}_{version[version]}"
     remove_loaded_assets = False
 
     @staticmethod
