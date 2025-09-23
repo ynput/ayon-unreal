@@ -44,7 +44,7 @@ class PublishersModel(BaseSettingsModel):
 DEFAULT_PUBLISH_SETTINGS = {
     "ExtractIntermediateRepresentation": {
         "ext": "mp4",
-        "tags": [],
+        "tags": ["burnin"],
         "custom_tags": [],
         "ffmpeg_args": {
             "video_filters": [],
