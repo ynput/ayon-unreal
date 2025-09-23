@@ -288,6 +288,7 @@ class LayoutLoader(Loader):
     icon = "code-fork"
     color = "orange"
     loaded_layout_dir = "{folder[path]}/{product[name]}"
+    loaded_layout_name = "{folder[name]}_{product[name]}_{version[version]}"
     remove_loaded_assets = False
 
     @staticmethod

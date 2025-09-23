@@ -52,6 +52,7 @@ class LayoutLoader(plugin.LayoutLoader):
             import_settings["level_sequences_for_layouts"]
         )
         cls.loaded_layout_dir = import_settings["loaded_layout_dir"]
+        cls.loaded_layout_name = import_settings["loaded_layout_name"]
         cls.remove_loaded_assets = import_settings["remove_loaded_assets"]
 
     @classmethod
@@ -272,7 +273,9 @@ class LayoutLoader(plugin.LayoutLoader):
         folder_entity = context["folder"]
         folder_path = folder_entity["path"]
         folder_name = folder_entity["name"]
-        asset_root, _ = format_asset_directory(context, self.loaded_layout_dir)
+        asset_root, _ = format_asset_directory(
+            context, self.loaded_layout_dir, self.loaded_layout_name
+        )
         master_dir_name = get_top_hierarchy_folder(asset_root)
         asset_dir, hierarchy_dir, container_name, asset_name = (
             generate_hierarchy_path(

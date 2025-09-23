@@ -27,6 +27,7 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
             import_settings["delete_unmatched_assets"]
         )
         cls.loaded_layout_dir = import_settings["loaded_layout_dir"]
+        cls.loaded_layout_name = import_settings["loaded_layout_name"]
         cls.remove_loaded_assets = import_settings["remove_loaded_assets"]
 
     def _spawn_actor(self, obj, lasset, sequence):
@@ -264,7 +265,8 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
 
         folder_name = folder_entity["name"]
         asset_root, _ = upipeline.format_asset_directory(
-            context, self.loaded_layout_dir)
+            context, self.loaded_layout_dir, self.loaded_layout_name
+        )
         suffix = "_CON"
         asset_name = f"{folder_name}_{name}" if folder_name else name
 
