@@ -134,7 +134,10 @@ def create_otio_clip(instance, target_track):
         otio_clip = otio.schema.Clip(
             name=name,
             source_range=source_range,
-            media_reference=media_reference
+            media_reference=media_reference,
+            metadata={
+                "unreal": section.get_name()
+            }
         )
         otio_clips.append(otio_clip)
 
@@ -170,10 +173,13 @@ def _create_otio_timeline():
     )
 
 
-def create_otio_track(track_type, track_name):
+def create_otio_track(track_type, track_name, track_unreal_name):
     return otio.schema.Track(
         name=track_name,
-        kind=TRACK_TYPES[track_type]
+        kind=TRACK_TYPES[track_type],
+        metadata={
+            "unreal": track_unreal_name
+        }
     )
 
 
@@ -215,7 +221,8 @@ def create_otio_timeline(instance):
         # convert track to otio
         otio_track = create_otio_track(
             target_track.get_class().get_name(),
-            f"{target_track.get_display_name()}")
+            f"{target_track.get_display_name()}",
+            target_track.get_name())
 
         # create otio clip and add it to track
         otio_clip = create_otio_clip(instance, target_track)

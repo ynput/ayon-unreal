@@ -95,6 +95,7 @@ class ExtractIntermediateRepresentation(publish.Extractor):
         sequence_fps = instance.data["fps"]
         input_args = ffmpeg_args.get("input", [])
         default_input_args = [
+            "-y",
             "-start_number", str(in_frame_start),
             "-framerate", str(sequence_fps),
         ]
