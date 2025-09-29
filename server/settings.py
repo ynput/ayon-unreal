@@ -37,6 +37,11 @@ class RenderSetUp(BaseSettingsModel):
 
 
 class ProjectSetup(BaseSettingsModel):
+    use_plugin: bool = SettingsField(
+        True,
+        title="Use Unreal Plugin",
+        description="Whether to use the Unreal Plugin provided by Ynput "
+    )
     allow_project_creation: bool = SettingsField(
         True,
         title="Allow project creation",
@@ -93,6 +98,7 @@ class UnrealSettings(BaseSettingsModel):
 
 
 DEFAULT_VALUES = {
+    "use_unreal_plugin": True,
     "prelaunch_settings": DEFAULT_PRELAUNCH_SETTINGS,
     "import_settings": DEFAULT_IMPORT_SETTINGS,
     "render_setup": {
