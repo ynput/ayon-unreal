@@ -47,13 +47,10 @@ class NativeUnrealBackend(UnrealBackend):
     @staticmethod
     def ls_inst():
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
+        container_class = unreal.load_class(None, '/Game/Ayon/AyonContainerTypes/AyonPublishInstance.AyonPublishInstance_C')
+        class_path = unreal.TopLevelAssetPath(container_class.get_path_name())
         # UE 5.1 changed how class name is specified
-        class_name = (
-            ["/Game/Ayon/AyonContainerTypes", "AyonPublishInstance"]
-            if (UNREAL_VERSION.major == 5 and UNREAL_VERSION.minor > 0)
-            else "AyonPublishInstance"
-        )  # noqa
-        instances = ar.get_assets_by_class(class_name, True)
+        instances = ar.get_assets_by_class(class_path, True)
 
         return instances
 
