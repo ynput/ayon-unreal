@@ -158,10 +158,19 @@ class UnrealPrelaunchHook(PreLaunchHook):
 
     def execute(self):
         """Hook entry method."""
-        self.log.addHandler(logging.FileHandler('D:/temp/ayon_unreal.log'))
+        file_handler = logging.FileHandler('D:/temp/ayon_unreal.log', 'w')
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+        file_handler.setFormatter(formatter)
+        self.log.addHandler(file_handler)
         workdir = self.launch_context.env["AYON_WORKDIR"]
         executable = str(self.launch_context.executable)
         engine_version = self.app_name.split("/")[-1].replace("-", ".")
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+        self.log.handlers[0].setFormatter(formatter)
         try:
             if int(engine_version.split(".")[0]) < 4 and \
                         int(engine_version.split(".")[1]) < 26:
@@ -225,7 +234,7 @@ class UnrealPrelaunchHook(PreLaunchHook):
             "AYON_BUILT_UNREAL_PLUGIN", None)
 
         from pprint import pformat
-        self.log.info(pformat(self.launch_context.data))
+        # self.log.info(pformat(self.launch_context.data))
         current_project = self.launch_context.data['project_entity']['name']
         unreal_settings = get_project_settings(current_project).get("unreal")
         use_plugin = unreal_settings['project_setup']['use_plugin']
@@ -275,6 +284,7 @@ class UnrealPrelaunchHook(PreLaunchHook):
                     unreal_settings["project_setup"].get(
                         "existing_uproject_directory")
                 )
+                self.log.info(existing_uproject_directory)
                 uproject_files = list(existing_uproject_directory.glob("*.uproject"))
                 if (
                     existing_uproject_directory.exists() and
