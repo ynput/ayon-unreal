@@ -180,6 +180,7 @@ def ls():
     # Asset Registry Project settings (and there is no way to set it with
     # python short of editing ini configuration file).
     ayon_containers = backend.ls()
+    print(f"Ayon Containers {ayon_containers}")
 
     for asset_data in ayon_containers:
         asset = asset_data.get_asset()
