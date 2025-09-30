@@ -50,6 +50,11 @@ class ProjectSetup(BaseSettingsModel):
             "Disable when using external source control (Perforce)"
         )
     )
+    use_exact_path: bool = SettingsField(
+        False,
+        title="Use Exact Path",
+        description="Whether to use the exact path for project creation"
+    )
     existing_uproject_directory : str = SettingsField(
         "",
         title="Use Existing UProject for Project Creation",

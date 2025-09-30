@@ -2,6 +2,7 @@
 """Hook to launch Unreal and prepare projects."""
 import logging
 import os
+import pathlib
 import sys
 import copy
 import shutil
@@ -18,6 +19,9 @@ from ayon_applications import (
     ApplicationLaunchFailed,
     LaunchTypes,
 )
+from ayon_core.pipeline.anatomy.anatomy import Anatomy
+from ayon_core.pipeline.anatomy.templates import AnatomyStringTemplate
+from ayon_core.pipeline.template_data import get_template_data
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import get_current_project_name
 from ayon_core.pipeline.workfile import get_workfile_template_key
@@ -264,8 +268,33 @@ class UnrealPrelaunchHook(PreLaunchHook):
 
                 if not unreal_lib.check_plugin_existence(engine_path):
                     self.exec_plugin_install(engine_path)
+                self.launch_context.env['AYON_PLUGIN_ENABLED'] = "1"
+        else:
+            self.launch_context.env['AYON_PLUGIN_ENABLED'] = "0"
 
-        project_file = project_path / unreal_project_filename
+        use_exact_path = unreal_settings['project_setup']['use_exact_path']
+
+        if use_exact_path:
+            project_template_str = unreal_settings['project_setup']['existing_uproject_directory']
+            anatomy = Anatomy(current_project)
+            project_template = AnatomyStringTemplate(anatomy.templates_obj, project_template_str)
+            launch_context = self.launch_context.data
+            template_data = get_template_data(
+                project_entity=launch_context["project_entity"],
+                folder_entity=launch_context["folder_entity"],
+                task_entity=launch_context["task_entity"],
+            )
+            template_data.update({
+                'root': anatomy.roots
+            })
+
+            self.log.debug(pformat(self.launch_context.data))
+            project_file = pathlib.Path(project_template.format_strict(template_data))
+            self.log.info(f"New Project File {project_file}")
+            if not project_file.is_file():
+                raise RuntimeError("Invalid Project Path")
+        else:
+            project_file = project_path / unreal_project_filename
 
         self.launch_context.env["AYON_UNREAL_VERSION"] = engine_version
 

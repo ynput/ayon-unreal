@@ -9,7 +9,6 @@ from typing import List, Any
 from contextlib import contextmanager
 import time
 
-import semver
 import pyblish.api
 import ayon_api
 
@@ -29,26 +28,28 @@ from ayon_core.pipeline.context_tools import (
 )
 from ayon_core.tools.utils import host_tools
 from ayon_core.host import HostBase, ILoadHost, IPublishHost
-from ayon_unreal import UNREAL_ADDON_ROOT
+from ayon_unreal.api.backends import get_backend_class
+from ayon_unreal.api.constants import (
+    AYON_CONTAINERS,
+    AYON_ROOT_DIR,
+    AYON_ASSET_DIR,
+    CONTEXT_CONTAINER,
+    UNREAL_VERSION,
+    PLUGINS_DIR,
+    PUBLISH_PATH,
+    LOAD_PATH,
+    CREATE_PATH,
+    INVENTORY_PATH
+
+)
 
 import unreal  # noqa
 
 # Rename to Ayon once parent module renames
 logger = logging.getLogger("ayon_core.hosts.unreal")
 
-AYON_CONTAINERS = "AyonContainers"
-AYON_ROOT_DIR = "/Game/Ayon"
-AYON_ASSET_DIR = "/Game/Ayon/Assets"
-CONTEXT_CONTAINER = "Ayon/context.json"
-UNREAL_VERSION = semver.VersionInfo(
-    *os.getenv("AYON_UNREAL_VERSION").split(".")
-)
 
-PLUGINS_DIR = os.path.join(UNREAL_ADDON_ROOT, "plugins")
-PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
-LOAD_PATH = os.path.join(PLUGINS_DIR, "load")
-CREATE_PATH = os.path.join(PLUGINS_DIR, "create")
-INVENTORY_PATH = os.path.join(PLUGINS_DIR, "inventory")
+backend = get_backend_class()
 
 
 class UnrealHost(HostBase, ILoadHost, IPublishHost):
@@ -140,6 +141,8 @@ def install():
     register_inventory_action_path(str(INVENTORY_PATH))
     _register_callbacks()
     _register_events()
+    backend.install()
+
 
 
 def uninstall():
@@ -171,15 +174,13 @@ def ls():
     metadata from them. Adding `objectName` to set.
 
     """
-    ar = unreal.AssetRegistryHelpers.get_asset_registry()
-    # UE 5.1 changed how class name is specified
-    class_name = ["/Script/Ayon", "AyonAssetContainer"] if UNREAL_VERSION.major == 5 and UNREAL_VERSION.minor > 0 else "AyonAssetContainer"  # noqa
-    ayon_containers = ar.get_assets_by_class(class_name, True)
 
     # get_asset_by_class returns AssetData. To get all metadata we need to
     # load asset. get_tag_values() work only on metadata registered in
     # Asset Registry Project settings (and there is no way to set it with
     # python short of editing ini configuration file).
+    ayon_containers = backend.ls()
+
     for asset_data in ayon_containers:
         asset = asset_data.get_asset()
         data = unreal.EditorAssetLibrary.get_metadata_tag_values(asset)
@@ -187,22 +188,15 @@ def ls():
         yield cast_map_to_str_dict(data)
 
 
+
 def ls_inst():
-    ar = unreal.AssetRegistryHelpers.get_asset_registry()
-    # UE 5.1 changed how class name is specified
-    class_name = [
-        "/Script/Ayon",
-        "AyonPublishInstance"
-    ] if (
-            UNREAL_VERSION.major == 5
-            and UNREAL_VERSION.minor > 0
-    ) else "AyonPublishInstance"  # noqa
-    instances = ar.get_assets_by_class(class_name, True)
 
     # get_asset_by_class returns AssetData. To get all metadata we need to
     # load asset. get_tag_values() work only on metadata registered in
     # Asset Registry Project settings (and there is no way to set it with
     # python short of editing ini configuration file).
+
+    instances = backend.ls_inst()
     for asset_data in instances:
         asset = asset_data.get_asset()
         data = unreal.EditorAssetLibrary.get_metadata_tag_values(asset)
@@ -453,10 +447,7 @@ def create_container(container: str, path: str) -> unreal.Object:
         )
 
     """
-    factory = unreal.AyonAssetContainerFactory()
-    tools = unreal.AssetToolsHelpers().get_asset_tools()
-
-    return tools.create_asset(container, path, None, factory)
+    return backend.create_container(container, path)
 
 
 def create_publish_instance(instance: str, path: str) -> unreal.Object:
@@ -480,9 +471,7 @@ def create_publish_instance(instance: str, path: str) -> unreal.Object:
         )
 
     """
-    factory = unreal.AyonPublishInstanceFactory()
-    tools = unreal.AssetToolsHelpers().get_asset_tools()
-    return tools.create_asset(instance, path, None, factory)
+    return backend.create_publish_instance(instance, path)
 
 
 def cast_map_to_str_dict(umap) -> dict:
