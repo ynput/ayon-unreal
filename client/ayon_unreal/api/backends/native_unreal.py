@@ -1,3 +1,4 @@
+import semver
 from ayon_unreal.api.backends.base import UnrealBackend
 import unreal
 
@@ -30,8 +31,10 @@ def create_base_asset_container(container_name):
 class NativeUnrealBackend(UnrealBackend):
     @staticmethod
     def install():
-        create_base_asset_container('AyonAssetContainer')
-        create_base_asset_container('AyonPublishInstance')
+
+        if UNREAL_VERSION >= semver.VersionInfo(5, 6, 0):
+            create_base_asset_container('AyonAssetContainer')
+            create_base_asset_container('AyonPublishInstance')
 
     @staticmethod
     def ls():

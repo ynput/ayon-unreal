@@ -44,6 +44,7 @@ class UnrealPrelaunchHook(PreLaunchHook):
     """
     app_groups = {"unreal"}
     launch_types = {LaunchTypes.local}
+    order = 0
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -162,11 +163,16 @@ class UnrealPrelaunchHook(PreLaunchHook):
 
     def execute(self):
         """Hook entry method."""
-        file_handler = logging.FileHandler('D:/temp/ayon_unreal.log', 'w')
+        log_path = pathlib.Path('D:/temp/unreal_workfile.log')
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        if not log_path.is_file():
+            log_path.touch()
+        file_handler = logging.FileHandler(log_path, 'w')
         formatter = logging.Formatter(
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         )
         file_handler.setFormatter(formatter)
+
         self.log.addHandler(file_handler)
         workdir = self.launch_context.env["AYON_WORKDIR"]
         executable = str(self.launch_context.executable)
@@ -290,6 +296,7 @@ class UnrealPrelaunchHook(PreLaunchHook):
 
             self.log.debug(pformat(self.launch_context.data))
             project_file = pathlib.Path(project_template.format_strict(template_data))
+            project_path = project_file.parent
             self.log.info(f"New Project File {project_file}")
             if not project_file.is_file():
                 raise RuntimeError("Invalid Project Path")
@@ -366,6 +373,7 @@ class UnrealPrelaunchHook(PreLaunchHook):
             else:
                 return
 
+        self.launch_context.env['AYON_UNREAL_PROJECT_PATH'] = project_path.as_posix()
         # Append the project file to launch arguments
         self.launch_context.launch_args.append(
             f"\"{project_file.as_posix()}\"")
