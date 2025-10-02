@@ -29,14 +29,11 @@ from ayon_core.tools.utils import host_tools
 
 from ayon_unreal.api.backends import get_backend_class
 from ayon_unreal.api.constants import (
-    AYON_ASSET_DIR,
-    AYON_CONTAINERS,
     AYON_ROOT_DIR,
     CONTEXT_CONTAINER,
     CREATE_PATH,
     INVENTORY_PATH,
     LOAD_PATH,
-    PLUGINS_DIR,
     PUBLISH_PATH,
     UNREAL_VERSION,
 )
