@@ -23,7 +23,6 @@ from ayon_core.pipeline.anatomy.anatomy import Anatomy
 from ayon_core.pipeline.anatomy.templates import AnatomyStringTemplate
 from ayon_core.pipeline.template_data import get_template_data
 from ayon_core.settings import get_project_settings
-from ayon_core.pipeline import get_current_project_name
 from ayon_core.pipeline.workfile import get_workfile_template_key
 import ayon_unreal.lib as unreal_lib
 from ayon_unreal.ue_workers import (
