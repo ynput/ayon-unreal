@@ -163,17 +163,7 @@ class UnrealPrelaunchHook(PreLaunchHook):
 
     def execute(self):
         """Hook entry method."""
-        log_path = pathlib.Path('D:/temp/unreal_workfile.log')
-        log_path.parent.mkdir(parents=True, exist_ok=True)
-        if not log_path.is_file():
-            log_path.touch()
-        file_handler = logging.FileHandler(log_path, 'w')
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
-        file_handler.setFormatter(formatter)
 
-        self.log.addHandler(file_handler)
         workdir = self.launch_context.env["AYON_WORKDIR"]
         executable = str(self.launch_context.executable)
         engine_version = self.app_name.split("/")[-1].replace("-", ".")

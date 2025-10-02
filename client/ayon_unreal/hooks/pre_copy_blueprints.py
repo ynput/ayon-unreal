@@ -13,17 +13,6 @@ class CopyBlueprints(PreLaunchHook):
     order = 1
 
     def execute(self):
-        log_path = pathlib.Path('D:/temp/ayon_unreal_copybp.log')
-        log_path.parent.mkdir(parents=True, exist_ok=True)
-        if not log_path.is_file():
-            log_path.touch()
-        file_handler = logging.FileHandler(log_path.as_posix(), 'a')
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
-        file_handler.setFormatter(formatter)
-
-        self.log.addHandler(file_handler)
         self.log.info("Running Copy Blueprints")
         unreal_version = semver.VersionInfo(*self.launch_context.env.get("AYON_UNREAL_VERSION").split('.'))
         if unreal_version >= semver.VersionInfo(5, 6, 0):
