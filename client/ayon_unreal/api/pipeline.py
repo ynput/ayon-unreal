@@ -1,49 +1,45 @@
 # -*- coding: utf-8 -*-
+import copy
+import json
+import logging
 import os
 import re
-import json
-import clique
-import copy
-import logging
-from typing import List, Any
-from contextlib import contextmanager
 import time
+from contextlib import contextmanager
+from typing import Any, List
 
-import pyblish.api
 import ayon_api
-
+import clique
+import pyblish.api
+import unreal  # noqa
+from ayon_core.host import HostBase, ILoadHost, IPublishHost
+from ayon_core.lib import StringTemplate
 from ayon_core.pipeline import (
-    register_loader_plugin_path,
-    register_creator_plugin_path,
-    register_inventory_action_path,
-    deregister_loader_plugin_path,
+    AYON_CONTAINER_ID,
     deregister_creator_plugin_path,
     deregister_inventory_action_path,
-    AYON_CONTAINER_ID,
+    deregister_loader_plugin_path,
     get_current_project_name,
+    register_creator_plugin_path,
+    register_inventory_action_path,
+    register_loader_plugin_path,
 )
-from ayon_core.lib import StringTemplate
-from ayon_core.pipeline.context_tools import (
-    get_current_folder_entity
-)
+from ayon_core.pipeline.context_tools import get_current_folder_entity
 from ayon_core.tools.utils import host_tools
-from ayon_core.host import HostBase, ILoadHost, IPublishHost
+
 from ayon_unreal.api.backends import get_backend_class
 from ayon_unreal.api.constants import (
+    AYON_ASSET_DIR,
     AYON_CONTAINERS,
     AYON_ROOT_DIR,
-    AYON_ASSET_DIR,
     CONTEXT_CONTAINER,
-    UNREAL_VERSION,
+    CREATE_PATH,
+    INVENTORY_PATH,
+    LOAD_PATH,
     PLUGINS_DIR,
     PUBLISH_PATH,
-    LOAD_PATH,
-    CREATE_PATH,
-    INVENTORY_PATH
-
+    UNREAL_VERSION,
 )
-
-import unreal  # noqa
 
 # Rename to Ayon once parent module renames
 logger = logging.getLogger("ayon_core.hosts.unreal")

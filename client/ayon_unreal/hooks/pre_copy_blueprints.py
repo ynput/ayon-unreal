@@ -1,4 +1,3 @@
-import logging
 import pathlib
 import shutil
 from ayon_applications import LaunchTypes, PreLaunchHook
@@ -16,7 +15,7 @@ class CopyBlueprints(PreLaunchHook):
         self.log.info("Running Copy Blueprints")
         unreal_version = semver.VersionInfo(*self.launch_context.env.get("AYON_UNREAL_VERSION").split('.'))
         if unreal_version >= semver.VersionInfo(5, 6, 0):
-            self.log.info(f"Skipping Asset Copy for {str(UNREAL_VERSION)}")
+            self.log.info(f"Skipping Asset Copy for {str(unreal_version)}")
             return
 
         project_path = self.launch_context.env.get("AYON_UNREAL_PROJECT_PATH")
