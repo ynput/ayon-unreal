@@ -6,7 +6,7 @@ from ayon_server.settings import (
 
 
 class BasicCreatorModel(BaseSettingsModel):
-    enabled: bool = SettingsField(title="Enabled", type_hint=bool)
+    enabled: bool = SettingsField(title="Enabled")
     default_variants: list[str] = SettingsField(
         default_factory=list,
         description="Default variants used for constructing a product name",
