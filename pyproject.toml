@@ -5,7 +5,7 @@
 
 [tool.poetry]
 name = "ayon-unreal"
-version = "0.2.8"
+version = "0.2.12+dev"
 description = "Unreal Engine Integration Addon for AYON"
 authors = ["Ynput Team <team@ynput.io>"]
 readme = "README.md"
@@ -19,18 +19,6 @@ python = ">=3.9.1,<3.12"
 ruff = "^0.3.3"
 pre-commit = "^3.6.2"
 codespell = "^2.2.6"
-tomlkit = "^0.13.2"
-requests = "^2.32.3"
-mkdocs-material = "^9.6.7"
-mkdocs-autoapi = "^0.4.0"
-mkdocstrings-python = "^1.16.2"
-mkdocstrings-shell = "^1.0.2"
-mkdocs-minify-plugin = "^0.8.0"
-markdown-checklist = "^0.4.4"
-mdx-gh-links = "^0.4"
-pymdown-extensions = "^10.14.3"
-mike = "^2.1.3"
-
 
 [tool.ruff]
 # Exclude a variety of commonly ignored directories.
