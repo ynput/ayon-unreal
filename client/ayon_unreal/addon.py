@@ -12,11 +12,6 @@ class UnrealAddon(AYONAddon, IHostAddon):
     version = __version__
     host_name = "unreal"
 
-    def initialize(self, settings):
-        self.log.info("Initializing Unreal")
-        print("Initializing Unreal")
-        return super().initialize(settings)
-
     def get_global_environments(self):
         return {
             "AYON_UNREAL_ROOT": UNREAL_ADDON_ROOT,
