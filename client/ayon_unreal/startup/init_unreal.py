@@ -1,8 +1,8 @@
 # Copyright (c) 2024 Ynput s.r.o.
 import unreal
 try:
-    import qtpy
-    from qtpy import QtWidgets
+    import qtpy #noqa F401
+    from qtpy import QtWidgets #noqa F401
 except ImportError as exc:
     # this is because `QtBingingsNotFoundError` exception is risen
     # directly from `import qtpy`

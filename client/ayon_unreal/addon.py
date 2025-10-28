@@ -1,7 +1,6 @@
 import os
 import re
 from ayon_core.addon import AYONAddon, IHostAddon
-import pathlib
 
 from .version import __version__
 
