@@ -1,3 +1,5 @@
+import os
+import pathlib
 import unreal
 
 
@@ -16,8 +18,8 @@ def init_ayon_menu():
     level_menu_bar.add_section(section_name=section_name, label=section_name)
 
     entry = unreal.ToolMenuEntry(type=unreal.MultiBlockType.TOOL_BAR_BUTTON)
-    entry.set_label("Script Editor")
-    entry.set_tool_tip("Unreal Python Script Editor")
+    entry.set_label("Ayon Toolbox")
+    entry.set_tool_tip("Ayon Toolbox")
     entry.set_icon("EditorStyle", "Symbols.SearchGlass")
     entry.set_string_command(
         type=unreal.ToolMenuStringCommandType.PYTHON,
