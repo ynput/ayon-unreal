@@ -240,7 +240,7 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
                 version,
             )
 
-            publish_attributes = {}
+            publish_attributes = inst.data.get("publish_attributes", {})
 
             try:
                 review = bool(inst.data["creator_attributes"].get("review"))
