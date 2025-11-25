@@ -62,12 +62,12 @@ class ExtractIntermediateRepresentation(publish.Extractor):
             instance.data["representations"] = []
 
         representation = {
-            'frameStart': instance.data["frameStart"],
-            'frameEnd': instance.data["frameEnd"],
-            'name': "intermediate",
-            'ext': extension,
-            'files': filename,
-            'stagingDir': render_dir,
+            "frameStart": instance.data["frameStart"],
+            "frameEnd": instance.data["frameEnd"],
+            "name": "intermediate",
+            "ext": extension,
+            "files": filename,
+            "stagingDir": render_dir,
         }
         if intermediate_settings.get("tags", []):
             representation["tags"] = intermediate_settings["tags"]
