@@ -137,8 +137,7 @@ class InstallOtioToUnreal(PreLaunchHook):
 
             parameters = (
                 subprocess.list2cmdline(args)
-                .lstrip(fake_exe)
-                .lstrip(" ")
+                .removeprefix(f"{fake_exe} ")
             )
 
             # Execute command and ask for administrator's rights
