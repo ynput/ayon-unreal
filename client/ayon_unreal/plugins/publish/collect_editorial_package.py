@@ -6,7 +6,6 @@ import ayon_api
 import pyblish.api
 import unreal
 
-from ayon_core.pipeline import get_current_project_name, Anatomy
 from ayon_core.pipeline.publish import AYONPyblishPluginMixin
 
 
