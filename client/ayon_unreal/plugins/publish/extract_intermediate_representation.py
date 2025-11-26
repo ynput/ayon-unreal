@@ -25,25 +25,8 @@ class ExtractIntermediateRepresentation(publish.Extractor):
     def process(self, instance):
         self.log.debug("Collecting rendered files")
         data = instance.data
-        try:
-            project = get_current_project_name()
-            anatomy = Anatomy(project)
-            root = anatomy.roots['renders']
-        except Exception as e:
-            raise Exception((
-                "Could not find render root "
-                "in anatomy settings.")) from e
-
-        render_dir = f"{root}/{project}/editorial_pkg/{data.get('output')}"
-        render_path = Path(render_dir)
-        if not os.path.exists(render_path):
-            msg = (
-                f"Render directory {render_path} not found."
-                " Please render with the render instance"
-            )
-            self.log.error(msg)
-            raise PublishError(msg, title="Render directory not found.")
-        self.log.debug(f"Collecting render path: {render_path}")
+        render_dir = data["renderDir"]
+        render_path = data["renderPath"]
         # use os.walk to get all files in the directory
         intermediate_settings = self._get_intermediate_settings(instance)
         extension = intermediate_settings["ext"]

@@ -56,14 +56,13 @@ class CollectEditorialPackage(pyblish.api.InstancePlugin,
         instance.data["fps"] = float(frame_rate)
 
         try:
-            project = get_current_project_name()
-            anatomy = Anatomy(project)
+            anatomy = instance.context.data["anatomy"]
             root = anatomy.roots['renders']
         except Exception as e:
             raise Exception((
                 "Could not find render root "
                 "in anatomy settings.")) from e
-        render_dir = f"{root}/{project}/editorial_pkg/{instance.data.get('output')}"
+        render_dir = f"{root}/{anatomy.project_name}/editorial_pkg/{instance.data.get('output')}"
         render_path = Path(render_dir)
         if not os.path.exists(render_path):
             msg = (
@@ -72,3 +71,5 @@ class CollectEditorialPackage(pyblish.api.InstancePlugin,
             )
             self.log.error(msg)
             raise PublishError(msg, title="Render directory not found.")
+        instance.data["renderDir"] = render_dir
+        instance.data["renderPath"] = render_path
