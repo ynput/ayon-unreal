@@ -91,10 +91,9 @@ class ToolsBtnsWidget(QtWidgets.QWidget):
 
     def _on_context_change(self):
         """Open a context dialog to change the current context."""
-        context = context_dialog.ask_for_context()
+        context = context_dialog.ask_for_context(strict=False)
 
         if context is None:
-            context_dialog.close()
             return
 
         folder_entity = ayon_api.get_folder_by_id(
