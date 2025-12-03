@@ -94,6 +94,7 @@ class ToolsBtnsWidget(QtWidgets.QWidget):
         context = context_dialog.ask_for_context()
 
         if context is None:
+            context_dialog.close()
             return
 
         folder_entity = ayon_api.get_folder_by_id(
