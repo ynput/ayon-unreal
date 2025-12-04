@@ -169,7 +169,7 @@ def start_rendering():
 
     for i in instances:
         data = pipeline.parse_container(i.get_path_name())
-        if data["productType"] == "render":
+        if data["productType"] == "render" or "editorial_pkg":
             inst_data.append(data)
 
     try:
@@ -199,6 +199,8 @@ def start_rendering():
     current_level_name = current_level.get_outer().get_path_name()
 
     for i in inst_data:
+        if i["productType"] == "editorial_pkg":
+            render_dir = f"{root}/{project_name}/editorial_pkg"
         # for some reason the instance data has strings, convert them
         # back to their original types
         render_preset = ast.literal_eval(i["creator_attributes"]).get(
@@ -226,7 +228,7 @@ def start_rendering():
         for seq in sequences:
             subscenes = pipeline.get_subsequences(seq.get('sequence'))
 
-            if subscenes:
+            if subscenes and i["productType"] != "editorial_pkg":
                 sequences.extend(
                     {
                         "sequence": sub_seq.get_sequence(),
@@ -240,6 +242,24 @@ def start_rendering():
                         ),
                     }
                     for sub_seq in subscenes
+                )
+            # remove all the codes unnecssary for the editorial package
+            elif subscenes:
+                for sub_seq in subscenes:
+                    sub_seq_obj = sub_seq.get_sequence()
+                    if sub_seq_obj is None:
+                        continue
+                    # exclude camera-related sequence
+                    elif "_camera" in sub_seq_obj.get_name():
+                        continue
+                    render_list.append({
+                        "sequence": seq.get('sequence'),
+                        "output": (f"{seq.get('output')}"),
+                        "frame_range": (
+                            sub_seq.get_start_frame(),
+                            sub_seq.get_end_frame(),
+                        )
+                    }
                 )
             elif "_camera" not in seq.get('sequence').get_name():
                 render_list.append(seq)
@@ -269,8 +289,7 @@ def start_rendering():
             # read in the job's OnJobFinished callback. We could,
             # for instance, pass the AyonPublishInstance's path to the job.
             # job.user_data = ""
-
-            output_dir = render_setting.get('output')
+            output_name = render_setting.get('output')
             shot_name = render_setting.get('sequence').get_name()
 
             settings = job_config.find_or_add_setting_by_class(
@@ -279,8 +298,9 @@ def start_rendering():
             settings.custom_start_frame = render_setting.get("frame_range")[0]
             settings.custom_end_frame = render_setting.get("frame_range")[1]
             settings.use_custom_playback_range = True
+            # make sure all sequences share the same filename
             settings.file_name_format = f"{shot_name}" + ".{frame_number}"
-            settings.output_directory.path = f"{render_dir}/{output_dir}"
+            settings.output_directory.path = f"{render_dir}/{output_name}"
 
             job_config.find_or_add_setting_by_class(
                 unreal.MoviePipelineDeferredPassBase)
