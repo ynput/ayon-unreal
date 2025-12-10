@@ -29,6 +29,7 @@ class CreateRender(UnrealAssetCreator):
     identifier = "io.ayon.creators.unreal.render"
     label = "Render"
     product_type = "render"
+    product_base_type = "render"
     icon = "eye"
     default_variants = ["Main"]
 
