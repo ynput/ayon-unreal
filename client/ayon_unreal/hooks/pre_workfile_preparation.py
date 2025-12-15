@@ -166,10 +166,6 @@ class UnrealPrelaunchHook(PreLaunchHook):
         workdir = self.launch_context.env["AYON_WORKDIR"]
         executable = str(self.launch_context.executable)
         engine_version = self.app_name.split("/")[-1].replace("-", ".")
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
-        self.log.handlers[0].setFormatter(formatter)
         try:
             if int(engine_version.split(".")[0]) < 4 and \
                         int(engine_version.split(".")[1]) < 26:
