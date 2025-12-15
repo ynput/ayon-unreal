@@ -182,7 +182,6 @@ def ls():
         yield cast_map_to_str_dict(data)
 
 
-
 def ls_inst():
 
     # get_asset_by_class returns AssetData. To get all metadata we need to
