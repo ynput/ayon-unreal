@@ -276,7 +276,6 @@ class UnrealPrelaunchHook(PreLaunchHook):
                 'root': anatomy.roots
             })
 
-            self.log.debug(pformat(self.launch_context.data))
             project_file = pathlib.Path(project_template.format_strict(template_data))
             project_path = project_file.parent
             self.log.info(f"New Project File {project_file}")
