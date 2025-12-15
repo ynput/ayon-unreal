@@ -271,7 +271,7 @@ class UnrealPrelaunchHook(PreLaunchHook):
 
         if use_exact_path:
             project_template_str = unreal_settings['project_setup']['existing_uproject_directory']
-            anatomy = Anatomy(current_project)
+            anatomy = self.launch_context.data["anatomy"]
             project_template = AnatomyStringTemplate(anatomy.templates_obj, project_template_str)
             launch_context = self.launch_context.data
             template_data = get_template_data(
