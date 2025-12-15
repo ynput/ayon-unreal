@@ -40,10 +40,8 @@ class CopyBlueprints(PreLaunchHook):
         container_path.mkdir(exist_ok=True, parents=True)
         for blueprint_file in blueprint_files:
             dest = container_path.joinpath(blueprint_file.name)
-            if dest.exists():
-                if not filecmp.cmp(blueprint_file, dest):
-                    shutil.copy(blueprint_file, dest)
-                else:
-                    continue
-            else:
+            if (
+                not dest.exists()
+                or not filecmp.cmp(blueprint_file, dest)
+            ):
                 shutil.copy(blueprint_file, dest)
