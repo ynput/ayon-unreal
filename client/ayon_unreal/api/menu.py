@@ -5,7 +5,7 @@ from ayon_unreal.api import hierarchy, rendering
 
 
 @unreal.uclass()
-class AyonPythonMenuTool(unreal.ToolMenuEntryScript):
+class AYONPythonMenuTool(unreal.ToolMenuEntryScript):
     name = ""
     display_name = ""
     tool_tip = ""
@@ -27,7 +27,7 @@ class AyonPythonMenuTool(unreal.ToolMenuEntryScript):
 
 
 @unreal.uclass()
-class AyonToolsMenuTool(AyonPythonMenuTool):
+class AYONToolsMenuTool(AYONPythonMenuTool):
     name = "ayon_tools_menu"
     display_name = "Ayon Tools"
     tool_tip = "Launches the Ayon tools menu."
@@ -40,7 +40,7 @@ class AyonToolsMenuTool(AyonPythonMenuTool):
 
 
 @unreal.uclass()
-class AyonPublishMenuItem(AyonPythonMenuTool):
+class AYONPublishMenuItem(AYONPythonMenuTool):
     name = "ayon_publish"
     display_name = "Publish..."
     tool_tip = "Opens the Ayon Publisher"
@@ -51,7 +51,7 @@ class AyonPublishMenuItem(AyonPythonMenuTool):
 
 
 @unreal.uclass()
-class AyonLoadMenuItem(AyonPythonMenuTool):
+class AYONLoadMenuItem(AYONPythonMenuTool):
     name = "ayon_loader"
     display_name = "Loader"
     tool_tip = "Opens the Ayon Loader"
@@ -62,7 +62,7 @@ class AyonLoadMenuItem(AyonPythonMenuTool):
 
 
 @unreal.uclass()
-class AyonSceneInventoryMenuItem(AyonPythonMenuTool):
+class AYONSceneInventoryMenuItem(AYONPythonMenuTool):
     name = "ayon_scene_inventory"
     display_name = "Manage..."
     tool_tip = "Opens the Ayon Scene Inventroy"
@@ -73,7 +73,7 @@ class AyonSceneInventoryMenuItem(AyonPythonMenuTool):
 
 
 @unreal.uclass()
-class AyonContextMenuItem(AyonPythonMenuTool):
+class AYONContextMenuItem(AYONPythonMenuTool):
     name = "ayon_context"
     display_name = "Set Context..."
     tool_tip = "Open context dialog to set up current project, task and folder."
@@ -84,7 +84,7 @@ class AyonContextMenuItem(AyonPythonMenuTool):
 
 
 @unreal.uclass()
-class AyonRenderMenuItem(AyonPythonMenuTool):
+class AYONRenderMenuItem(AYONPythonMenuTool):
     name = "ayon_render"
     display_name = "Render..."
     tool_tip = "Starts render from Publish Instance selection."
@@ -95,7 +95,7 @@ class AyonRenderMenuItem(AyonPythonMenuTool):
 
 
 @unreal.uclass()
-class AyonSequenceItem(AyonPythonMenuTool):
+class AYONSequenceItem(AYONPythonMenuTool):
     name = "ayon_build_hierarchy"
     display_name = "Build sequence hierarchy..."
     tool_tip = ""
@@ -106,7 +106,7 @@ class AyonSequenceItem(AyonPythonMenuTool):
 
 
 @unreal.uclass()
-class AyonExperimentalItem(AyonPythonMenuTool):
+class AYONExperimentalItem(AYONPythonMenuTool):
     name = "ayon_experimental"
     display_name = "Experimental tools..."
     tool_tip = ""
@@ -125,7 +125,7 @@ def init_ayon_menu():
         name="ayon_tools",
         label="Ayon",
     )
-    menu_items = [AyonToolsMenuTool]
+    menu_items = [AYONToolsMenuTool]
 
     for item in menu_items:
         item(ayon_menu)
