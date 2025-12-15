@@ -45,6 +45,3 @@ class CopyBlueprints(PreLaunchHook):
                     continue
             else:
                 shutil.copy(blueprint_file, dest)
-
-
-
