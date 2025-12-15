@@ -56,14 +56,17 @@ class UnrealAddon(AYONAddon, IHostAddon):
         if not env.get("AYON_UNREAL_PLUGIN"):
             env["AYON_UNREAL_PLUGIN"] = unreal_plugin_path
 
+
         # Set default environments if are not set via settings
+        startup_path = Path(UNREAL_ADDON_ROOT) / 'startup'
         defaults = {
             "AYON_LOG_NO_COLORS": "1",
-            "UE_PYTHONPATH": os.environ.get("PYTHONPATH", ""),
+            "UE_PYTHONPATH": os.environ.get("PYTHONPATH", "") + os.pathsep + startup_path.as_posix(),
         }
         for key, value in defaults.items():
             if not env.get(key):
                 env[key] = value
+
 
     def get_launch_hook_paths(self, app):
         if app.host_name != self.host_name:

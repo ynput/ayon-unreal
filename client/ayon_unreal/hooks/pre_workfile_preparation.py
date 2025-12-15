@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """Hook to launch Unreal and prepare projects."""
+import logging
 import os
+import pathlib
 import sys
 import copy
 import shutil
@@ -17,8 +19,10 @@ from ayon_applications import (
     ApplicationLaunchFailed,
     LaunchTypes,
 )
+from ayon_core.pipeline.anatomy.anatomy import Anatomy
+from ayon_core.pipeline.anatomy.templates import AnatomyStringTemplate
+from ayon_core.pipeline.template_data import get_template_data
 from ayon_core.settings import get_project_settings
-from ayon_core.pipeline import get_current_project_name
 from ayon_core.pipeline.workfile import get_workfile_template_key
 import ayon_unreal.lib as unreal_lib
 from ayon_unreal.ue_workers import (
@@ -39,6 +43,7 @@ class UnrealPrelaunchHook(PreLaunchHook):
     """
     app_groups = {"unreal"}
     launch_types = {LaunchTypes.local}
+    order = 0
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -157,6 +162,7 @@ class UnrealPrelaunchHook(PreLaunchHook):
 
     def execute(self):
         """Hook entry method."""
+
         workdir = self.launch_context.env["AYON_WORKDIR"]
         executable = str(self.launch_context.executable)
         engine_version = self.app_name.split("/")[-1].replace("-", ".")
@@ -222,35 +228,69 @@ class UnrealPrelaunchHook(PreLaunchHook):
         built_plugin_path = self.launch_context.env.get(
             "AYON_BUILT_UNREAL_PLUGIN", None)
 
-        if unreal_lib.check_built_plugin_existance(built_plugin_path):
-            self.log.info((
-                f"{self.signature} using existing built Ayon plugin from "
-                f"{built_plugin_path}"
-            ))
-            unreal_lib.copy_built_plugin(engine_path, Path(built_plugin_path))
-        else:
-            # Set "AYON_UNREAL_PLUGIN" to current process environment for
-            # execution of `create_unreal_project`
-            env_key = "AYON_UNREAL_PLUGIN"
-            if self.launch_context.env.get(env_key):
+        current_project = self.launch_context.data['project_entity']['name']
+        unreal_settings = self.launch_context.data["project_settings"]["unreal"]
+        use_plugin = unreal_settings["project_setup"]["use_plugin"]
+
+        self.log.debug(f"Project Name {current_project}")
+        self.log.debug(f"Use Plugin = {use_plugin}")
+
+        if use_plugin:
+            if unreal_lib.check_built_plugin_existance(built_plugin_path):
                 self.log.info((
-                    f"{self.signature} using Ayon plugin from "
-                    f"{self.launch_context.env.get(env_key)}"
+                    f"{self.signature} using existing built Ayon plugin from "
+                    f"{built_plugin_path}"
                 ))
-            if self.launch_context.env.get(env_key):
-                os.environ[env_key] = self.launch_context.env[env_key]
+                unreal_lib.copy_built_plugin(engine_path, Path(built_plugin_path))
+            else:
+                # Set "AYON_UNREAL_PLUGIN" to current process environment for
+                # execution of `create_unreal_project`
+                env_key = "AYON_UNREAL_PLUGIN"
+                if self.launch_context.env.get(env_key):
+                    self.log.info((
+                        f"{self.signature} using Ayon plugin from "
+                        f"{self.launch_context.env.get(env_key)}"
+                    ))
+                if self.launch_context.env.get(env_key):
+                    os.environ[env_key] = self.launch_context.env[env_key]
 
-            if not unreal_lib.check_plugin_existence(engine_path):
-                self.exec_plugin_install(engine_path)
+                if not unreal_lib.check_plugin_existence(engine_path):
+                    self.exec_plugin_install(engine_path)
+                self.launch_context.env['AYON_PLUGIN_ENABLED'] = "1"
+        else:
+            self.launch_context.env['AYON_PLUGIN_ENABLED'] = "0"
 
-        project_file = project_path / unreal_project_filename
+        use_exact_path = unreal_settings['project_setup']['use_exact_path']
+
+        if use_exact_path:
+            project_template_str = unreal_settings['project_setup']['existing_uproject_directory']
+            anatomy = self.launch_context.data["anatomy"]
+            project_template = AnatomyStringTemplate(anatomy.templates_obj, project_template_str)
+            launch_context = self.launch_context.data
+            template_data = get_template_data(
+                project_entity=launch_context["project_entity"],
+                folder_entity=launch_context["folder_entity"],
+                task_entity=launch_context["task_entity"],
+            )
+            template_data.update({
+                'root': anatomy.roots
+            })
+
+            project_file = pathlib.Path(project_template.format_strict(template_data))
+            project_path = project_file.parent
+            self.log.info(f"New Project File {project_file}")
+            if not project_file.is_file():
+                raise RuntimeError("Invalid Project Path")
+        else:
+            project_file = project_path / unreal_project_filename
 
         self.launch_context.env["AYON_UNREAL_VERSION"] = engine_version
 
+        self.log.info(f"Project File {project_file}")
         if not project_file.is_file():
 
             # Get project settings -> allow project creation
-            current_project = get_current_project_name()
+            current_project = self.launch_context.data['project_entity']['name']
             unreal_settings = get_project_settings(current_project).get("unreal")
             allow_project_creation = unreal_settings["project_setup"].get(
             "allow_project_creation")
@@ -261,6 +301,7 @@ class UnrealPrelaunchHook(PreLaunchHook):
                     unreal_settings["project_setup"].get(
                         "existing_uproject_directory")
                 )
+                self.log.info(existing_uproject_directory)
                 uproject_files = list(existing_uproject_directory.glob("*.uproject"))
                 if (
                     existing_uproject_directory.exists() and
@@ -313,6 +354,7 @@ class UnrealPrelaunchHook(PreLaunchHook):
             else:
                 return
 
+        self.launch_context.env['AYON_UNREAL_PROJECT_PATH'] = project_path.as_posix()
         # Append the project file to launch arguments
         self.launch_context.launch_args.append(
             f"\"{project_file.as_posix()}\"")

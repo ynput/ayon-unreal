@@ -140,7 +140,7 @@ class UnrealCreateLogic():
 
             for member in pre_create_data.get("members", []):
                 obj = ar.get_asset_by_object_path(member).get_asset()
-                assets.add(obj)
+                assets.append(obj)
 
             imprint(f"{self.root}/{instance_name}",
                     instance.data_to_store())
