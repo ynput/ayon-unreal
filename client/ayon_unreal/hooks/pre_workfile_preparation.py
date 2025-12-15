@@ -232,8 +232,6 @@ class UnrealPrelaunchHook(PreLaunchHook):
         built_plugin_path = self.launch_context.env.get(
             "AYON_BUILT_UNREAL_PLUGIN", None)
 
-        from pprint import pformat
-        # self.log.info(pformat(self.launch_context.data))
         current_project = self.launch_context.data['project_entity']['name']
         unreal_settings = self.launch_context.data["project_settings"]["unreal"]
         use_plugin = unreal_settings["project_setup"]["use_plugin"]
