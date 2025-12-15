@@ -67,12 +67,6 @@ class UnrealAddon(AYONAddon, IHostAddon):
             if not env.get(key):
                 env[key] = value
 
-    def on_host_install(self, host, host_name, project_name):
-        self.log.info("Starting Host")
-        if host_name == 'unreal':
-            from ayon_unreal.api.menu import init_ayon_menu
-            init_ayon_menu()
-
 
     def get_launch_hook_paths(self, app):
         if app.host_name != self.host_name:
