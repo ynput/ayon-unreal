@@ -238,9 +238,8 @@ class UnrealPrelaunchHook(PreLaunchHook):
         unreal_settings = get_project_settings(current_project).get("unreal")
         use_plugin = unreal_settings['project_setup']['use_plugin']
 
-        self.log.info(f"Project Settings {pformat(unreal_settings)}")
-        self.log.info(f"Project Name {current_project}")
-        self.log.info(f"Use Plugin = {use_plugin}")
+        self.log.debug(f"Project Name {current_project}")
+        self.log.debug(f"Use Plugin = {use_plugin}")
 
         if use_plugin:
             if unreal_lib.check_built_plugin_existance(built_plugin_path):
