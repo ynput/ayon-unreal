@@ -13,7 +13,9 @@ class CopyBlueprints(PreLaunchHook):
 
     def execute(self):
         self.log.info("Running Copy Blueprints")
-        unreal_version = semver.VersionInfo(*self.launch_context.env.get("AYON_UNREAL_VERSION").split('.'))
+        unreal_version = semver.VersionInfo.parse(
+            self.launch_context.env.get("AYON_UNREAL_VERSION")
+        )
         if unreal_version >= semver.VersionInfo(5, 6, 0):
             self.log.info(f"Skipping Asset Copy for {str(unreal_version)}")
             return
@@ -38,13 +40,8 @@ class CopyBlueprints(PreLaunchHook):
         container_path.mkdir(exist_ok=True, parents=True)
         for blueprint_file in blueprint_files:
             dest = container_path.joinpath(blueprint_file.name)
-            if dest.exists():
-                if not filecmp.cmp(blueprint_file, dest):
-                    shutil.copy(blueprint_file, dest)
-                else:
-                    continue
-            else:
+            if (
+                not dest.exists()
+                or not filecmp.cmp(blueprint_file, dest)
+            ):
                 shutil.copy(blueprint_file, dest)
-
-
-

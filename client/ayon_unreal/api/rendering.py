@@ -156,7 +156,11 @@ def start_rendering():
     # instances = pipeline.ls_inst()
     instances = [
         a for a in assets
-        if a.get_class().get_name() in ["AyonPublishInstance", "AyonPublishInstance_C"]]
+        if a.get_class().get_name() in (
+            "AyonPublishInstance",
+            "AyonPublishInstance_C",
+        )
+    ]
     if not instances:
         show_message_dialog(
             title="No AyonPublishInstance selected",

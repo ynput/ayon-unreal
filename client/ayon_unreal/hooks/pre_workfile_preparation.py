@@ -166,10 +166,6 @@ class UnrealPrelaunchHook(PreLaunchHook):
         workdir = self.launch_context.env["AYON_WORKDIR"]
         executable = str(self.launch_context.executable)
         engine_version = self.app_name.split("/")[-1].replace("-", ".")
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
-        self.log.handlers[0].setFormatter(formatter)
         try:
             if int(engine_version.split(".")[0]) < 4 and \
                         int(engine_version.split(".")[1]) < 26:
@@ -232,15 +228,12 @@ class UnrealPrelaunchHook(PreLaunchHook):
         built_plugin_path = self.launch_context.env.get(
             "AYON_BUILT_UNREAL_PLUGIN", None)
 
-        from pprint import pformat
-        # self.log.info(pformat(self.launch_context.data))
         current_project = self.launch_context.data['project_entity']['name']
-        unreal_settings = get_project_settings(current_project).get("unreal")
-        use_plugin = unreal_settings['project_setup']['use_plugin']
+        unreal_settings = self.launch_context.data["project_settings"]["unreal"]
+        use_plugin = unreal_settings["project_setup"]["use_plugin"]
 
-        self.log.info(f"Project Settings {pformat(unreal_settings)}")
-        self.log.info(f"Project Name {current_project}")
-        self.log.info(f"Use Plugin = {use_plugin}")
+        self.log.debug(f"Project Name {current_project}")
+        self.log.debug(f"Use Plugin = {use_plugin}")
 
         if use_plugin:
             if unreal_lib.check_built_plugin_existance(built_plugin_path):
@@ -271,7 +264,7 @@ class UnrealPrelaunchHook(PreLaunchHook):
 
         if use_exact_path:
             project_template_str = unreal_settings['project_setup']['existing_uproject_directory']
-            anatomy = Anatomy(current_project)
+            anatomy = self.launch_context.data["anatomy"]
             project_template = AnatomyStringTemplate(anatomy.templates_obj, project_template_str)
             launch_context = self.launch_context.data
             template_data = get_template_data(
