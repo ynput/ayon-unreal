@@ -5,7 +5,8 @@ from ayon_core.pipeline import (
 )
 from ayon_unreal.api.pipeline import (
     get_camera_tracks,
-    ls
+    ls,
+    UNREAL_VERSION
 )
 from ayon_core.pipeline.context_tools import get_current_folder_entity
 import ayon_api
@@ -306,3 +307,42 @@ def import_animation(
                     sequence.get_playback_end())
                 sec_params = section.get_editor_property('params')
                 sec_params.set_editor_property('animation', animation)
+
+
+def get_shot_track_names(sel_objects=None, get_name=True):
+    selection = [
+        a for a in sel_objects
+        if a.get_class().get_name() == "LevelSequence"
+    ]
+    if (
+        UNREAL_VERSION.major == 5
+        and UNREAL_VERSION.minor > 4
+    ):
+        sub_sequence_tracks = [
+            track for sel in selection for track in
+            sel.find_tracks_by_type(unreal.MovieSceneSubTrack)
+        ]
+    else:
+        sub_sequence_tracks = [
+            track for sel in selection for track in
+            sel.find_master_tracks_by_type(unreal.MovieSceneSubTrack)
+        ]
+
+    if get_name:
+        return [shot_tracks.get_display_name() for shot_tracks in
+                sub_sequence_tracks]
+    else:
+        return [shot_tracks for shot_tracks in sub_sequence_tracks]
+
+
+def get_shot_tracks(members):
+    ar = unreal.AssetRegistryHelpers.get_asset_registry()
+    selected_sequences = [
+        ar.get_asset_by_object_path(member).get_asset() for member in members
+    ]
+    return get_shot_track_names(selected_sequences, get_name=False)
+
+
+def get_screen_resolution():
+    game_user_settings = unreal.GameUserSettings.get_game_user_settings()
+    return game_user_settings.get_screen_resolution()
