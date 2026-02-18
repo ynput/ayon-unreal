@@ -5,12 +5,31 @@ from ayon_server.settings import (
 )
 
 
+class ProductTypeItemModel(BaseSettingsModel):
+    """Product type item for creator plugins."""
+    _layout = "compact"
+    product_type: str = SettingsField(
+        title="Product Type",
+        decription="Product type name"
+    )
+    label: str = SettingsField(
+        title="Label",
+        description="Label to display in UI for the product type",
+    )
+
 class BasicCreatorModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     default_variants: list[str] = SettingsField(
         default_factory=list,
         description="Default variants used for constructing a product name",
         title="Default Variants",
+    )
+    product_type_items: list[ProductTypeItemModel] = SettingsField(
+        default_factory=list,
+        title="Product Type Items",
+        description=(
+            "Optional list of product types that this plugin can create."
+        )
     )
 
 class CreatorsModel(BaseSettingsModel):
