@@ -223,30 +223,25 @@ class InstallQtBinding(PreLaunchHook):
                 env["PYTHONPATH"] = ue_pythonpath
 
         args = [
-            python_executable.as_posix(),
+            python_executable,
             "-c",
-            f"import {pyside_name}; print('{pyside_name} found')"
+            f"import {pyside_name}",
         ]
-
-        try:
-            process = subprocess.Popen(
-                args,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                env=env,
-                universal_newlines=True,
-                creationflags=subprocess.CREATE_NO_WINDOW,
+        returncode = subprocess.call(
+            args,
+            env=env,
+            text=True,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+        )
+        if returncode == 0:
+            self.log.debug(
+                "%s imported with blender's python.", pyside_name
             )
-            stdout, _ = process.communicate()
-            if process.returncode == 0 and f"{pyside_name} found" in stdout:
-                self.log.debug(
-                    "%s found with unreal's python and UE_PYTHONPATH.",
-                    pyside_name)
-                return True
-        except Exception:
-            pass
-
-        self.log.error("Failed to import %s via subprocess.", pyside_name)
+            return True
+        self.log.error(
+            "Failed to import %s via subprocess.",
+            pyside_name,
+        )
         return False
 
     def find_parent_directory(self, file_path: str, target_dir="Binaries") -> str:
