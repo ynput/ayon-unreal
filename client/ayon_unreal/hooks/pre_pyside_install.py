@@ -235,7 +235,7 @@ class InstallQtBinding(PreLaunchHook):
         )
         if returncode == 0:
             self.log.debug(
-                "%s imported with blender's python.", pyside_name
+                "%s imported with unreal's python.", pyside_name
             )
             return True
         self.log.error(
