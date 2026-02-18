@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 """Load textures from PNG."""
+from __future__ import annotations
+
 from ayon_core.pipeline import AYON_CONTAINER_ID
 from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
     create_container,
-    imprint,
+    imprint as _imprint,
     format_asset_directory
 )
 
@@ -14,7 +16,8 @@ import unreal  # noqa
 class TexturePNGLoader(plugin.Loader):
     """Load Unreal texture from PNG file."""
 
-    product_types = {"image", "texture", "render"}
+    product_base_types = {"image", "texture", "render"}
+    product_types = product_base_types
     label = "Import image texture 2d"
     representations = {"*"}
     extensions = {"png", "jpg", "tiff", "exr"}
@@ -85,15 +88,31 @@ class TexturePNGLoader(plugin.Loader):
         return asset_dir
 
     def imprint(
-        self,
-        folder_path,
-        asset_dir,
-        container_name,
-        asset_name,
-        repre_entity,
-        product_type,
-        project_name
-    ):
+            self,
+            folder_path: str,
+            asset_dir: str,
+            container_name: str,
+            asset_name: str,
+            representation: dict,
+            product_base_type: str,
+            project_name: str,
+    ) -> None:
+        """Imprint AYON_CONTAINER_ID to the container asset.
+
+        Args:
+            folder_path (str): Path to the folder in Unreal Content Browser.
+            asset_dir (str): Directory of the asset in Unreal Content Browser.
+            container_name (str): Name of the container asset.
+            asset_name (str): Name of the main asset.
+            representation (dict): Representation data to imprint.
+            product_base_type (str): Product base type to imprint.
+            project_name (str): Name of the project to imprint.
+
+        Todo (antirotor):
+            This per loader imprint is wrong and should be moved to some
+            common place, custom data usage should be re-evaluated.
+
+        """
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
@@ -102,15 +121,15 @@ class TexturePNGLoader(plugin.Loader):
             "container_name": container_name,
             "asset_name": asset_name,
             "loader": str(self.__class__.__name__),
-            "representation": repre_entity["id"],
-            "parent": repre_entity["versionId"],
-            "product_type": product_type,
+            "representation": representation["id"],
+            "parent": representation["versionId"],
+            "product_type": product_bse_type,
             # TODO these shold be probably removed
             "asset": folder_path,
-            "family": product_type,
+            "family": product_base_type,
             "project_name": project_name
         }
-        imprint(f"{asset_dir}/{container_name}", data)
+        _imprint(f"{asset_dir}/{container_name}", data)
 
     def load(self, context, name, namespace, options):
         """Load and containerise representation into Content Browser.
@@ -144,13 +163,13 @@ class TexturePNGLoader(plugin.Loader):
             path, asset_dir, container_name
         )
         self.imprint(
-            folder_path,
-            asset_dir,
-            container_name,
-            asset_name,
-            context["representation"],
-            context["product"]["productType"],
-            context["project"]["name"],
+            folder_path=folder_path,
+            asset_dir=asset_dir,
+            container_name=container_name,
+            asset_name=asset_name,
+            representation=context["representation"],
+            product_base_type=context["product"]["productBaseType"],
+            project_name=context["project"]["name"],
         )
 
         asset_contents = unreal.EditorAssetLibrary.list_assets(
@@ -163,7 +182,7 @@ class TexturePNGLoader(plugin.Loader):
 
     def update(self, container, context):
         folder_path = context["folder"]["path"]
-        product_type = context["product"]["productType"]
+        product_base_type = context["product"]["productBaseType"]
         repre_entity = context["representation"]
         path = self.filepath_from_context(context)
 
@@ -182,13 +201,13 @@ class TexturePNGLoader(plugin.Loader):
         )
 
         self.imprint(
-            folder_path,
-            asset_dir,
-            container_name,
-            asset_name,
-            repre_entity,
-            product_type,
-            context["project"]["name"]
+            folder_path=folder_path,
+            asset_dir=asset_dir,
+            container_name=container_name,
+            asset_name=asset_name,
+            representation=repre_entity,
+            product_base_type=product_base_type,
+            project_name=context["project"]["name"],
         )
 
         asset_contents = unreal.EditorAssetLibrary.list_assets(

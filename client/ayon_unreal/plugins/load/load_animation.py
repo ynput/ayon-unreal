@@ -20,7 +20,8 @@ from unreal import (EditorAssetLibrary, MovieSceneSkeletalAnimationSection,
 class AnimationFBXLoader(plugin.Loader):
     """Load Unreal SkeletalMesh from FBX."""
 
-    product_types = {"animation"}
+    product_base_types = {"animation"}
+    product_types = product_base_types
     label = "Import FBX Animation"
     representations = {"fbx"}
     icon = "cube"
@@ -382,17 +383,38 @@ class AnimationFBXLoader(plugin.Loader):
             return master_level, asset_dir
 
     def imprint(
-        self,
-        folder_path,
-        asset_dir,
-        container_name,
-        asset_name,
-        representation,
-        product_type,
-        folder_entity,
-        project_name,
-        layout
-    ):
+            self,
+            folder_path: str,
+            asset_dir: str,
+            container_name: str,
+            asset_name: str,
+            representation: dict,
+            product_base_type: str,
+            frame_start: int,
+            frame_end: int,
+            project_name: str,
+            *,
+            layout: bool,
+    ) -> None:
+        """Imprint AYON_CONTAINER_ID to the container asset.
+
+        Args:
+            folder_path (str): Path to the folder in Unreal Content Browser.
+            asset_dir (str): Directory of the asset in Unreal Content Browser.
+            container_name (str): Name of the container asset.
+            asset_name (str): Name of the main asset.
+            representation (dict): Representation data to imprint.
+            product_base_type (str): Product base type to imprint.
+            frame_start (int): Start frame of the asset.
+            frame_end (int): End frame of the asset.
+            project_name (str): Name of the project to imprint.
+            layout (bool): Whether the container is created with layout.
+
+        Todo (antirotor):
+            This per loader imprint is wrong and should be moved to some
+            common place, custom data usage should be re-evaluated.
+
+        """
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
@@ -403,12 +425,12 @@ class AnimationFBXLoader(plugin.Loader):
             "representation": representation["id"],
             "parent": representation["versionId"],
             "folder_path": folder_path,
-            "product_type": product_type,
+            "product_base_type": product_base_type,
             # TODO these shold be probably removed
             "asset": folder_path,
-            "family": product_type,
-            "frameStart": folder_entity["attrib"]["frameStart"],
-            "frameEnd": folder_entity["attrib"]["frameEnd"],
+            "family": product_base_type,
+            "frameStart": frame_start,
+            "frameEnd": frame_end,
             "project_name": project_name,
             "layout": layout
         }
@@ -442,7 +464,7 @@ class AnimationFBXLoader(plugin.Loader):
         folder_path = folder_entity["path"]
         hierarchy = folder_path.lstrip("/").split("/")
         folder_name = hierarchy.pop(-1)
-        product_type = context["product"]["productType"]
+        product_base_type = context["product"]["productBaseType"]
 
         suffix = "_CON"
 
@@ -472,15 +494,16 @@ class AnimationFBXLoader(plugin.Loader):
                     container=container_name, path=asset_dir)
 
         self.imprint(
-            folder_path,
-            asset_dir,
-            container_name,
-            asset_name,
-            context["representation"],
-            product_type,
-            folder_entity,
-            context["project"]["name"],
-            should_use_layout
+            folder_path=folder_path,
+            asset_dir=asset_dir,
+            container_name=container_name,
+            asset_name=asset_name,
+            representation=context["representation"],
+            product_base_type=product_base_type,
+            frame_start=folder_entity["attrib"]["frameStart"],
+            frame_end=folder_entity["attrib"]["frameEnd"],
+            project_name=context["project"]["name"],
+            layout=should_use_layout
         )
 
         imported_content = EditorAssetLibrary.list_assets(
@@ -540,15 +563,16 @@ class AnimationFBXLoader(plugin.Loader):
 
         # update metadata
         self.imprint(
-            folder_path,
-            asset_dir,
-            container_name,
-            asset_name,
-            repre_entity,
-            product_type,
-            folder_entity,
-            context["project"]["name"],
-            should_use_layout
+            folder_path=folder_path,
+            asset_dir=asset_dir,
+            container_name=container_name,
+            asset_name=asset_name,
+            representation=repre_entity,
+            product_base_type=product_type,
+            frame_start=folder_entity["attrib"]["frameStart"],
+            frame_end=folder_entity["attrib"]["frameEnd"],
+            project_name=context["project"]["name"],
+            layout=should_use_layout
         )
 
         asset_content = EditorAssetLibrary.list_assets(
