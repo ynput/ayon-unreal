@@ -197,9 +197,9 @@ class InstallQtBinding(PreLaunchHook):
         return_code = self.pip_install(args)
         return return_code
 
-    @staticmethod
-    def is_pyside_installed(python_executable: Path, pyside_name: str) -> bool:
-        """Check if PySide2/6 module is in unreal python env.
+    def is_pyside_installed(self, python_executable: Path,
+                            pyside_name: str) -> bool:
+        """Check if PySide2/6 module is importable with unreal's python.
 
         Args:
             python_executable (Path): Path to python executable.
@@ -207,27 +207,46 @@ class InstallQtBinding(PreLaunchHook):
                 and PySide6).
 
         Returns:
-            bool: True if PySide2 is installed, False otherwise.
+            bool: True if PySide2/6 is importable, False otherwise.
 
         """
-        # Get pip list from unreal's python executable
-        args = [python_executable.as_posix(), "-m", "pip", "list"]
-        process = subprocess.Popen(args, stdout=subprocess.PIPE)
-        stdout, _ = process.communicate()
-        lines = stdout.decode().split(os.linesep)
-        # Second line contain dashes that define maximum length of module name.
-        #   Second column of dashes define maximum length of module version.
-        package_dashes, *_ = lines[1].split(" ")
-        package_len = len(package_dashes)
+        env = self.launch_context.env.copy()
 
-        # Got through printed lines starting at line 3
-        for idx in range(2, len(lines)):
-            line = lines[idx]
-            if not line:
-                continue
-            package_name = line[:package_len].strip()
-            if package_name.lower() == pyside_name.lower():
+        # Add UE_PYTHONPATH to PYTHONPATH if it exists, as Unreal's python
+        # uses it
+        ue_pythonpath = env.get("UE_PYTHONPATH")
+        if ue_pythonpath:
+            pythonpath = env.get("PYTHONPATH", "")
+            if pythonpath:
+                env["PYTHONPATH"] = os.pathsep.join([pythonpath, ue_pythonpath])
+            else:
+                env["PYTHONPATH"] = ue_pythonpath
+
+        args = [
+            python_executable.as_posix(),
+            "-c",
+            f"import {pyside_name}; print('{pyside_name} found')"
+        ]
+
+        try:
+            process = subprocess.Popen(
+                args,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+                universal_newlines=True,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
+            stdout, _ = process.communicate()
+            if process.returncode == 0 and f"{pyside_name} found" in stdout:
+                self.log.debug(
+                    "%s found with unreal's python and UE_PYTHONPATH.",
+                    pyside_name)
                 return True
+        except Exception:
+            pass
+
+        self.log.error("Failed to import %s via subprocess.", pyside_name)
         return False
 
     def find_parent_directory(self, file_path: str, target_dir="Binaries") -> str:
