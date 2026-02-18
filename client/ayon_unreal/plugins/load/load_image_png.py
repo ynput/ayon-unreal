@@ -123,7 +123,7 @@ class TexturePNGLoader(plugin.Loader):
             "loader": str(self.__class__.__name__),
             "representation": representation["id"],
             "parent": representation["versionId"],
-            "product_type": product_bse_type,
+            "product_type": product_base_type,
             # TODO these shold be probably removed
             "asset": folder_path,
             "family": product_base_type,
