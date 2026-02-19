@@ -31,6 +31,11 @@ class InstallQtBinding(PreLaunchHook):
 
     def execute(self) -> None:
         """Entry point for the hook."""
+        if not self.data["project_settings"]["unreal"][
+            "prelaunch_settings"].get("enabled", True):
+            self.log.info("Skipping execution of %s.",
+                          self.__class__.__name__)
+            return
         try:
             self._execute()
         except Exception:  # noqa: BLE001
@@ -227,19 +232,22 @@ class InstallQtBinding(PreLaunchHook):
             "-c",
             f"import {pyside_name}",
         ]
+        kwargs = {}
+        if system().lower() == "windows":
+            kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
         returncode = subprocess.call(
             args,
             env=env,
             text=True,
-            creationflags=subprocess.CREATE_NO_WINDOW,
+            **kwargs,
         )
         if returncode == 0:
             self.log.debug(
                 "%s imported with unreal's python.", pyside_name
             )
             return True
-        self.log.error(
-            "Failed to import %s via subprocess.",
+        self.log.warning(
+            "Could not import %s, will attempt to install it.",
             pyside_name,
         )
         return False
