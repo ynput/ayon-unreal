@@ -33,7 +33,7 @@ class InstallQtBinding(PreLaunchHook):
         """Entry point for the hook."""
         if not self.data["project_settings"]["unreal"][
             "prelaunch_settings"].get("enabled", True):
-            self.log.info("Skipping execution of %s.",
+            self.log.debug("Skipping execution of %s.",
                           self.__class__.__name__)
             return
         try:
