@@ -3,7 +3,7 @@ from ayon_server.settings import BaseSettingsModel, SettingsField
 
 class UnrealPreLaunchSetting(BaseSettingsModel):
     """Install PySide2/6 Qt binding to unreal's python packages. Disable to bypass the hook."""
-    enabled: bool = SettingsField()
+    enabled: bool = SettingsField(True, title="Enabled")
     use_dependency: bool = SettingsField(
         False,
         title="Use Offline Package Source",
