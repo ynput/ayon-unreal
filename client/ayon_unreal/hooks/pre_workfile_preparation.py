@@ -130,7 +130,8 @@ class UnrealPrelaunchHook(PreLaunchHook):
             self.data["project_name"],
             unreal_project_name,
             engine_path,
-            project_dir
+            project_dir,
+            env=self.launch_context.env
         )
         ue_project_worker.moveToThread(q_thread)
         q_thread.started.connect(ue_project_worker.run)

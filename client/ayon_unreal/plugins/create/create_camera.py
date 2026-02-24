@@ -14,6 +14,7 @@ class CreateCamera(UnrealAssetCreator):
     identifier = "io.ayon.creators.unreal.camera"
     label = "Camera"
     product_type = "camera"
+    product_base_type = "camera"
     icon = "fa.camera"
     default_variants = ["Main"]
 
