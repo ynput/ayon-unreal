@@ -282,7 +282,8 @@ class LayoutLoader(Loader):
     """Load Layout from a JSON file"""
 
     product_types = {"layout"}
-    representations = {"json"}
+    representations = {"*"}
+    extensions = {"json"}
 
     label = "Load Layout"
     icon = "code-fork"

@@ -180,6 +180,7 @@ class UMapLoader(UAssetLoader):
 
     product_types = {"uasset"}
     label = "Load Level"
-    representations = {"umap"}
+    representations = {"*"}
+    extensions = {"umap"}
 
     extension = "umap"
