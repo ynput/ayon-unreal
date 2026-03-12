@@ -13,7 +13,8 @@ class YetiLoader(plugin.Loader):
 
     product_types = {"yeticacheUE"}
     label = "Import Yeti"
-    representations = {"abc"}
+    representations = {"*"}
+    extensions = {"abc"}
     icon = "pagelines"
     color = "orange"
 
