@@ -21,7 +21,8 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
 
     product_types = {"pointcache", "skeletalMesh"}
     label = "Import Alembic Skeletal Mesh"
-    representations = {"abc"}
+    representations = {"*"}
+    extensions = {"abc"}
     icon = "cube"
     color = "orange"
 

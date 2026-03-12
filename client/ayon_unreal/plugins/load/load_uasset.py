@@ -35,7 +35,8 @@ class UAssetLoader(plugin.Loader):
 
     product_types = {"uasset"}
     label = "Load UAsset"
-    representations = {"uasset"}
+    representations = {"*"}
+    extensions = {"uasset"}
     icon = "cube"
     color = "orange"
 
