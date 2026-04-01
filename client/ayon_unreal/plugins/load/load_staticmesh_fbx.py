@@ -19,7 +19,8 @@ class StaticMeshFBXLoader(plugin.Loader):
     product_base_types = {"model", "staticMesh"}
     product_types = product_base_types
     label = "Import FBX Static Mesh"
-    representations = {"fbx"}
+    representations = {"*"}
+    extensions = {"fbx"}
     icon = "cube"
     color = "orange"
 

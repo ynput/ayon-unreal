@@ -18,7 +18,8 @@ class AnimationAlembicLoader(plugin.Loader):
     product_base_types = {"animation"}
     product_types = product_base_types
     label = "Import Alembic Animation"
-    representations = {"abc"}
+    representations = {"*"}
+    extensions = {"abc"}
     icon = "cube"
     color = "orange"
     abc_conversion_preset = "maya"

@@ -22,7 +22,8 @@ class PointCacheAlembicLoader(plugin.Loader):
     product_base_types = {"model", "pointcache"}
     product_types = product_base_types
     label = "Import Alembic Point Cache"
-    representations = {"abc"}
+    representations = {"*"}
+    extensions = {"abc"}
     icon = "cube"
     color = "orange"
 

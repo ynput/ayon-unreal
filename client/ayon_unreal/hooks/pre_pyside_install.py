@@ -31,6 +31,11 @@ class InstallQtBinding(PreLaunchHook):
 
     def execute(self) -> None:
         """Entry point for the hook."""
+        if not self.data["project_settings"]["unreal"][
+            "prelaunch_settings"].get("enabled", True):
+            self.log.debug("Skipping execution of %s.",
+                          self.__class__.__name__)
+            return
         try:
             self._execute()
         except Exception:  # noqa: BLE001
@@ -197,9 +202,9 @@ class InstallQtBinding(PreLaunchHook):
         return_code = self.pip_install(args)
         return return_code
 
-    @staticmethod
-    def is_pyside_installed(python_executable: Path, pyside_name: str) -> bool:
-        """Check if PySide2/6 module is in unreal python env.
+    def is_pyside_installed(self, python_executable: Path,
+                            pyside_name: str) -> bool:
+        """Check if PySide2/6 module is importable with unreal's python.
 
         Args:
             python_executable (Path): Path to python executable.
@@ -207,27 +212,44 @@ class InstallQtBinding(PreLaunchHook):
                 and PySide6).
 
         Returns:
-            bool: True if PySide2 is installed, False otherwise.
+            bool: True if PySide2/6 is importable, False otherwise.
 
         """
-        # Get pip list from unreal's python executable
-        args = [python_executable.as_posix(), "-m", "pip", "list"]
-        process = subprocess.Popen(args, stdout=subprocess.PIPE)
-        stdout, _ = process.communicate()
-        lines = stdout.decode().split(os.linesep)
-        # Second line contain dashes that define maximum length of module name.
-        #   Second column of dashes define maximum length of module version.
-        package_dashes, *_ = lines[1].split(" ")
-        package_len = len(package_dashes)
+        env = self.launch_context.env.copy()
 
-        # Got through printed lines starting at line 3
-        for idx in range(2, len(lines)):
-            line = lines[idx]
-            if not line:
-                continue
-            package_name = line[:package_len].strip()
-            if package_name.lower() == pyside_name.lower():
-                return True
+        # Add UE_PYTHONPATH to PYTHONPATH if it exists, as Unreal's python
+        # uses it
+        ue_pythonpath = env.get("UE_PYTHONPATH")
+        if ue_pythonpath:
+            pythonpath = env.get("PYTHONPATH", "")
+            if pythonpath:
+                env["PYTHONPATH"] = os.pathsep.join([pythonpath, ue_pythonpath])
+            else:
+                env["PYTHONPATH"] = ue_pythonpath
+
+        args = [
+            python_executable,
+            "-c",
+            f"import {pyside_name}",
+        ]
+        kwargs = {}
+        if system().lower() == "windows":
+            kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+        returncode = subprocess.call(
+            args,
+            env=env,
+            text=True,
+            **kwargs,
+        )
+        if returncode == 0:
+            self.log.debug(
+                "%s imported with unreal's python.", pyside_name
+            )
+            return True
+        self.log.warning(
+            "Could not import %s, will attempt to install it.",
+            pyside_name,
+        )
         return False
 
     def find_parent_directory(self, file_path: str, target_dir="Binaries") -> str:

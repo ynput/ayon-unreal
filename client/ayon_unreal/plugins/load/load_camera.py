@@ -27,7 +27,8 @@ class CameraLoader(plugin.Loader):
     product_base_types = {"camera"}
     product_types = product_base_types
     label = "Load Camera"
-    representations = {"fbx"}
+    representations = {"*"}
+    extensions = {"fbx"}
     icon = "cube"
     color = "orange"
     loaded_asset_dir = "{folder[path]}/{product[name]}_{version[version]}"

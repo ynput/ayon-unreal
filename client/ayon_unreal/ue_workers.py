@@ -165,7 +165,10 @@ class UEProjectGenerationWorker(UEWorker):
             commandlet_cmd.append("-GenerateCode")
 
         gen_process = subprocess.Popen(
-            commandlet_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            commandlet_cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=self.env,
         )
 
         for line in gen_process.stdout:

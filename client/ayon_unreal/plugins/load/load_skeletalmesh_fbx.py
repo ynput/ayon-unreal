@@ -19,7 +19,8 @@ class SkeletalMeshFBXLoader(plugin.Loader):
     product_base_types = {"rig", "skeletalMesh"}
     product_types = product_base_types
     label = "Import FBX Skeletal Mesh"
-    representations = {"fbx"}
+    representations = {"*"}
+    extensions = {"fbx"}
     icon = "cube"
     color = "orange"
 

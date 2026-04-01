@@ -23,7 +23,8 @@ class AnimationFBXLoader(plugin.Loader):
     product_base_types = {"animation"}
     product_types = product_base_types
     label = "Import FBX Animation"
-    representations = {"fbx"}
+    representations = {"*"}
+    extensions = {"fbx"}
     icon = "cube"
     color = "orange"
 
