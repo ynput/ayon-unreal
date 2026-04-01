@@ -39,6 +39,7 @@ class UnrealPrelaunchHook(PreLaunchHook):
     """
     app_groups = {"unreal"}
     launch_types = {LaunchTypes.local}
+    order = -5.1
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
