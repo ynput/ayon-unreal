@@ -93,8 +93,8 @@ class CollectRemoteRenderFiles(pyblish.api.InstancePlugin):
         _file_template_parts = _file_template.split(".")
 
         self.dir_template = StringTemplate(Path(*_dir_template_parts).as_posix())
-        folder_name = self.anatomy_data["asset"]
-        product_name = self.anatomy_data["subset"]
+        folder_name = self.anatomy_data["folder"]["name"]
+        product_name = self.anatomy_data["product"]["name"]
         self.file_template = StringTemplate(
             f"{_file_template_parts[0]}_{folder_name}_{product_name}.{_file_template_parts[1]}"
         )

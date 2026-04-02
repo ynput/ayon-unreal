@@ -32,8 +32,8 @@ class ExtractMRQAsManifest(publish.Extractor):
 
         # NOTE: i should get a separate template for ue manifests
         #       _file_template is rather the ue project name template
-        folder_name = self.anatomy_data["asset"]
-        product_name = self.anatomy_data["subset"]
+        folder_name = self.anatomy_data["folder"]["name"]
+        product_name = self.anatomy_data["product"]["name"]
         _file_template = project_templates["work"]["unreal"]["file"]
         _file_template_parts = _file_template.split(".")
         _file_template = f"{_file_template_parts[0]}_{folder_name}_{product_name}.{_file_template_parts[1]}"
