@@ -569,7 +569,7 @@ class AnimationFBXLoader(plugin.Loader):
             container_name=container_name,
             asset_name=asset_name,
             representation=repre_entity,
-            product_base_type=product_type,
+            product_base_type=context["product"]["productBaseType"],
             frame_start=folder_entity["attrib"]["frameStart"],
             frame_end=folder_entity["attrib"]["frameEnd"],
             project_name=context["project"]["name"],

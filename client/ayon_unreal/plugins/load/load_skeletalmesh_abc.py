@@ -212,7 +212,7 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             "representation": representation["id"],
             "parent": representation["versionId"],
             "product_base_type": product_base_type,
-            "frameStart":frame_start,
+            "frameStart": frame_start,
             "frameEnd": frame_end,
             # TODO these should be probably removed
             "asset": folder_path,

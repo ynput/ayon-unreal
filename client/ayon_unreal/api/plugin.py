@@ -10,7 +10,7 @@ import ayon_api
 
 from .pipeline import (
     create_publish_instance,
-    imprint as _imprint,
+    imprint,
     ls_inst,
     UNREAL_VERSION
 )
@@ -65,7 +65,19 @@ class UnrealCreateLogic:
                 if creator_id:
                     unreal_cached_products[creator_id].append(instance)
                 else:
-                    product_base_type = instance.data["product_base_type"]
+                    product_base_type = instance["product_base_type"]
+                    # Handle legacy instances that may use "product_type"
+                    # instead of "product_base_type" to avoid KeyError.
+                    product_base_type = (
+                            instance.data.get("product_base_type")
+                            or instance.data.get("product_type")
+                    )
+                    if product_base_type is None:
+                        unreal.log_warning(
+                            f"Legacy instance without product_base_type or "
+                            f"product_type: {instance}"
+                        )
+                        continue
                     unreal_cached_legacy_products[product_base_type].append(
                         instance)
 
@@ -107,7 +119,7 @@ class UnrealCreateLogic:
                 key: changes[key].new_value
                 for key in changes.changed_keys
             }
-            _imprint(
+            imprint(
                 instance_node,
                 new_values
             )
@@ -129,8 +141,13 @@ class UnrealCreateLogic:
             instance_data["product_name"] = product_name
             instance_data["instance_path"] = f"{self.root}/{instance_name}"
 
+            product_type: str = instance_data.get("product_type")
+            if not product_type:
+                product_type = self.product_base_type
+
             instance = CreatedInstance(
-                product_type=self.product_type,
+                product_type=product_type,
+                product_base_type=self.product_base_type,
                 product_name=product_name,
                 data=instance_data,
                 creator=self,
@@ -146,7 +163,7 @@ class UnrealCreateLogic:
                 obj = ar.get_asset_by_object_path(member).get_asset()
                 assets.add(obj)
 
-            _imprint(f"{self.root}/{instance_name}",
+            imprint(f"{self.root}/{instance_name}",
                     instance.data_to_store())
 
             return instance
@@ -446,7 +463,7 @@ class LayoutLoader(Loader):
         }
         if hierarchy_dir is not None:
             data["master_directory"] = hierarchy_dir
-        _imprint(f"{asset_dir}/{container_name}", data)
+        imprint(f"{asset_dir}/{container_name}", data)
 
     def _load_assets(
             self,

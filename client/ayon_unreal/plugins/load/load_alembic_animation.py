@@ -189,6 +189,7 @@ class AnimationAlembicLoader(plugin.Loader):
             # TODO these should be probably removed
             "asset": folder_path,
             "family": product_base_type,
+            "product_base_type": product_base_type,
             "project_name": project_name,
             "layout": layout
         }

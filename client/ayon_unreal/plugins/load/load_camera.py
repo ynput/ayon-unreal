@@ -240,7 +240,7 @@ class CameraLoader(plugin.Loader):
             container_name=container_name,
             asset_name=asset_name,
             representation=context["representation"],
-            product_base_type=context["product"]["productType"],
+            product_base_type=context["product"]["productBaseType"],
             frame_start=folder_entity["attrib"].get("frameStart"),
             frame_end=folder_entity["attrib"].get("frameEnd"),
             project_name=context["project"]["name"],
