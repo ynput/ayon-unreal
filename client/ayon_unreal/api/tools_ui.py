@@ -176,7 +176,9 @@ class ToolsDialog(QtWidgets.QDialog):
             self._first_show = False
 
     def _on_tool_require(self, tool_name):
-        host_tools.show_tool_by_name(tool_name, parent=self)
+        tool = host_tools.show_tool_by_name(tool_name, parent=self)
+        if tool:
+            unreal.parent_external_window_to_slate(tool.winId())
 
 
 class ToolsPopup(ToolsDialog):
