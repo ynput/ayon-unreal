@@ -63,6 +63,7 @@ class UnrealCreateLogic():
                 if creator_id:
                     unreal_cached_subsets[creator_id].append(instance)
                 else:
+                    # Backwards compatibility for older instances
                     product_type = instance.get("product_type")
                     unreal_cached_legacy_subsets[product_type].append(instance)
 
@@ -125,12 +126,24 @@ class UnrealCreateLogic():
 
             instance_data["product_name"] = product_name
             instance_data["instance_path"] = f"{self.root}/{instance_name}"
+            product_type = instance_data.get("productType")
+            if not product_type:
+                product_type = self.product_base_type
+            product_type_kwargs = {
+                "product_base_type": self.product_base_type,
+                "product_type": product_type,
+            }
+            if not hasattr(CreatedInstance, "product_base_type"):
+                product_type_kwargs["product_type"] = product_type_kwargs.pop(
+                    "product_base_type"
+                )
 
             instance = CreatedInstance(
-                self.product_type,
-                product_name,
-                instance_data,
-                self)
+                **product_type_kwargs,
+                product_name=product_name,
+                data=instance_data,
+                creator=self,
+            )
             self._add_instance_to_context(instance)
 
             pub_instance.set_editor_property('add_external_assets', True)

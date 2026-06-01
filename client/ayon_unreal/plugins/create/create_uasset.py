@@ -14,8 +14,8 @@ class CreateUAsset(UnrealAssetCreator):
 
     identifier = "io.ayon.creators.unreal.uasset"
     label = "UAsset"
-    product_type = "uasset"
     product_base_type = "uasset"
+    product_type = product_base_type
     icon = "cube"
     default_variants = ["Main"]
 
@@ -56,7 +56,8 @@ class CreateUMap(CreateUAsset):
 
     identifier = "io.ayon.creators.unreal.umap"
     label = "Level"
-    product_type = "uasset"
+    product_base_type = "uasset"
+    product_type = product_base_type
     extension = ".umap"
 
     def create(self, product_name, instance_data, pre_create_data):
