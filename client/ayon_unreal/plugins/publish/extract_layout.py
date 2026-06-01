@@ -60,7 +60,18 @@ class ExtractLayout(publish.Extractor):
 
                 parent_id = eal.get_metadata_tag(asset_container, "parent")
                 repre_id = eal.get_metadata_tag(asset_container, "representation")
-                family = eal.get_metadata_tag(asset_container, "family")
+                product_base_type = None
+                for key in (
+                    "product_base_type",
+                    "product_type",
+                    "family",
+                ):
+                    product_base_type = eal.get_metadata_tag(
+                        asset_container, key
+                    )
+                    if product_base_type:
+                        break
+
                 json_element = {}
                 json_element["reference"] = str(repre_id)
                 json_element["representation"] = str(repre_id)
@@ -76,7 +87,8 @@ class ExtractLayout(publish.Extractor):
                 extension = instance_name.split("_")[-1]
                 asset_name = re.match(f'(.+)_{extension}$', instance_name)
                 json_element["version"] = str(parent_id)
-                json_element["product_type"] = family
+                json_element["product_base_type"] = product_base_type
+                json_element["product_type"] = product_base_type
                 json_element["instance_name"] = asset_name.group(1)
                 json_element["asset_name"] = instance_name
                 json_element["extension"] = extension

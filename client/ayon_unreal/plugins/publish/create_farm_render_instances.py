@@ -90,10 +90,13 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
                 new_data["folderPath"] = instance.data["folderPath"]
                 new_data["setMembers"] = seq_name
                 new_data["productName"] = new_product_name
-                product_type = "render"
+                product_base_type = "render"
+                # TODO use product type from instance
+                product_type = product_base_type
+                new_data["productBaseType"] = product_base_type
                 new_data["productType"] = product_type
-                new_data["family"] = product_type
-                new_data["families"] = [product_type, "review"]
+                new_data["family"] = product_base_type
+                new_data["families"] = [product_base_type, "review"]
                 new_data["parent"] = data.get("parent")
                 new_data["level"] = data.get("level")
                 new_data["output"] = s['output']
@@ -247,15 +250,27 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
             except KeyError:
                 review = inst.data.get("review", False)
 
+            product_base_type = "render"
+            # TODO use product type from instance
+            product_type = product_base_type
+            product_type_kwargs = {
+                "productBaseType": product_base_type,
+                "productType": product_type,
+            }
+            if not hasattr(UnrealRenderInstance, "productBaseType"):
+                product_type_kwargs["productType"] = product_type_kwargs.pop(
+                    "productBaseType"
+                )
+
             new_instance = UnrealRenderInstance(
-                family="render",
+                family=product_base_type,
                 families=["render.farm"],
                 version=version,
                 time="",
                 source=current_file,
                 label=f"{product_name} - {family}",
                 productName=product_name,
-                productType="render",
+                **product_type_kwargs,
                 folderPath=inst.data["folderPath"],
                 task=task_name,
                 attachTo=False,
