@@ -19,7 +19,8 @@ import unreal  # noqa
 class SkeletalMeshAlembicLoader(plugin.Loader):
     """Load Unreal SkeletalMesh from Alembic"""
 
-    product_types = {"pointcache", "skeletalMesh"}
+    product_base_types = {"pointcache", "skeletalMesh"}
+    product_types = product_base_types
     label = "Import Alembic Skeletal Mesh"
     representations = {"*"}
     extensions = {"abc"}
@@ -220,6 +221,12 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
         # Create directory for asset and ayon container
         folder_entity = context["folder"]
         folder_path = folder_entity["path"]
+
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
+
         suffix = "_CON"
         path = self.filepath_from_context(context)
         asset_root, asset_name = format_asset_directory(
@@ -260,7 +267,7 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             container_name,
             asset_name,
             context["representation"],
-            context["product"]["productType"],
+            product_base_type,
             folder_entity["attrib"]["frameStart"],
             folder_entity["attrib"]["frameEnd"],
             context["project"]["name"],
@@ -278,7 +285,11 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
 
     def update(self, container, context):
         folder_path = context["folder"]["path"]
-        product_type = context["product"]["productType"]
+
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
         repre_entity = context["representation"]
 
         # Create directory for folder and Ayon container
@@ -318,7 +329,7 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             container_name,
             asset_name,
             repre_entity,
-            product_type,
+            product_base_type,
             container.get("frameStart", 1),
             container.get("frameEnd", 1),
             context["project"]["name"],

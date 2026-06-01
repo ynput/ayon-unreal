@@ -33,7 +33,8 @@ def parsing_to_absolute_directory(asset_dir):
 class UAssetLoader(plugin.Loader):
     """Load UAsset."""
 
-    product_types = {"uasset"}
+    product_base_types = {"uasset"}
+    product_types = product_base_types
     label = "Load UAsset"
     representations = {"*"}
     extensions = {"uasset"}
@@ -71,6 +72,10 @@ class UAssetLoader(plugin.Loader):
 
         # Create directory for asset and Ayon container
         folder_path = context["folder"]["path"]
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
         suffix = "_CON"
         asset_root, asset_name = unreal_pipeline.format_asset_directory(
             context, self.loaded_asset_dir, self.loaded_asset_name
@@ -106,10 +111,11 @@ class UAssetLoader(plugin.Loader):
             "loader": str(self.__class__.__name__),
             "representation": context["representation"]["id"],
             "parent": context["representation"]["versionId"],
-            "product_type": context["product"]["productType"],
+            "product_base_type": product_base_type,
             # TODO these should be probably removed
             "asset": folder_path,
-            "family": context["product"]["productType"],
+            "product_type": product_base_type,
+            "family": product_base_type,
             "project_name": context["project"]["name"]
         }
 
@@ -178,7 +184,8 @@ class UAssetLoader(plugin.Loader):
 class UMapLoader(UAssetLoader):
     """Load Level."""
 
-    product_types = {"uasset"}
+    product_base_types = {"uasset"}
+    product_types = product_base_types
     label = "Load Level"
     representations = {"umap"}
 

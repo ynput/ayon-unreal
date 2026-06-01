@@ -294,7 +294,8 @@ class Loader(LoaderPlugin, ABC):
 class LayoutLoader(Loader):
     """Load Layout from a JSON file"""
 
-    product_types = {"layout"}
+    product_base_types = {"layout"}
+    product_types = product_base_types
     representations = {"json"}
 
     label = "Load Layout"
@@ -305,13 +306,13 @@ class LayoutLoader(Loader):
     remove_loaded_assets = False
 
     @staticmethod
-    def _get_fbx_loader(loaders, family):
+    def _get_fbx_loader(loaders, product_base_type):
         name = ""
-        if family in ['rig', 'skeletalMesh']:
+        if product_base_type in ['rig', 'skeletalMesh']:
             name = "SkeletalMeshFBXLoader"
-        elif family in ['model', 'staticMesh']:
+        elif product_base_type in ['model', 'staticMesh']:
             name = "StaticMeshFBXLoader"
-        elif family == 'camera':
+        elif product_base_type == 'camera':
             name = "CameraLoader"
 
         if name == "":
@@ -325,13 +326,13 @@ class LayoutLoader(Loader):
         return None
 
     @staticmethod
-    def _get_abc_loader(loaders, family):
+    def _get_abc_loader(loaders, product_base_type):
         name = ""
-        if family in ['rig', 'skeletalMesh']:
+        if product_base_type in ['rig', 'skeletalMesh']:
             name = "SkeletalMeshAlembicLoader"
-        elif family in ['model', 'staticMesh']:
+        elif product_base_type in ['model', 'staticMesh']:
             name = "StaticMeshAlembicLoader"
-        elif family in ["animation"]:
+        elif product_base_type in ["animation"]:
             name = "AnimationAlembicLoader"
         if name == "":
             return None
@@ -419,10 +420,13 @@ class LayoutLoader(Loader):
         project_name,
         hierarchy_dir=None
     ):
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
-            "asset": folder_name,
             "folder_path": folder_path,
             "namespace": asset_dir,
             "container_name": container_name,
@@ -430,16 +434,21 @@ class LayoutLoader(Loader):
             "loader": str(self.__class__.__name__),
             "representation": context["representation"]["id"],
             "parent": context["representation"]["versionId"],
-            "family": context["product"]["productType"],
+            "product_base_type": product_base_type,
             "loaded_assets": loaded_assets,
-            "project_name": project_name
+            "project_name": project_name,
+            # TODO remove deprecated keys
+            "asset": folder_name,
+            "family": product_base_type,
         }
         if hierarchy_dir is not None:
             data["master_directory"] = hierarchy_dir
         imprint(
             "{}/{}".format(asset_dir, container_name), data)
 
-    def _load_assets(self, instance_name, repre_id, product_type, repr_format):
+    def _load_assets(
+        self, instance_name, repre_id, product_base_type, repr_format
+    ):
         all_loaders = discover_loader_plugins()
         loaders = loaders_from_representation(
             all_loaders, repre_id)
@@ -447,22 +456,23 @@ class LayoutLoader(Loader):
         loader = None
 
         if repr_format == 'fbx':
-            loader = self._get_fbx_loader(loaders, product_type)
+            loader = self._get_fbx_loader(loaders, product_base_type)
         elif repr_format == 'abc':
-            loader = self._get_abc_loader(loaders, product_type)
+            loader = self._get_abc_loader(loaders, product_base_type)
 
         if not loader:
             if repr_format == "ma":
                 msg = (
-                    f"No valid {product_type} loader found for {repre_id} ({repr_format}), "
-                    f"consider using {product_type} loader (fbx/abc) instead."
+                    f"No valid {product_base_type} loader found"
+                    f" for {repre_id} ({repr_format}), consider using"
+                    f" {product_base_type} loader (fbx/abc) instead."
                 )
                 self.log.warning(msg)
             else:
                 self.log.error(
                     f"No valid loader found for {repre_id} "
-                    f"({repr_format}) "
-                    f"{product_type}")
+                    f"({repr_format}) {product_base_type}"
+                )
             return
 
         import_options = {

@@ -23,7 +23,8 @@ from ayon_unreal.api.pipeline import (
 class CameraLoader(plugin.Loader):
     """Load Unreal StaticMesh from FBX"""
 
-    product_types = {"camera"}
+    product_base_types = {"camera"}
+    product_types = product_base_types
     label = "Load Camera"
     representations = {"*"}
     extensions = {"fbx"}
@@ -83,7 +84,7 @@ class CameraLoader(plugin.Loader):
         asset_name,
         representation,
         folder_name,
-        product_type,
+        product_base_type,
         folder_entity,
         project_name
     ):
@@ -97,10 +98,11 @@ class CameraLoader(plugin.Loader):
             "loader": str(self.__class__.__name__),
             "representation": representation["id"],
             "parent": representation["versionId"],
-            "product_type": product_type,
+            "product_base_type": product_base_type,
             # TODO these should be probably removed
             "asset": folder_name,
-            "family": product_type,
+            "product_type": product_base_type,
+            "family": product_base_type,
             "frameStart": folder_entity["attrib"]["frameStart"],
             "frameEnd": folder_entity["attrib"]["frameEnd"],
             "project_name": project_name
@@ -192,6 +194,12 @@ class CameraLoader(plugin.Loader):
         folder_entity = context["folder"]
         folder_path = folder_entity["path"]
         folder_name = folder_entity["name"]
+
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
+
         asset_root, asset_name = format_asset_directory(
             context, self.loaded_asset_dir, self.loaded_asset_name)
         master_dir_name = get_top_hierarchy_folder(asset_root)
@@ -221,7 +229,7 @@ class CameraLoader(plugin.Loader):
             asset_name,
             context["representation"],
             folder_name,
-            context["product"]["productType"],
+            product_base_type,
             folder_entity,
             context["project"]["name"]
         )
@@ -243,6 +251,12 @@ class CameraLoader(plugin.Loader):
         # Create directory for asset and Ayon container
         folder_entity = context["folder"]
         folder_path = folder_entity["path"]
+
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
+
         asset_root, asset_name = format_asset_directory(
             context, self.loaded_asset_dir, self.loaded_asset_name)
         master_dir_name = get_top_hierarchy_folder(asset_root)
@@ -276,7 +290,7 @@ class CameraLoader(plugin.Loader):
             asset_name,
             context["representation"],
             folder_entity["name"],
-            context["product"]["productType"],
+            product_base_type,
             folder_entity,
             context["project"]["name"]
         )

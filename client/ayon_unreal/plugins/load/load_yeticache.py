@@ -11,7 +11,8 @@ import unreal  # noqa
 class YetiLoader(plugin.Loader):
     """Load Yeti Cache"""
 
-    product_types = {"yeticacheUE"}
+    product_base_types = {"yeticacheUE"}
+    product_types = product_base_types
     label = "Import Yeti"
     representations = {"*"}
     extensions = {"abc"}
@@ -95,6 +96,10 @@ class YetiLoader(plugin.Loader):
 
         # Create directory for asset and Ayon container
         folder_path = context["folder"]["path"]
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
         suffix = "_CON"
         path = self.filepath_from_context(context)
         asset_root, asset_name = unreal_pipeline.format_asset_directory(
@@ -139,10 +144,11 @@ class YetiLoader(plugin.Loader):
             "loader": str(self.__class__.__name__),
             "representation": context["representation"]["id"],
             "parent": context["representation"]["versionId"],
-            "product_type": context["product"]["productType"],
+            "product_base_type": product_base_type,
             # TODO these shold be probably removed
             "asset": folder_path,
-            "family": context["product"]["productType"],
+            "product_type": product_base_type,
+            "family": product_base_type,
             "project_name": context["project"]["name"],
             "layout": should_use_layout
         }

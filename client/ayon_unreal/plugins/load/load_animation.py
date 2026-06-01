@@ -20,7 +20,8 @@ from unreal import (EditorAssetLibrary, MovieSceneSkeletalAnimationSection,
 class AnimationFBXLoader(plugin.Loader):
     """Load Unreal SkeletalMesh from FBX."""
 
-    product_types = {"animation"}
+    product_base_types = {"animation"}
+    product_types = product_base_types
     label = "Import FBX Animation"
     representations = {"*"}
     extensions = {"fbx"}
@@ -443,7 +444,11 @@ class AnimationFBXLoader(plugin.Loader):
         folder_path = folder_entity["path"]
         hierarchy = folder_path.lstrip("/").split("/")
         folder_name = hierarchy.pop(-1)
-        product_type = context["product"]["productType"]
+
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
 
         suffix = "_CON"
 
@@ -478,7 +483,7 @@ class AnimationFBXLoader(plugin.Loader):
             container_name,
             asset_name,
             context["representation"],
-            product_type,
+            product_base_type,
             folder_entity,
             context["project"]["name"],
             should_use_layout
@@ -503,13 +508,16 @@ class AnimationFBXLoader(plugin.Loader):
 
     def update(self, container, context):
         # Create directory for folder and Ayon container
-        folder_path = context["folder"]["path"]
+        folder_entity = context["folder"]
+        folder_path = folder_entity["path"]
         hierarchy = folder_path.lstrip("/").split("/")
         folder_name = hierarchy.pop(-1)
-        folder_name = context["folder"]["name"]
-        product_type = context["product"]["productType"]
+
         repre_entity = context["representation"]
-        folder_entity = context["folder"]
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
 
         suffix = "_CON"
         source_path = self.filepath_from_context(context)
@@ -546,7 +554,7 @@ class AnimationFBXLoader(plugin.Loader):
             container_name,
             asset_name,
             repre_entity,
-            product_type,
+            product_base_type,
             folder_entity,
             context["project"]["name"],
             should_use_layout

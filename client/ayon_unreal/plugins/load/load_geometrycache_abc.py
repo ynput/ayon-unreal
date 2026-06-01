@@ -19,7 +19,8 @@ import unreal  # noqa
 class PointCacheAlembicLoader(plugin.Loader):
     """Load Point Cache from Alembic"""
 
-    product_types = {"model", "pointcache"}
+    product_base_types = {"model", "pointcache"}
+    product_types = product_base_types
     label = "Import Alembic Point Cache"
     representations = {"*"}
     extensions = {"abc"}
@@ -166,7 +167,7 @@ class PointCacheAlembicLoader(plugin.Loader):
         representation,
         frame_start,
         frame_end,
-        product_type,
+        product_base_type,
         project_name,
         layout
     ):
@@ -181,10 +182,11 @@ class PointCacheAlembicLoader(plugin.Loader):
             "parent": representation["versionId"],
             "frame_start": frame_start,
             "frame_end": frame_end,
-            "product_type": product_type,
+            "product_base_type": product_base_type,
             "folder_path": folder_path,
             # TODO these should be probably removed
-            "family": product_type,
+            "product_type": product_base_type,
+            "family": product_base_type,
             "asset": folder_path,
             "project_name": project_name,
             "layout": layout
@@ -210,6 +212,11 @@ class PointCacheAlembicLoader(plugin.Loader):
         folder_entity = context["folder"]
         folder_path = folder_entity["path"]
         folder_attributes = folder_entity["attrib"]
+
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
 
         suffix = "_CON"
         path = self.filepath_from_context(context)
@@ -257,7 +264,7 @@ class PointCacheAlembicLoader(plugin.Loader):
             context["representation"],
             frame_start,
             frame_end,
-            context["product"]["productType"],
+            product_base_type,
             context["project"]["name"],
             should_use_layout
         )
@@ -273,7 +280,10 @@ class PointCacheAlembicLoader(plugin.Loader):
     def update(self, container, context):
         # Create directory for folder and Ayon container
         folder_path = context["folder"]["path"]
-        product_type = context["product"]["productType"]
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
         repre_entity = context["representation"]
         asset_dir = container["namespace"]
         suffix = "_CON"
@@ -314,7 +324,7 @@ class PointCacheAlembicLoader(plugin.Loader):
             repre_entity,
             frame_start,
             frame_end,
-            product_type,
+            product_base_type,
             context["project"]["name"],
             should_use_layout
         )

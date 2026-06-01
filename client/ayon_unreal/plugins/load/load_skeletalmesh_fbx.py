@@ -15,7 +15,8 @@ import unreal  # noqa
 class SkeletalMeshFBXLoader(plugin.Loader):
     """Load Unreal SkeletalMesh from FBX."""
 
-    product_types = {"rig", "skeletalMesh"}
+    product_base_types = {"rig", "skeletalMesh"}
+    product_types = product_base_types
     label = "Import FBX Skeletal Mesh"
     representations = {"*"}
     extensions = {"fbx"}
@@ -99,7 +100,7 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         container_name,
         asset_name,
         representation,
-        product_type,
+        product_base_type,
         project_name,
         layout
     ):
@@ -113,10 +114,11 @@ class SkeletalMeshFBXLoader(plugin.Loader):
             "loader": str(self.__class__.__name__),
             "representation": representation["id"],
             "parent": representation["versionId"],
-            "product_type": product_type,
+            "product_base_type": product_base_type,
             # TODO these should be probably removed
             "asset": folder_path,
-            "family": product_type,
+            "product_type": product_base_type,
+            "family": product_base_type,
             "project_name": project_name,
             "layout": layout
         }
@@ -139,7 +141,12 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         """
         # Create directory for asset and Ayon container
         folder_name = context["folder"]["name"]
-        product_type = context["product"]["productType"]
+
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
+
         suffix = "_CON"
         path = self.filepath_from_context(context)
         asset_root, asset_name = format_asset_directory(
@@ -170,7 +177,7 @@ class SkeletalMeshFBXLoader(plugin.Loader):
             container_name,
             asset_name,
             context["representation"],
-            product_type,
+            product_base_type,
             context["project"]["name"],
             should_use_layout
         )
@@ -186,7 +193,11 @@ class SkeletalMeshFBXLoader(plugin.Loader):
 
     def update(self, container, context):
         folder_path = context["folder"]["path"]
-        product_type = context["product"]["productType"]
+
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
         repre_entity = context["representation"]
 
         # Create directory for asset and Ayon container
@@ -220,7 +231,7 @@ class SkeletalMeshFBXLoader(plugin.Loader):
             container_name,
             asset_name,
             repre_entity,
-            product_type,
+            product_base_type,
             context["project"]["name"],
             should_use_layout
         )

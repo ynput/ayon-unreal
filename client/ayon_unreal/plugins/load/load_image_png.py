@@ -14,7 +14,8 @@ import unreal  # noqa
 class TexturePNGLoader(plugin.Loader):
     """Load Unreal texture from PNG file."""
 
-    product_types = {"image", "texture", "render"}
+    product_base_types = {"image", "texture", "render"}
+    product_types = product_base_types
     label = "Import image texture 2d"
     representations = {"*"}
     extensions = {"png", "jpg", "tiff", "exr"}
@@ -91,7 +92,7 @@ class TexturePNGLoader(plugin.Loader):
         container_name,
         asset_name,
         repre_entity,
-        product_type,
+        product_base_type,
         project_name
     ):
         data = {
@@ -104,10 +105,11 @@ class TexturePNGLoader(plugin.Loader):
             "loader": str(self.__class__.__name__),
             "representation": repre_entity["id"],
             "parent": repre_entity["versionId"],
-            "product_type": product_type,
+            "product_base_type": product_base_type,
             # TODO these shold be probably removed
             "asset": folder_path,
-            "family": product_type,
+            "product_type": product_base_type,
+            "family": product_base_type,
             "project_name": project_name
         }
         imprint(f"{asset_dir}/{container_name}", data)
@@ -129,6 +131,12 @@ class TexturePNGLoader(plugin.Loader):
         """
         # Create directory for asset and Ayon container
         folder_path = context["folder"]["path"]
+
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
+
         suffix = "_CON"
         path = self.filepath_from_context(context)
         asset_root, asset_name = format_asset_directory(
@@ -149,7 +157,7 @@ class TexturePNGLoader(plugin.Loader):
             container_name,
             asset_name,
             context["representation"],
-            context["product"]["productType"],
+            product_base_type,
             context["project"]["name"],
         )
 
@@ -163,7 +171,10 @@ class TexturePNGLoader(plugin.Loader):
 
     def update(self, container, context):
         folder_path = context["folder"]["path"]
-        product_type = context["product"]["productType"]
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
         repre_entity = context["representation"]
         path = self.filepath_from_context(context)
 
@@ -187,7 +198,7 @@ class TexturePNGLoader(plugin.Loader):
             container_name,
             asset_name,
             repre_entity,
-            product_type,
+            product_base_type,
             context["project"]["name"]
         )
 

@@ -14,7 +14,8 @@ import unreal  # noqa
 class AnimationAlembicLoader(plugin.Loader):
     """Load Unreal SkeletalMesh from Alembic"""
 
-    product_types = {"animation"}
+    product_base_types = {"animation"}
+    product_types = product_base_types
     label = "Import Alembic Animation"
     representations = {"*"}
     extensions = {"abc"}
@@ -197,10 +198,14 @@ class AnimationAlembicLoader(plugin.Loader):
 
         # Create directory for asset and ayon container
         folder_entity = context["folder"]
-        folder_path = context["folder"]["path"]
-        product_type = context["product"]["productType"]
+        folder_path = folder_entity["path"]
+
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
+
         suffix = "_CON"
-        path = self.filepath_from_context(context)
         asset_root, asset_name = unreal_pipeline.format_asset_directory(
             context, self.loaded_asset_dir, self.loaded_asset_name
         )
@@ -244,7 +249,7 @@ class AnimationAlembicLoader(plugin.Loader):
             folder_entity["attrib"]["frameStart"],
             folder_entity["attrib"]["frameEnd"],
             context["representation"],
-            product_type,
+            product_base_type,
             context["project"]["name"],
             should_use_layout
         )
@@ -260,8 +265,12 @@ class AnimationAlembicLoader(plugin.Loader):
 
     def update(self, container, context):
         folder_path = context["folder"]["path"]
-        product_type = context["product"]["productType"]
         repre_entity = context["representation"]
+
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
 
         # Create directory for folder and Ayon container
         suffix = "_CON"
@@ -310,7 +319,7 @@ class AnimationAlembicLoader(plugin.Loader):
             container.get("frameStart", "1"),
             container.get("frameEnd", "1"),
             repre_entity,
-            product_type,
+            product_base_type,
             context["project"]["name"],
             should_use_layout
         )

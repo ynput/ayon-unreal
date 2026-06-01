@@ -16,7 +16,8 @@ import unreal  # noqa
 class StaticMeshFBXLoader(plugin.Loader):
     """Load Unreal StaticMesh from FBX."""
 
-    product_types = {"model", "staticMesh"}
+    product_base_types = {"model", "staticMesh"}
+    product_types = product_base_types
     label = "Import FBX Static Mesh"
     representations = {"*"}
     extensions = {"fbx"}
@@ -99,7 +100,7 @@ class StaticMeshFBXLoader(plugin.Loader):
         container_name,
         asset_name,
         repre_entity,
-        product_type,
+        product_base_type,
         project_name,
         layout
     ):
@@ -113,10 +114,11 @@ class StaticMeshFBXLoader(plugin.Loader):
             "loader": str(self.__class__.__name__),
             "representation": repre_entity["id"],
             "parent": repre_entity["versionId"],
-            "product_type": product_type,
+            "product_base_type": product_base_type,
             # TODO these shold be probably removed
             "asset": folder_path,
-            "family": product_type,
+            "product_type": product_base_type,
+            "family": product_base_type,
             "project_name": project_name,
             "layout": layout
         }
@@ -161,7 +163,12 @@ class StaticMeshFBXLoader(plugin.Loader):
         else:
             asset_dir = self.import_and_containerize(
                  path, asset_dir, container_name
-        )
+            )
+
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
 
         self.imprint(
             folder_path,
@@ -169,7 +176,7 @@ class StaticMeshFBXLoader(plugin.Loader):
             container_name,
             asset_name,
             context["representation"],
-            context["product"]["productType"],
+            product_base_type,
             context["project"]["name"],
             should_use_layout
         )
@@ -185,7 +192,10 @@ class StaticMeshFBXLoader(plugin.Loader):
 
     def update(self, container, context):
         folder_path = context["folder"]["path"]
-        product_type = context["product"]["productType"]
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
         repre_entity = context["representation"]
 
         # Create directory for asset and Ayon container
@@ -218,7 +228,7 @@ class StaticMeshFBXLoader(plugin.Loader):
             container_name,
             asset_name,
             repre_entity,
-            product_type,
+            product_base_type,
             context["project"]["name"],
             should_use_layout
         )
