@@ -65,12 +65,11 @@ class UnrealCreateLogic:
                 if creator_id:
                     unreal_cached_products[creator_id].append(instance)
                 else:
-                    product_base_type = instance["product_base_type"]
                     # Handle legacy instances that may use "product_type"
                     # instead of "product_base_type" to avoid KeyError.
                     product_base_type = (
-                            instance.data.get("product_base_type")
-                            or instance.data.get("product_type")
+                            instance.get("product_base_type")
+                            or instance.get("product_type")
                     )
                     if product_base_type is None:
                         unreal.log_warning(

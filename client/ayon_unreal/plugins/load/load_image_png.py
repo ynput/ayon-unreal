@@ -124,7 +124,7 @@ class TexturePNGLoader(plugin.Loader):
             "representation": representation["id"],
             "parent": representation["versionId"],
             "product_base_type": product_base_type,
-            # TODO these shold be probably removed
+            # TODO these should be probably removed
             "asset": folder_path,
             "family": product_base_type,
             "project_name": project_name

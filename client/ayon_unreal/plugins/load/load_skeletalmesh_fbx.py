@@ -115,8 +115,6 @@ class SkeletalMeshFBXLoader(plugin.Loader):
             asset_name (str): Name of the main asset.
             representation (dict): Representation data to imprint.
             product_base_type (str): Product base type to imprint.
-            frame_start (int): Start frame of the asset.
-            frame_end (int): End frame of the asset.
             project_name (str): Name of the project to imprint.
             layout (bool): Whether the container is created with layout.
 
