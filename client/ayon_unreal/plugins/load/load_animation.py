@@ -530,7 +530,6 @@ class AnimationFBXLoader(plugin.Loader):
         hierarchy = folder_path.lstrip("/").split("/")
         folder_name = hierarchy.pop(-1)
         folder_name = context["folder"]["name"]
-        product_type = context["product"]["productType"]
         repre_entity = context["representation"]
         folder_entity = context["folder"]
 
