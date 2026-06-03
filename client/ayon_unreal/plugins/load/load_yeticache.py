@@ -143,7 +143,7 @@ class YetiLoader(plugin.Loader):
             "product_base_type": context["product"]["productBaseType"],
             # TODO these shold be probably removed
             "asset": folder_path,
-            "product_type": context["product"]["productType"],
+            "product_type": context["product"]["productBaseType"],
             "family": context["product"]["productBaseType"],
             "project_name": context["project"]["name"],
             "layout": should_use_layout
