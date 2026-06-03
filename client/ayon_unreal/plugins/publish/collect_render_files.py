@@ -69,6 +69,7 @@ class CollectRenderFiles(pyblish.api.InstancePlugin):
                 new_data["folderPath"] = instance.data["folderPath"]
                 new_data["setMembers"] = seq_name
                 new_data["productName"] = new_product_name
+                new_data["productType"] = product_base_type
                 new_data["productBaseType"] = product_base_type
                 new_data["family"] = product_base_type
                 new_data["families"] = [product_base_type, "review"]

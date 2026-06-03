@@ -135,6 +135,7 @@ class StaticMeshFBXLoader(plugin.Loader):
             "product_base_type": product_base_type,
             # TODO these shold be probably removed
             "asset": folder_path,
+            "product_type": product_base_type,
             "family": product_base_type,
             "project_name": project_name,
             "layout": layout

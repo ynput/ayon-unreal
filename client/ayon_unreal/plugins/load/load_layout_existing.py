@@ -230,7 +230,8 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
             product_base_type = (
                 lasset.get("product_base_type")
                 or lasset.get("product_type")
-            ) or lasset.get("family")
+                or lasset.get("family")
+            )
 
             extension = lasset.get("extension")
             assets = self._load_asset(

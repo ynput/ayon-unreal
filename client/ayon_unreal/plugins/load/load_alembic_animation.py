@@ -150,8 +150,8 @@ class AnimationAlembicLoader(plugin.Loader):
         frame_start: int,
         frame_end: int,
         representation: dict,
-        project_name: str,
         product_base_type: str,
+        project_name: str,
         *,
         layout: bool
     ) -> None:
@@ -186,10 +186,10 @@ class AnimationAlembicLoader(plugin.Loader):
             "parent": representation["versionId"],
             "frameStart": frame_start,
             "frameEnd": frame_end,
+            "product_base_type": product_base_type,
             # TODO these should be probably removed
             "asset": folder_path,
             "family": product_base_type,
-            "product_base_type": product_base_type,
             "project_name": project_name,
             "layout": layout
         }

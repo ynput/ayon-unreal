@@ -111,6 +111,7 @@ class UAssetLoader(plugin.Loader):
             "product_base_type": context["product"]["productBaseType"],
             # TODO these should be probably removed
             "asset": folder_path,
+            "product_type": context["product"]["productBaseType"],
             "family": context["product"]["productBaseType"],
             "project_name": context["project"]["name"]
         }

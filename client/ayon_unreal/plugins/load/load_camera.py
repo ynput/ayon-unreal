@@ -120,6 +120,7 @@ class CameraLoader(plugin.Loader):
             "product_base_type": product_base_type,
             # TODO these should be probably removed
             "asset": asset_name,
+            "product_type": product_base_type,
             "family": product_base_type,
             "frameStart": frame_start,
             "frameEnd": frame_end,

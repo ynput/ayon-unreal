@@ -205,6 +205,7 @@ class PointCacheAlembicLoader(plugin.Loader):
             "product_base_type": product_base_type,
             "folder_path": folder_path,
             # TODO these should be probably removed
+            "product_type": product_base_type,
             "family": product_base_type,
             "asset": folder_path,
             "project_name": project_name,

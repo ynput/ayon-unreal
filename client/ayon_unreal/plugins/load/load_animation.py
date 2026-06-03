@@ -429,6 +429,7 @@ class AnimationFBXLoader(plugin.Loader):
             "product_base_type": product_base_type,
             # TODO these shold be probably removed
             "asset": folder_path,
+            "product_type": product_base_type,
             "family": product_base_type,
             "frameStart": frame_start,
             "frameEnd": frame_end,

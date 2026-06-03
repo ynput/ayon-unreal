@@ -181,9 +181,10 @@ class LayoutLoader(plugin.LayoutLoader):
                 repr_loaded.append(repre_id)
 
                 product_base_type = (
-                                        element.get("product_base_type")
-                                        or element.get("product_type")
-                                ) or element.get("family")
+                    element.get("product_base_type")
+                    or element.get("product_type")
+                    or element.get("family")
+                )
 
                 assets = self._load_assets(
                     instance_name, repre_id, product_base_type, repr_format
