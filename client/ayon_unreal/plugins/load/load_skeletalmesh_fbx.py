@@ -6,7 +6,7 @@ from ayon_core.pipeline import AYON_CONTAINER_ID
 from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
     create_container,
-    _imprint,
+    imprint as _imprint,
     format_asset_directory,
     get_dir_from_existing_asset
 )
