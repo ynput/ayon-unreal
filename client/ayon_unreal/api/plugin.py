@@ -456,6 +456,7 @@ class LayoutLoader(Loader):
             "loader": str(self.__class__.__name__),
             "representation": context["representation"]["id"],
             "parent": context["representation"]["versionId"],
+            "product_base_type": context["product"]["productBaseType"],
             "family": context["product"]["productBaseType"],
             "loaded_assets": loaded_assets,
             "project_name": project_name
