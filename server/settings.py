@@ -37,6 +37,11 @@ class RenderSetUp(BaseSettingsModel):
 
 
 class ProjectSetup(BaseSettingsModel):
+    use_plugin: bool = SettingsField(
+        True,
+        title="Use Unreal Plugin",
+        description="Whether to use the Unreal Plugin provided by Ynput "
+    )
     allow_project_creation: bool = SettingsField(
         True,
         title="Allow project creation",
@@ -44,6 +49,11 @@ class ProjectSetup(BaseSettingsModel):
             "Whether to create a new project when none is found. "
             "Disable when using external source control (Perforce)"
         )
+    )
+    use_exact_path: bool = SettingsField(
+        False,
+        title="Use Exact Path",
+        description="Whether to use the exact path for project creation"
     )
     existing_uproject_directory : str = SettingsField(
         "",
@@ -93,6 +103,7 @@ class UnrealSettings(BaseSettingsModel):
 
 
 DEFAULT_VALUES = {
+    "use_unreal_plugin": True,
     "prelaunch_settings": DEFAULT_PRELAUNCH_SETTINGS,
     "import_settings": DEFAULT_IMPORT_SETTINGS,
     "render_setup": {
