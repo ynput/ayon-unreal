@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """Loader for Static Mesh alembics."""
-
+from __future__ import annotations
 from ayon_core.pipeline import AYON_CONTAINER_ID
 from ayon_unreal.api import plugin
 from ayon_unreal.api.pipeline import (
     create_container,
-    imprint,
+    imprint as _imprint,
     format_asset_directory,
     UNREAL_VERSION,
     get_dir_from_existing_asset
@@ -187,15 +187,33 @@ class StaticMeshAlembicLoader(plugin.Loader):
 
     def imprint(
         self,
-        folder_path,
-        asset_dir,
-        container_name,
-        asset_name,
-        representation,
-        product_base_type,
-        project_name,
-        layout
-    ):
+        folder_path: str,
+        asset_dir: str,
+        container_name: str,
+        asset_name: str,
+        representation: dict,
+        product_base_type: str,
+        project_name: str,
+        *,
+        layout: bool,
+    ) -> None:
+        """Imprint AYON_CONTAINER_ID to the container asset.
+
+        Args:
+            folder_path (str): Path to the folder in Unreal Content Browser.
+            asset_dir (str): Directory of the asset in Unreal Content Browser.
+            container_name (str): Name of the container asset.
+            asset_name (str): Name of the main asset.
+            representation (dict): Representation data to imprint.
+            product_base_type (str): Product base type to imprint.
+            project_name (str): Name of the project to imprint.
+            layout (bool): Whether the container is created with layout.
+
+        Todo (antirotor):
+            This per loader imprint is wrong and should be moved to some
+            common place, custom data usage should be re-evaluated.
+
+        """
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
@@ -214,7 +232,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
             "project_name": project_name,
             "layout": layout
         }
-        imprint(f"{asset_dir}/{container_name}", data)
+        _imprint(f"{asset_dir}/{container_name}", data)
 
     def load(self, context, name, namespace, options):
         """Load and containerise representation into Content Browser.
@@ -273,14 +291,14 @@ class StaticMeshAlembicLoader(plugin.Loader):
             )
 
         self.imprint(
-            folder_path,
-            asset_dir,
-            container_name,
-            asset_name,
-            context["representation"],
-            product_base_type,
-            context["project"]["name"],
-            should_use_layout
+            folder_path=folder_path,
+            asset_dir=asset_dir,
+            container_name=container_name,
+            asset_name=asset_name,
+            representation=context["representation"],
+            product_base_type=product_base_type,
+            project_name=context["project"]["name"],
+            layout=should_use_layout
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
@@ -329,14 +347,14 @@ class StaticMeshAlembicLoader(plugin.Loader):
             )
 
         self.imprint(
-            folder_path,
-            asset_dir,
-            container_name,
-            asset_name,
-            repre_entity,
-            product_base_type,
-            context["project"]["name"],
-            should_use_layout
+            folder_path=folder_path,
+            asset_dir=asset_dir,
+            container_name=container_name,
+            asset_name=asset_name,
+            representation=repre_entity,
+            product_base_type=product_base_type,
+            project_name=context["project"]["name"],
+            layout=should_use_layout,
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(

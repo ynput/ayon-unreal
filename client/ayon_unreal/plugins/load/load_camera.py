@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Load camera from FBX."""
+from __future__ import annotations
 import unreal
 from unreal import (
     EditorAssetLibrary,
@@ -77,17 +78,35 @@ class CameraLoader(plugin.Loader):
                 f"Unreal version {ue_major} not supported")
 
     def imprint(
-        self,
-        folder_path,
-        asset_dir,
-        container_name,
-        asset_name,
-        representation,
-        folder_name,
-        product_base_type,
-        folder_entity,
-        project_name
-    ):
+            self,
+            folder_path: str,
+            asset_dir: str,
+            container_name: str,
+            asset_name: str,
+            representation: dict,
+            product_base_type: str,
+            frame_start: int,
+            frame_end: int,
+            project_name: str,
+    ) -> None:
+        """Imprint AYON_CONTAINER_ID to the container asset.
+
+        Args:
+            folder_path (str): Path to the folder in Unreal Content Browser.
+            asset_dir (str): Directory of the asset in Unreal Content Browser.
+            container_name (str): Name of the container asset.
+            asset_name (str): Name of the main asset.
+            representation (dict): Representation data to imprint.
+            product_base_type (str): Product base type to imprint.
+            frame_start (int): Start frame of the asset.
+            frame_end (int): End frame of the asset.
+            project_name (str): Name of the project to imprint.
+
+        Todo (antirotor):
+            This per loader imprint is wrong and should be moved to some
+            common place, custom data usage should be re-evaluated.
+
+        """
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
@@ -100,11 +119,11 @@ class CameraLoader(plugin.Loader):
             "parent": representation["versionId"],
             "product_base_type": product_base_type,
             # TODO these should be probably removed
-            "asset": folder_name,
+            "asset": asset_name,
             "product_type": product_base_type,
             "family": product_base_type,
-            "frameStart": folder_entity["attrib"]["frameStart"],
-            "frameEnd": folder_entity["attrib"]["frameEnd"],
+            "frameStart": frame_start,
+            "frameEnd": frame_end,
             "project_name": project_name
         }
         imprint(f"{asset_dir}/{container_name}", data)
@@ -223,15 +242,15 @@ class CameraLoader(plugin.Loader):
                 container=container_name, path=asset_dir)
 
         self.imprint(
-            folder_path,
-            asset_dir,
-            container_name,
-            asset_name,
-            context["representation"],
-            folder_name,
-            product_base_type,
-            folder_entity,
-            context["project"]["name"]
+            folder_path=folder_path,
+            asset_dir=asset_dir,
+            container_name=container_name,
+            asset_name=asset_name,
+            representation=context["representation"],
+            product_base_type=product_base_type,
+            frame_start=folder_entity["attrib"].get("frameStart"),
+            frame_end=folder_entity["attrib"].get("frameEnd"),
+            project_name=context["project"]["name"],
         )
 
         EditorLevelLibrary.save_all_dirty_levels()
@@ -284,15 +303,15 @@ class CameraLoader(plugin.Loader):
                 container=container_name, path=asset_dir)
 
         self.imprint(
-            folder_path,
-            asset_dir,
-            container_name,
-            asset_name,
-            context["representation"],
-            folder_entity["name"],
-            product_base_type,
-            folder_entity,
-            context["project"]["name"]
+            folder_path=folder_path,
+            asset_dir=asset_dir,
+            container_name=container_name,
+            asset_name=asset_name,
+            representation=context["representation"],
+            product_base_type=context["product"]["productBaseType"],
+            frame_start=folder_entity["attrib"].get("frameStart"),
+            frame_end=folder_entity["attrib"].get("frameEnd"),
+            project_name=context["project"]["name"],
         )
 
         EditorLevelLibrary.save_all_dirty_levels()

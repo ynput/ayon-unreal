@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Load UAsset."""
+from __future__ import annotations
 from pathlib import Path
 import os
 import shutil

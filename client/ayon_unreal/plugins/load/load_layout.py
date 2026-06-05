@@ -180,11 +180,11 @@ class LayoutLoader(plugin.LayoutLoader):
             if repre_id not in repr_loaded:
                 repr_loaded.append(repre_id)
 
-                product_base_type = element.get("product_base_type")
-                if not product_base_type:
-                    product_base_type = element.get("product_type")
-                    if product_base_type is None:
-                        product_base_type = element.get("family")
+                product_base_type = (
+                        element.get("product_base_type")
+                        or element.get("product_type")
+                        or element.get("family")
+                )
 
                 assets = self._load_assets(
                     instance_name, repre_id, product_base_type, repr_format
