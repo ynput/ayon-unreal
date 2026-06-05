@@ -90,10 +90,10 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
                 new_data["folderPath"] = instance.data["folderPath"]
                 new_data["setMembers"] = seq_name
                 new_data["productName"] = new_product_name
-                product_type = "render"
-                new_data["productType"] = product_type
-                new_data["family"] = product_type
-                new_data["families"] = [product_type, "review"]
+                product_base_type = "render"
+                new_data["productBaseType"] = product_base_type
+                new_data["family"] = product_base_type
+                new_data["families"] = [product_base_type, "review"]
                 new_data["parent"] = data.get("parent")
                 new_data["level"] = data.get("level")
                 new_data["output"] = s['output']
