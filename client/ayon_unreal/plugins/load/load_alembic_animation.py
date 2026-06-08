@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Load Alembic Animation."""
+from __future__ import annotations
 import os
 
 from ayon_core.lib import EnumDef
@@ -14,7 +15,8 @@ import unreal  # noqa
 class AnimationAlembicLoader(plugin.Loader):
     """Load Unreal SkeletalMesh from Alembic"""
 
-    product_types = {"animation"}
+    product_base_types = {"animation"}
+    product_types = product_base_types
     label = "Import Alembic Animation"
     representations = {"*"}
     extensions = {"abc"}
@@ -141,17 +143,37 @@ class AnimationAlembicLoader(plugin.Loader):
 
     def imprint(
         self,
-        folder_path,
-        asset_dir,
-        container_name,
-        asset_name,
-        frameStart,
-        frameEnd,
-        representation,
-        product_type,
-        project_name,
-        layout
-    ):
+        folder_path: str,
+        asset_dir: str,
+        container_name: str,
+        asset_name: str,
+        frame_start: int,
+        frame_end: int,
+        representation: dict,
+        product_base_type: str,
+        project_name: str,
+        *,
+        layout: bool
+    ) -> None:
+        """Imprint AYON_CONTAINER_ID to the container asset.
+
+            Args:
+                folder_path (str): Path to the folder in Unreal Content Browser.
+                asset_dir (str): Directory of the asset in Unreal Content Browser.
+                container_name (str): Name of the container asset.
+                asset_name (str): Name of the main asset.
+                frame_start (int): Start frame of the animation.
+                frame_end (int): End frame of the animation.
+                representation (dict): Representation data to imprint.
+                product_base_type (str): Product base type to imprint.
+                project_name (str): Name of the project to imprint.
+                layout (bool): Whether the container is created with layout.
+
+            Todo (antirotor):
+                This per loader imprint is wrong and should be moved to some
+                common place, custom data usage should be re-evaluated.
+
+            """
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
@@ -162,12 +184,12 @@ class AnimationAlembicLoader(plugin.Loader):
             "loader": str(self.__class__.__name__),
             "representation": representation["id"],
             "parent": representation["versionId"],
-            "product_type": product_type,
-            "frameStart": frameStart,
-            "frameEnd": frameEnd,
+            "frameStart": frame_start,
+            "frameEnd": frame_end,
+            "product_base_type": product_base_type,
             # TODO these should be probably removed
             "asset": folder_path,
-            "family": product_type,
+            "family": product_base_type,
             "project_name": project_name,
             "layout": layout
         }
@@ -198,7 +220,7 @@ class AnimationAlembicLoader(plugin.Loader):
         # Create directory for asset and ayon container
         folder_entity = context["folder"]
         folder_path = context["folder"]["path"]
-        product_type = context["product"]["productType"]
+        product_base_type = context["product"]["productBaseType"]
         suffix = "_CON"
         path = self.filepath_from_context(context)
         asset_root, asset_name = unreal_pipeline.format_asset_directory(
@@ -237,16 +259,16 @@ class AnimationAlembicLoader(plugin.Loader):
 
         # update metadata
         self.imprint(
-            folder_path,
-            asset_dir,
-            container_name,
-            asset_name,
-            folder_entity["attrib"]["frameStart"],
-            folder_entity["attrib"]["frameEnd"],
-            context["representation"],
-            product_type,
-            context["project"]["name"],
-            should_use_layout
+            folder_path=folder_path,
+            asset_dir=asset_dir,
+            container_name=container_name,
+            asset_name=asset_name,
+            frame_start=folder_entity["attrib"]["frameStart"],
+            frame_end=folder_entity["attrib"]["frameEnd"],
+            representation=context["representation"],
+            product_base_type=product_base_type,
+            project_name=context["project"]["name"],
+            layout=should_use_layout
         )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
@@ -260,7 +282,7 @@ class AnimationAlembicLoader(plugin.Loader):
 
     def update(self, container, context):
         folder_path = context["folder"]["path"]
-        product_type = context["product"]["productType"]
+        product_base_type = context["product"]["productBaseType"]
         repre_entity = context["representation"]
 
         # Create directory for folder and Ayon container
@@ -303,16 +325,16 @@ class AnimationAlembicLoader(plugin.Loader):
 
         # update metadata
         self.imprint(
-            folder_path,
-            asset_dir,
-            container_name,
-            asset_name,
-            container.get("frameStart", "1"),
-            container.get("frameEnd", "1"),
-            repre_entity,
-            product_type,
-            context["project"]["name"],
-            should_use_layout
+            folder_path=folder_path,
+            asset_dir=asset_dir,
+            container_name=container_name,
+            asset_name=asset_name,
+            frame_start=container.get("frameStart", "1"),
+            frame_end=container.get("frameEnd", "1"),
+            representation=repre_entity,
+            product_base_type=product_base_type,
+            project_name=context["project"]["name"],
+            layout=should_use_layout
         )
         asset_content = unreal.EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=True

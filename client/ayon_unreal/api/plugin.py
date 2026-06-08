@@ -1,7 +1,9 @@
-# -*- coding: utf-8 -*-
+"""Unreal specific plugin implementations for creators and loaders."""
+from __future__ import annotations
 import ast
 import collections
 from abc import ABC
+from typing import Any, Optional
 
 import unreal
 import ayon_api
@@ -30,7 +32,7 @@ from ayon_core.pipeline import (
 )
 
 
-class UnrealCreateLogic():
+class UnrealCreateLogic:
     """Universal class for logic that Unreal creators could inherit from."""
     root = "/Game/Ayon/AyonPublishInstances"
     suffix = "_INS"
@@ -40,13 +42,13 @@ class UnrealCreateLogic():
     def get_cached_instances(shared_data):
         """Cache instances for Creators to shared data.
 
-        Create `unreal_cached_subsets` key when needed in shared data and
+        Create `unreal_cached_products` key when needed in shared data and
         fill it with all collected instances from the scene under its
         respective creator identifiers.
 
         If legacy instances are detected in the scene, create
-        `unreal_cached_legacy_subsets` there and fill it with
-        all legacy subsets under product_type as a key.
+        `unreal_cached_legacy_products` there and fill it with
+        all legacy products under product_base_type as a key.
 
         Args:
             Dict[str, Any]: Shared data.
@@ -55,20 +57,32 @@ class UnrealCreateLogic():
             Dict[str, Any]: Shared data dictionary.
 
         """
-        if shared_data.get("unreal_cached_subsets") is None:
-            unreal_cached_subsets = collections.defaultdict(list)
-            unreal_cached_legacy_subsets = collections.defaultdict(list)
+        if shared_data.get("unreal_cached_products") is None:
+            unreal_cached_products = collections.defaultdict(list)
+            unreal_cached_legacy_products = collections.defaultdict(list)
             for instance in ls_inst():
                 creator_id = instance.get("creator_identifier")
                 if creator_id:
-                    unreal_cached_subsets[creator_id].append(instance)
+                    unreal_cached_products[creator_id].append(instance)
                 else:
-                    product_type = instance.get("product_type")
-                    unreal_cached_legacy_subsets[product_type].append(instance)
+                    # Handle legacy instances that may use "product_type"
+                    # instead of "product_base_type" to avoid KeyError.
+                    product_base_type = (
+                            instance.get("product_base_type")
+                            or instance.get("product_type")
+                    )
+                    if product_base_type is None:
+                        unreal.log_warning(
+                            f"Legacy instance without product_base_type or "
+                            f"product_type: {instance}"
+                        )
+                        continue
+                    unreal_cached_legacy_products[product_base_type].append(
+                        instance)
 
-            shared_data["unreal_cached_subsets"] = unreal_cached_subsets
-            shared_data["unreal_cached_legacy_subsets"] = (
-                unreal_cached_legacy_subsets
+            shared_data["unreal_cached_products"] = unreal_cached_products
+            shared_data["unreal_cached_legacy_products"] = (
+                unreal_cached_legacy_products
             )
         return shared_data
 
@@ -76,7 +90,7 @@ class UnrealCreateLogic():
         # cache instances if missing
         self.get_cached_instances(self.collection_shared_data)
         for instance in self.collection_shared_data[
-                "unreal_cached_subsets"].get(self.identifier, []):
+                "unreal_cached_products"].get(self.identifier, []):
             # Unreal saves metadata as string, so we need to convert it back
             instance['creator_attributes'] = ast.literal_eval(
                 instance.get('creator_attributes', '{}'))
@@ -126,11 +140,17 @@ class UnrealCreateLogic():
             instance_data["product_name"] = product_name
             instance_data["instance_path"] = f"{self.root}/{instance_name}"
 
+            product_type: str = instance_data.get("product_type")
+            if not product_type:
+                product_type = self.product_base_type
+
             instance = CreatedInstance(
-                self.product_type,
-                product_name,
-                instance_data,
-                self)
+                product_type=product_type,
+                product_base_type=self.product_base_type,
+                product_name=product_name,
+                data=instance_data,
+                creator=self,
+            )
             self._add_instance_to_context(instance)
 
             pub_instance.set_editor_property('add_external_assets', True)
@@ -171,8 +191,8 @@ class UnrealBaseCreator(UnrealCreateLogic, Creator):
 
     settings_category = "unreal"
 
-    def create(self, subset_name, instance_data, pre_create_data):
-        self.create_unreal(subset_name, instance_data, pre_create_data)
+    def create(self, product_name, instance_data, pre_create_data):
+        self.create_unreal(product_name, instance_data, pre_create_data)
 
     def collect_instances(self):
         return self._default_collect_instances()
@@ -275,13 +295,13 @@ class UnrealActorCreator(UnrealBaseCreator):
 
 class Loader(LoaderPlugin, ABC):
     """This serves as skeleton for future Ayon specific functionality"""
-    pass
 
 
 class LayoutLoader(Loader):
     """Load Layout from a JSON file"""
 
-    product_types = {"layout"}
+    product_base_types = {"layout"}
+    product_types = product_base_types
     representations = {"json"}
 
     label = "Load Layout"
@@ -301,8 +321,7 @@ class LayoutLoader(Loader):
         elif family == 'camera':
             name = "CameraLoader"
 
-        if name == "":
-
+        if not name:
             return None
 
         for loader in loaders:
@@ -320,7 +339,7 @@ class LayoutLoader(Loader):
             name = "StaticMeshAlembicLoader"
         elif family in ["animation"]:
             name = "AnimationAlembicLoader"
-        if name == "":
+        if not name:
             return None
 
         for loader in loaders:
@@ -396,16 +415,36 @@ class LayoutLoader(Loader):
 
     def imprint(
         self,
-        context,
-        folder_path,
-        folder_name,
-        loaded_assets,
-        asset_dir,
-        asset_name,
-        container_name,
-        project_name,
-        hierarchy_dir=None
-    ):
+        context: dict[str, Any],
+        folder_path: str,
+        folder_name: str,
+        loaded_assets: list[str],
+        asset_dir: str,
+        asset_name: str,
+        container_name: str,
+        project_name: str,
+        hierarchy_dir: Optional[str] = None,
+    ) -> None:
+        """Imprint the container with the necessary data.
+
+        Args:
+            context (dict): The context of the loading process.
+            folder_path (str): The path to the folder where the layout is located.
+            folder_name (str): The name of the folder
+            loaded_assets (list): List of loaded assets.
+            asset_dir (str): The asset directory.
+            asset_name (str): The asset name.
+            container_name (str): The name of the container.
+            project_name (str): The name of the project.
+            hierarchy_dir (str, optional): The directory of the hierarchy.
+                Defaults to None.
+
+        Note:
+            This method is re-implemented with different signatures in
+            many loader plugins. We should consider refactoring it in the
+            future o avoid code duplication.
+
+        """
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
@@ -417,16 +456,21 @@ class LayoutLoader(Loader):
             "loader": str(self.__class__.__name__),
             "representation": context["representation"]["id"],
             "parent": context["representation"]["versionId"],
-            "family": context["product"]["productType"],
+            "product_base_type": context["product"]["productBaseType"],
+            "family": context["product"]["productBaseType"],
             "loaded_assets": loaded_assets,
             "project_name": project_name
         }
         if hierarchy_dir is not None:
             data["master_directory"] = hierarchy_dir
-        imprint(
-            "{}/{}".format(asset_dir, container_name), data)
+        imprint(f"{asset_dir}/{container_name}", data)
 
-    def _load_assets(self, instance_name, repre_id, product_type, repr_format):
+    def _load_assets(
+            self,
+            instance_name,
+            repre_id,
+            product_base_type,
+            repr_format):
         all_loaders = discover_loader_plugins()
         loaders = loaders_from_representation(
             all_loaders, repre_id)
@@ -434,22 +478,26 @@ class LayoutLoader(Loader):
         loader = None
 
         if repr_format == 'fbx':
-            loader = self._get_fbx_loader(loaders, product_type)
+            loader = self._get_fbx_loader(
+                loaders, product_base_type)
         elif repr_format == 'abc':
-            loader = self._get_abc_loader(loaders, product_type)
+            loader = self._get_abc_loader(
+                loaders, product_base_type)
 
         if not loader:
             if repr_format == "ma":
                 msg = (
-                    f"No valid {product_type} loader found for {repre_id} ({repr_format}), "
-                    f"consider using {product_type} loader (fbx/abc) instead."
+                    f"No valid {product_base_type} loader found "
+                    f"for {repre_id} ({repr_format}), "
+                    f"consider using {product_base_type} loader "
+                    "(fbx/abc) instead."
                 )
                 self.log.warning(msg)
             else:
                 self.log.error(
                     f"No valid loader found for {repre_id} "
                     f"({repr_format}) "
-                    f"{product_type}")
+                    f"{product_base_type}")
             return
 
         import_options = {
