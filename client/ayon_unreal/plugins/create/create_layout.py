@@ -10,8 +10,8 @@ class CreateLayout(UnrealActorCreator):
 
     identifier = "io.ayon.creators.unreal.layout"
     label = "Layout"
-    product_type = "layout"
     product_base_type = "layout"
+    product_type = product_base_type
     icon = "cubes"
     default_variants = ["Main"]
 

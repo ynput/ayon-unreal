@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Load UAsset."""
+from __future__ import annotations
 from pathlib import Path
 import os
 import shutil
@@ -33,9 +34,11 @@ def parsing_to_absolute_directory(asset_dir):
 class UAssetLoader(plugin.Loader):
     """Load UAsset."""
 
-    product_types = {"uasset"}
+    product_base_types = {"uasset"}
+    product_types = product_base_types
     label = "Load UAsset"
-    representations = {"uasset"}
+    representations = {"*"}
+    extensions = {"uasset"}
     icon = "cube"
     color = "orange"
 
@@ -105,10 +108,11 @@ class UAssetLoader(plugin.Loader):
             "loader": str(self.__class__.__name__),
             "representation": context["representation"]["id"],
             "parent": context["representation"]["versionId"],
-            "product_type": context["product"]["productType"],
+            "product_base_type": context["product"]["productBaseType"],
             # TODO these should be probably removed
             "asset": folder_path,
-            "family": context["product"]["productType"],
+            "product_type": context["product"]["productBaseType"],
+            "family": context["product"]["productBaseType"],
             "project_name": context["project"]["name"]
         }
 
@@ -177,7 +181,8 @@ class UAssetLoader(plugin.Loader):
 class UMapLoader(UAssetLoader):
     """Load Level."""
 
-    product_types = {"uasset"}
+    product_base_types = {"uasset"}
+    product_types = product_base_types
     label = "Load Level"
     representations = {"umap"}
 

@@ -59,7 +59,12 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
                 "Skipping to add spawned actor into the sequence."
             )
 
-    def _load_asset(self, repr_data, instance_name, family, extension):
+    def _load_asset(
+            self,
+            repr_data,
+            instance_name,
+            product_base_type,
+            extension):
         repre_entity = next((repre_entity for repre_entity in repr_data
                              if repre_entity["name"] == extension), None)
         if not repre_entity or extension == "ma":
@@ -67,10 +72,9 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
 
         repr_format = repre_entity.get('name')
         representation = repre_entity.get('id')
-        assets = self._load_assets(
-            instance_name, representation, family, repr_format
+        return self._load_assets(
+            instance_name, representation, product_base_type, repr_format
         )
-        return assets
 
     def _process(self, lib_path, project_name, sequence):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
@@ -223,31 +227,34 @@ class ExistingLayoutLoader(plugin.LayoutLoader):
                     f" {version_id}")
                 continue
 
-            product_type = lasset.get("product_type")
-            if product_type is None:
-                product_type = lasset.get("family")
+            product_base_type = (
+                lasset.get("product_base_type")
+                or lasset.get("product_type")
+                or lasset.get("family")
+            )
+
             extension = lasset.get("extension")
             assets = self._load_asset(
                 repre_entities,
-                lasset.get('instance_name'),
-                product_type,
+                lasset.get("instance_name"),
+                product_base_type,
                 extension
             )
             con = None
             for asset in assets:
                 obj = ar.get_asset_by_object_path(asset).get_asset()
-                if not obj.get_class().get_name() == 'StaticMesh':
+                if obj.get_class().get_name() != "StaticMesh":
                     continue
 
                 self._spawn_actor(obj, lasset, sequence)
-                if obj.get_class().get_name() == 'AyonAssetContainer':
+                if obj.get_class().get_name() == "AyonAssetContainer":
                     con = obj
                     containers.append(con.get_path_name())
                 break
         # Check if an actor was not matched to a representation.
         # If so, remove it from the scene.
         for actor in actors:
-            if not actor.get_class().get_name() == 'StaticMeshActor':
+            if actor.get_class().get_name() != "StaticMeshActor":
                 continue
             if actor not in actors_matched:
                 self.log.warning(f"Actor {actor.get_name()} not matched.")

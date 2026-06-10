@@ -21,7 +21,9 @@ from ayon_unreal.api import rendering
 from ayon_unreal.api import hierarchy
 
 import unreal
-
+from ayon_core.tools.console_interpreter.ui.window import (
+    ConsoleInterpreterWindow
+)
 
 class ToolsBtnsWidget(QtWidgets.QWidget):
     """Widget containing buttons which are clickable."""
@@ -29,7 +31,7 @@ class ToolsBtnsWidget(QtWidgets.QWidget):
 
     def __init__(self, parent=None):
         super(ToolsBtnsWidget, self).__init__(parent)
-
+        self._console = None
         current_context_string = (
             f"Context: {get_current_task_name()} - "
             f"{get_current_folder_path()}"
@@ -44,6 +46,7 @@ class ToolsBtnsWidget(QtWidgets.QWidget):
         render_btn = QtWidgets.QPushButton("Render...", self)
         sequence_btn = QtWidgets.QPushButton(
             "Build sequence hierarchy...", self)
+        console_btn = QtWidgets.QPushButton("Console...", self)
         experimental_tools_btn = QtWidgets.QPushButton(
             "Experimental tools...", self
         )
@@ -57,6 +60,7 @@ class ToolsBtnsWidget(QtWidgets.QWidget):
         layout.addWidget(render_btn, 0)
         layout.addWidget(publish_btn, 0)
         layout.addWidget(sequence_btn, 0)
+        layout.addWidget(console_btn, 0)
         layout.addWidget(experimental_tools_btn, 0)
         layout.addStretch(1)
 
@@ -65,8 +69,32 @@ class ToolsBtnsWidget(QtWidgets.QWidget):
         render_btn.clicked.connect(self._on_render)
         publish_btn.clicked.connect(self._on_publish)
         sequence_btn.clicked.connect(self._on_sequence)
+        console_btn.clicked.connect(self._show_console)
         experimental_tools_btn.clicked.connect(self._on_experimental)
         self.context_btn.clicked.connect(self._on_context_change)
+
+    def _show_console(self):
+        if self._console is not None:
+            if self._console.isVisible():
+                # Closing also saves the scripts directly.
+                # Thus we prefer to close instead of hide here
+                self._console.close()
+                return
+            else:
+                self._console.show()
+                self._console.raise_()
+                return
+
+        widget = ConsoleInterpreterWindow(parent=self)
+        widget.setWindowTitle("Python Script Editor - Unreal Engine")
+        widget.setWindowFlags(widget.windowFlags() |
+                              QtCore.Qt.Dialog |
+                              QtCore.Qt.WindowMinimizeButtonHint)
+        widget.show()
+        widget.raise_()
+
+        self._widget = widget
+        unreal.parent_external_window_to_slate(widget.winId())
 
     def _on_create(self):
         self.tool_required.emit("creator")
@@ -123,7 +151,6 @@ class ToolsDialog(QtWidgets.QDialog):
 
         self.setWindowFlags(
             QtCore.Qt.Window
-            | QtCore.Qt.WindowStaysOnTopHint
         )
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
 
@@ -149,7 +176,9 @@ class ToolsDialog(QtWidgets.QDialog):
             self._first_show = False
 
     def _on_tool_require(self, tool_name):
-        host_tools.show_tool_by_name(tool_name, parent=self)
+        tool = host_tools.show_tool_by_name(tool_name, parent=self)
+        if tool:
+            unreal.parent_external_window_to_slate(tool.winId())
 
 
 class ToolsPopup(ToolsDialog):
@@ -194,6 +223,7 @@ class WindowCache:
                 cls._popup = ToolsPopup()
 
             cls._popup.show()
+            unreal.parent_external_window_to_slate(cls._popup.winId())
 
     @classmethod
     def show_dialog(cls):
@@ -203,6 +233,7 @@ class WindowCache:
                 cls._dialog = ToolsDialog()
 
             cls._dialog.show()
+            unreal.parent_external_window_to_slate(cls._dialog.winId())
             cls._dialog.raise_()
             cls._dialog.activateWindow()
 

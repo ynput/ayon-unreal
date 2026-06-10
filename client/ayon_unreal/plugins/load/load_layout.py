@@ -180,12 +180,14 @@ class LayoutLoader(plugin.LayoutLoader):
             if repre_id not in repr_loaded:
                 repr_loaded.append(repre_id)
 
-                product_type = element.get("product_type")
-                if product_type is None:
-                    product_type = element.get("family")
+                product_base_type = (
+                    element.get("product_base_type")
+                    or element.get("product_type")
+                    or element.get("family")
+                )
 
                 assets = self._load_assets(
-                    instance_name, repre_id, product_type, repr_format
+                    instance_name, repre_id, product_base_type, repr_format
                 )
 
                 container = None
@@ -216,12 +218,12 @@ class LayoutLoader(plugin.LayoutLoader):
 
                     actors = []
 
-                    if product_type in ['model', 'staticMesh']:
+                    if product_base_type in ['model', 'staticMesh']:
                         actors, _ = self._process_family(
                             assets, 'StaticMesh', transform, basis,
                             sequence, rotation, unreal_import=unreal_import
                         )
-                    elif product_type in ['rig', 'skeletalMesh']:
+                    elif product_base_type in ['rig', 'skeletalMesh']:
                         actors, bindings = self._process_family(
                             assets, 'SkeletalMesh', transform, basis,
                             sequence, rotation, unreal_import=unreal_import

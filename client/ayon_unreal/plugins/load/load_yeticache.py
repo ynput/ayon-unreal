@@ -11,9 +11,11 @@ import unreal  # noqa
 class YetiLoader(plugin.Loader):
     """Load Yeti Cache"""
 
-    product_types = {"yeticacheUE"}
+    product_base_types = {"yeticacheUE"}
+    product_types = product_base_types
     label = "Import Yeti"
-    representations = {"abc"}
+    representations = {"*"}
+    extensions = {"abc"}
     icon = "pagelines"
     color = "orange"
 
@@ -138,10 +140,11 @@ class YetiLoader(plugin.Loader):
             "loader": str(self.__class__.__name__),
             "representation": context["representation"]["id"],
             "parent": context["representation"]["versionId"],
-            "product_type": context["product"]["productType"],
+            "product_base_type": context["product"]["productBaseType"],
             # TODO these shold be probably removed
             "asset": folder_path,
-            "family": context["product"]["productType"],
+            "product_type": context["product"]["productBaseType"],
+            "family": context["product"]["productBaseType"],
             "project_name": context["project"]["name"],
             "layout": should_use_layout
         }
