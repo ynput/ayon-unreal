@@ -76,7 +76,7 @@ class ExtractLayout(publish.Extractor):
                 extension = instance_name.split("_")[-1]
                 asset_name = re.match(f'(.+)_{extension}$', instance_name)
                 json_element["version"] = str(parent_id)
-                json_element["product_type"] = family
+                json_element["product_base_type"] = family
                 json_element["instance_name"] = asset_name.group(1)
                 json_element["asset_name"] = instance_name
                 json_element["extension"] = extension

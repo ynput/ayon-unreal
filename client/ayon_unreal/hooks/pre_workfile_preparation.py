@@ -48,10 +48,14 @@ class UnrealPrelaunchHook(PreLaunchHook):
 
     def _get_work_filename(self):
         # Use last workfile if was found
-        if self.data.get("last_workfile_path"):
-            last_workfile = Path(self.data.get("last_workfile_path"))
-            if last_workfile and last_workfile.exists():
-                return last_workfile.name
+        workfile_path = self.data.get("workfile_path")
+        if not workfile_path:
+            workfile_path = self.data.get("last_workfile_path")
+
+        if workfile_path:
+            workfile_p = Path(workfile_path)
+            if workfile_p and workfile_p.exists():
+                return workfile_p.name
 
         # Prepare data for fill data and for getting workfile template key
         anatomy = self.data["anatomy"]
@@ -196,10 +200,13 @@ class UnrealPrelaunchHook(PreLaunchHook):
             unreal_project_name = f"P{unreal_project_name}"
             unreal_project_filename = f'{unreal_project_name}.uproject'
 
-        last_workfile_path = self.data.get("last_workfile_path")
-        if last_workfile_path and os.path.exists(last_workfile_path):
-            project_path = Path(os.path.dirname(last_workfile_path))
-            unreal_project_filename = Path(os.path.basename(last_workfile_path))
+        workfile_path = self.data.get("workfile_path")
+        if not workfile_path:
+            workfile_path = self.data.get("last_workfile_path")
+
+        if workfile_path and os.path.exists(workfile_path):
+            project_path = Path(os.path.dirname(workfile_path))
+            unreal_project_filename = Path(os.path.basename(workfile_path))
         else:
             project_path = Path(os.path.join(workdir, unreal_project_name))
             project_path.mkdir(parents=True, exist_ok=True)
