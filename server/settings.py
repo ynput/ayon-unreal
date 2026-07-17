@@ -3,6 +3,7 @@ from .imageio import UnrealImageIOModel
 from .import_settings import UnrealImportModel, DEFAULT_IMPORT_SETTINGS
 from .pre_launch_settings import UnrealPreLaunchSetting, DEFAULT_PRELAUNCH_SETTINGS
 from .creators import CreatorsModel, DEFAULT_CREATOR_SETTINGS
+from .publishers import PublishersModel, DEFAULT_PUBLISH_SETTINGS
 
 
 def _render_format_enum():
@@ -90,6 +91,9 @@ class UnrealSettings(BaseSettingsModel):
     create: CreatorsModel = SettingsField(
         default_factory=CreatorsModel, title="Creators"
     )
+    publish: PublishersModel = SettingsField(
+        default_factory=PublishersModel, title="Publishers"
+    )
 
 
 DEFAULT_VALUES = {
@@ -108,4 +112,5 @@ DEFAULT_VALUES = {
         "force_existing_project": False,
     },
     "create": DEFAULT_CREATOR_SETTINGS,
+    "publish":DEFAULT_PUBLISH_SETTINGS,
 }
