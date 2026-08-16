@@ -332,20 +332,9 @@ class CreateRender(UnrealAssetCreator):
         Returns:
             list: List of render preset names.
         """
-        all_assets = unreal.EditorAssetLibrary.list_assets(
-            "/Game/Ayon",
-            recursive=True,
-            include_folder=True,
-        )
-        render_presets = []
-        for uasset in all_assets:
-            asset_data = unreal.EditorAssetLibrary.find_asset_data(uasset)
-            _uasset = asset_data.get_asset()
-            if not _uasset:
-                continue
-
-            if isinstance(_uasset, unreal.MoviePipelinePrimaryConfig):
-                render_presets.append(_uasset.get_name())
+        ar = unreal.AssetRegistryHelpers.get_asset_registry()
+        class_path = unreal.TopLevelAssetPath("/Script/MovieRenderPipelineCore", "MoviePipelinePrimaryConfig")
+        render_presets = [asset.get_asset().get_name() for asset in ar.get_assets_by_class(class_path)]
 
         if not render_presets:
             raise CreatorError("No render presets found in the project")
