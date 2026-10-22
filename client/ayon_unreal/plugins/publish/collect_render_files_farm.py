@@ -5,10 +5,15 @@ from copy import deepcopy
 
 import unreal
 
-from ayon_core.pipeline import Anatomy
+from ayon_core.pipeline import Anatomy, PublishError
 from ayon_core.lib import StringTemplate
 
-from ayon_unreal.api.rendering import SUPPORTED_EXTENSION_MAP
+from ayon_unreal.api.rendering import (
+    GRAPH_FILE_NAME_FORMAT_VARIABLE,
+    GRAPH_OUTPUT_DIRECTORY_VARIABLE,
+    SUPPORTED_EXTENSION_MAP,
+    get_graph_variable,
+)
 
 
 class CollectRemoteRenderFiles(pyblish.api.InstancePlugin):
@@ -29,36 +34,104 @@ class CollectRemoteRenderFiles(pyblish.api.InstancePlugin):
         self.anatomy_data = deepcopy(instance.data["anatomyData"])
         self.project_data = deepcopy(instance.data["projectEntity"])
 
-        self.job_config = self.job.get_configuration()
-        (work_dir, work_file) = self.get_path_overrides()
+        if instance.data.get("render_config_is_graph"):
+            work_dir, work_file = self._get_work_paths()
+            self._set_graph_output_overrides(work_dir, work_file)
+        else:
+            self.job_config = self.job.get_configuration()
+            (work_dir, work_file) = self.get_path_overrides()
 
-        # overrides jobs output directory and file name
-        ue_dir_override = unreal.DirectoryPath()
-        ue_dir_override.path = Path(work_dir).as_posix()
-        ue_file_override = work_file + ".{frame_number}"
-        job_output_settings = self.job_config.find_setting_by_class(
-            unreal.MoviePipelineOutputSetting
-        )
-        job_output_settings.set_editor_property("output_directory", ue_dir_override)
-        job_output_settings.set_editor_property("file_name_format", ue_file_override)
+            # overrides jobs output directory and file name
+            ue_dir_override = unreal.DirectoryPath()
+            ue_dir_override.path = Path(work_dir).as_posix()
+            ue_file_override = work_file + ".{frame_number}"
+            job_output_settings = self.job_config.find_setting_by_class(
+                unreal.MoviePipelineOutputSetting
+            )
+            job_output_settings.set_editor_property("output_directory", ue_dir_override)
+            job_output_settings.set_editor_property("file_name_format", ue_file_override)
 
-        # override expected files
+        # override expected files, `<name>.<frame>.<ext>`
         exp_files_override = []
         for exp_file in instance.data["expectedFiles"]:
-            splits = exp_file.split(".")
-            exp_file_override = work_dir / f"{work_file}.{splits[1]}.{splits[2]}"
+            _, frame, ext = Path(exp_file).name.rsplit(".", 2)
+            exp_file_override = work_dir / f"{work_file}.{frame}.{ext}"
             exp_files_override.append(exp_file_override.as_posix())
         instance.data["expectedFiles"] = exp_files_override
 
-    def get_path_overrides(self):
-        self._get_work_file_template()
+    def _set_graph_output_overrides(self, work_dir, work_file):
+        """Point Movie Render Graph job output to the AYON work directory.
 
+        Uses job variable overrides, which are stored in the job (and so in
+        the MRQ manifest sent to farm). The graph asset is not modified.
+        Missing variables are reported by `ValidateMovieGraphOutput`.
+
+        Args:
+            work_dir (Path): Output directory.
+            work_file (str): Output file name without frame and extension.
+
+        """
+        graph = self.job.get_graph_preset()
+        overrides = self.job.get_or_create_variable_overrides(graph)
+        values = {
+            GRAPH_OUTPUT_DIRECTORY_VARIABLE: Path(work_dir).as_posix(),
+            GRAPH_FILE_NAME_FORMAT_VARIABLE: f"{work_file}.{{frame_number}}",
+        }
+        for variable_name, value in values.items():
+            variable = get_graph_variable(graph, variable_name)
+            if not variable:
+                self.log.warning(
+                    f"Movie Render Graph '{graph.get_name()}' doesn't expose "
+                    f"'{variable_name}' variable."
+                )
+                continue
+            self._set_graph_variable(overrides, variable, value)
+            self.log.debug(f"Graph variable '{variable_name}': {value}")
+
+    @staticmethod
+    def _set_graph_variable(overrides, variable, value):
+        """Set and enable job override of a graph variable.
+
+        Supports `String` and `DirectoryPath` (struct) variables.
+
+        Raises:
+            PublishError: For unsupported variable types.
+
+        """
+        value_type = overrides.get_value_type(variable)
+        if value_type == unreal.MovieGraphValueType.STRING:
+            overrides.set_value_string(variable, value)
+        elif value_type == unreal.MovieGraphValueType.STRUCT:
+            directory_path = unreal.DirectoryPath()
+            directory_path.path = value
+            overrides.set_value_serialized_string(
+                variable, directory_path.export_text())
+        else:
+            raise PublishError(
+                f"Movie Render Graph variable '{variable.get_member_name()}' "
+                f"has unsupported type {value_type}, use String or "
+                "DirectoryPath."
+            )
+        overrides.set_variable_assignment_enable_state(variable, True)
+
+    def get_path_overrides(self):
         # build output directory
         exr_settings = self.job_config.find_setting_by_class(
             unreal.MoviePipelineImageSequenceOutput_EXR
         )
         if not exr_settings:
             raise Exception("No EXR settings found in the job configuration.")
+
+        return self._get_work_paths()
+
+    def _get_work_paths(self):
+        """Get work directory and file name (without extension) for output.
+
+        Returns:
+            tuple[Path, str]: Work directory and file name.
+
+        """
+        self._get_work_file_template()
 
         # initialize template data
         anatomy = Anatomy(self.project_data["name"])

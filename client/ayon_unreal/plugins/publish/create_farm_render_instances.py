@@ -12,7 +12,10 @@ from ayon_unreal.api import pipeline
 from ayon_unreal.api.pipeline import UNREAL_VERSION
 from ayon_unreal.api.rendering import (
     SUPPORTED_EXTENSION_MAP,
+    apply_render_config_to_job,
     get_render_config,
+    get_render_preset,
+    is_movie_graph_config,
     set_output_extension_from_settings
 )
 
@@ -31,6 +34,23 @@ class UnrealRenderInstance(RenderInstance):
     app_version = attr.ib(default=None)
     output_settings = attr.ib(default=None)
     render_queue_path = attr.ib(default=None)
+    render_config_is_graph = attr.ib(default=False)
+
+
+class GraphRenderOutputSettings:
+    def __init__(
+        self,
+        output_directory: str,
+        file_name_format: str,
+        version_number: int,
+        zero_pad_frame_numbers: int = 4,
+    ):
+        self.output_directory = unreal.DirectoryPath()
+        self.output_directory.path = output_directory
+        self.file_name_format = file_name_format
+        self.version_number = version_number
+        self.zero_pad_frame_numbers = zero_pad_frame_numbers
+        self.auto_version = False
 
 
 class CreateFarmRenderInstances(publish.AbstractCollectRender):
@@ -134,27 +154,6 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
                     "Please provide stored render config at path "
                     "set in `ayon+settings://unreal/render_setup/render_config_path`"
                 )
-            config = set_output_extension_from_settings(
-                output_ext_from_settings, config
-            )
-
-            ext = self._get_ext_from_config(config)
-            if not ext:
-                raise RuntimeError(
-                    "Please provide output extension in config!"
-                )
-
-            output_settings = config.find_or_add_setting_by_class(
-                unreal.MoviePipelineOutputSetting
-            )
-
-            resolution = output_settings.output_resolution
-            resolution_width = resolution.x
-            resolution_height = resolution.y
-
-            output_fps = output_settings.output_frame_rate
-            fps = f"{output_fps.denominator}.{output_fps.numerator}"
-
             instance_families = inst.data.get("families", [])
             product_name = inst.data["productName"]
 
@@ -173,25 +172,51 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
                 self.log.info("Skipping local render instance")
                 continue
 
-            render_queue_path = render_settings["render_queue_path"]
-            auto_handle_mrq = False
-            if not unreal.EditorAssetLibrary.does_asset_exist(
-                    render_queue_path):
-                # TODO: temporary until C++ blueprint is created as it is not
-                #   possible to create renderQueue. Also, we could
-                #   use Render Graph from UE 5.4
+            is_graph_config = is_movie_graph_config(config)
 
-                mrq = unreal.MoviePipelineQueue()
-                auto_handle_mrq = True
-                context.data["auto_handle_mrq"] = auto_handle_mrq
-                mrq.delete_all_jobs()
+            if is_graph_config:
+                ext = output_ext_from_settings
+                output_settings = None
+                resolution_width = 1920
+                resolution_height = 1080
+                fps = 0
             else:
-                mrq = unreal.EditorAssetLibrary.load_asset(
-                    render_settings["render_queue_path"]
+                # NOTE: do not mutate `config` here - it is the loaded,
+                # Perforce-tracked render config/preset asset. Reading it
+                # is fine, but `find_or_add_setting_by_class`/
+                # `remove_setting` write directly into that on-disk asset
+                # and dirty it on every publish. The forced output
+                # extension is instead applied further below to the job's
+                # own private configuration copy.
+                ext = output_ext_from_settings
+
+                output_settings = config.find_setting_by_class(
+                    unreal.MoviePipelineOutputSetting
                 )
 
-            # Get current jobs
-            jobs = mrq.get_jobs()
+                if output_settings:
+                    resolution = output_settings.output_resolution
+                    resolution_width = resolution.x
+                    resolution_height = resolution.y
+
+                    output_fps = output_settings.output_frame_rate
+                    fps = f"{output_fps.denominator}.{output_fps.numerator}"
+                else:
+                    resolution_width = 1920
+                    resolution_height = 1080
+                    fps = 0
+
+            render_queue_path = render_settings["render_queue_path"]
+            # Always build a transient, in-memory queue. The queue is only
+            # ever serialized to a manifest file for Deadline (see
+            # ExtractMRQAsManifest) - it is never saved back to
+            # render_queue_path. Loading and mutating that persisted uasset
+            # here used to dirty a Perforce-tracked asset on every publish
+            # for no reason.
+            mrq = unreal.MoviePipelineQueue()
+            auto_handle_mrq = True
+            context.data["auto_handle_mrq"] = auto_handle_mrq
+            mrq.delete_all_jobs()
 
             # backward compatibility
             task_name = inst.data.get("task") or inst.data.get("task_name")
@@ -203,41 +228,32 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
             if not sequence:
                 raise PublishError(f"Cannot find {inst.data['sequence']}")
 
-            # Get current job
-            job = next(
-                (
-                    job
-                    for job in jobs
-                    if job.sequence.export_text() == inst.data["sequence"]
-                ),
-                None,
-            )
-            if not job and not auto_handle_mrq:
-                raise PublishError(
-                    f"Cannot find job with sequence {inst.data['sequence']}"
+            # create job for instance
+            job = mrq.allocate_new_job()
+            job.map = unreal.SoftObjectPath(inst.data["master_level"])
+            job.sequence = unreal.SoftObjectPath(inst.data["sequence"])
+            sequence_uasset = unreal.EditorAssetLibrary.load_asset(inst.data["sequence"])
+            display_rate = sequence_uasset.get_display_rate()
+            fps = round(display_rate.numerator / display_rate.denominator, 3)
+
+            render_preset = inst.data['creator_attributes'].get("render_preset")
+            if render_preset:
+                config = get_render_preset(render_preset) or config
+
+            apply_render_config_to_job(job, config)
+
+            if not is_graph_config:
+                # `set_configuration` duplicated `config` into a private
+                # copy owned by the job - safe to mutate here, it never
+                # touches the on-disk asset.
+                job_config = set_output_extension_from_settings(
+                    output_ext_from_settings, job.get_configuration()
                 )
-            else:
-                # create job for instance
-                job = mrq.allocate_new_job()
-                job.map = unreal.SoftObjectPath(inst.data["master_level"])
-                job.sequence = unreal.SoftObjectPath(inst.data["sequence"])
-                sequence_uasset = unreal.EditorAssetLibrary.load_asset(inst.data["sequence"])
-                display_rate = sequence_uasset.get_display_rate()
-                fps = round(display_rate.numerator / display_rate.denominator, 3)
-
-                render_preset = inst.data['creator_attributes'].get("render_preset")
-                if render_preset:
-                    asset_filter = unreal.ARFilter(
-                        class_names=["MoviePipelinePrimaryConfig"],
-                        recursive_paths=True
+                ext = self._get_ext_from_config(job_config)
+                if not ext:
+                    raise RuntimeError(
+                        "Please provide output extension in config!"
                     )
-                    render_presets = ar.get_assets(asset_filter)
-                    for preset in render_presets:
-                        if preset.asset_name == render_preset:
-                            config = preset.get_asset()
-                            break
-
-                job.set_configuration(config)
 
             # current frame range - might be different from created
             frame_start = sequence.get_playback_start()
@@ -246,6 +262,19 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
 
             inst.data["frameStart"] = frame_start
             inst.data["frameEnd"] = frame_end
+
+            if is_graph_config:
+                shot_name = sequence.get_name()
+                output_settings = GraphRenderOutputSettings(
+                    output_directory=f"{inst.data['output']}",
+                    file_name_format=f"{shot_name}.{{frame_number}}",
+                    version_number=version,
+                )
+                display_rate = sequence.get_display_rate()
+                fps = round(
+                    display_rate.numerator / display_rate.denominator,
+                    3,
+                )
 
             frame_placeholder = "#" * output_settings.zero_pad_frame_numbers
             version = (
@@ -269,42 +298,49 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
             except KeyError:
                 review = inst.data.get("review", False)
 
-            new_instance = UnrealRenderInstance(
-                family="render",
-                families=["render.farm"],
-                version=version,
-                time="",
-                source=current_file,
-                label=f"{product_name} - {family}",
-                productName=product_name,
-                productType="render",
-                folderPath=inst.data["folderPath"],
-                task=task_name,
-                attachTo=False,
-                setMembers='',
-                publish=True,
-                name=product_name,
-                resolutionWidth=resolution_width,
-                resolutionHeight=resolution_height,
-                pixelAspect=1,
-                tileRendering=False,
-                tilesX=0,
-                tilesY=0,
-                review=review,
-                frameStart=frame_start,
-                frameEnd=frame_end,
-                frameStep=1,
-                fps=fps,
-                publish_attributes=publish_attributes,
-                file_names=[exp_file_name],
-                app_version=f"{UNREAL_VERSION.major}.{UNREAL_VERSION.minor}",
-                output_settings=output_settings,
-                config_path=config_path,
-                master_level=inst.data["master_level"],
-                render_queue_path=render_queue_path,
-                mrq_job=job,
-                deadline=inst.data.get("deadline"),
-            )
+            self.log.debug(f"Creating UnrealRenderInstance for {product_name}", extra={"frameStart": frame_start, "frameEnd": frame_end})
+            self.log.debug(f"Inst data: {inst.data}", extra={"frameStart": frame_start, "frameEnd": frame_end})
+            try:
+                new_instance = UnrealRenderInstance(
+                    family="render",
+                    families=["render.farm"],
+                    version=version,
+                    time="",
+                    source=current_file,
+                    label=f"{product_name} - {family}",
+                    productName=product_name,
+                    productType="render",
+                    folderPath=inst.data["folderPath"],
+                    task=task_name,
+                    attachTo=False,
+                    setMembers='',
+                    publish=True,
+                    name=product_name,
+                    resolutionWidth=resolution_width,
+                    resolutionHeight=resolution_height,
+                    pixelAspect=1,
+                    tileRendering=False,
+                    tilesX=0,
+                    tilesY=0,
+                    review=review,
+                    frameStart=frame_start,
+                    frameEnd=frame_end,
+                    frameStep=1,
+                    fps=fps,
+                    publish_attributes=publish_attributes,
+                    file_names=[exp_file_name],
+                    app_version=f"{UNREAL_VERSION.major}.{UNREAL_VERSION.minor}",
+                    output_settings=output_settings,
+                    config_path=config_path,
+                    master_level=inst.data["master_level"],
+                    render_queue_path=render_queue_path,
+                    render_config_is_graph=is_graph_config,
+                    mrq_job=job,
+                    deadline=inst.data.get("deadline"),
+                )
+            except ValueError as e:
+                self.log.exception(f"Failed to create UnrealRenderInstance: {e}")
+                raise PublishError(f"Failed to create UnrealRenderInstance: {e}") from e
             context.data["mrq"] = mrq
             new_instance.farm = True
 

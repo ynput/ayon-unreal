@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+<error id="main">
+<title>Render graph not ready for farm</title>
+<description>
+## Render graph is not ready for farm rendering
+
+The Movie Render Graph **{graph_name}** used by this render doesn't let AYON
+choose where the frames are saved. Without it, the farm would save the frames
+to a place the publish can't find.
+
+### How to repair?
+
+Use **Show Render Graph** to find the graph, open it and fix:
+
+{problems}
+
+Then save the graph, check it in to version control and publish again.
+</description>
+<detail>
+### __Detailed Info__ (optional)
+
+Farm renders are saved to the AYON work directory. AYON sets the location
+for each render job with these graph variables, the graph itself is not
+changed:
+
+- `{output_directory_variable}` (DirectoryPath or String) connected to
+  **Output Directory** of the **Global Output Settings** node in the
+  *Globals* branch.
+- `{file_name_format_variable}` (String) connected to **File Name Format**
+  of every image sequence output node (e.g. **EXR Sequence**).
+
+At least one image sequence output node must save **.{render_format}**
+images, the render format set in AYON project settings.
+
+A property can be connected to a variable only after its override checkbox
+is enabled and it is promoted to a pin (right click the property and choose
+**Promote Property to Pin**). Only nodes of the graph itself are checked,
+nodes inside subgraphs are not used.
+</detail>
+</error>
+</root>

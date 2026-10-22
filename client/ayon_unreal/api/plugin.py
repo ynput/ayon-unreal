@@ -107,6 +107,9 @@ class UnrealCreateLogic:
 
     def _default_update_instances(self, update_list):
         for created_inst, changes in update_list:
+            if not changes.changed_keys:
+                continue
+
             instance_node = created_inst.get("instance_path", "")
 
             if not instance_node:

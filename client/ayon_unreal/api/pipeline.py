@@ -6,7 +6,7 @@ import clique
 import copy
 import logging
 from typing import List, Any
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 import time
 
 import semver
@@ -27,6 +27,7 @@ from ayon_core.lib import StringTemplate
 from ayon_core.pipeline.context_tools import (
     get_current_folder_entity
 )
+from ayon_core.addon import AddonsManager
 from ayon_core.tools.utils import host_tools
 from ayon_core.host import HostBase, ILoadHost, IPublishHost
 from ayon_unreal import UNREAL_ADDON_ROOT
@@ -80,19 +81,21 @@ class UnrealHost(HostBase, ILoadHost, IPublishHost):
         content_path = unreal.Paths.project_content_dir()
         op_ctx = content_path + CONTEXT_CONTAINER
         attempts = 3
-        for i in range(attempts):
-            try:
-                with open(op_ctx, "w+") as f:
-                    json.dump(data, f)
-                break
-            except IOError as e:
-                if i == attempts - 1:
-                    raise Exception(
-                        "Failed to write context data. Aborting.") from e
-                unreal.log_warning("Failed to write context data. Retrying...")
-                i += 1
-                time.sleep(3)
-                continue
+        with track_file_changes(
+            [op_ctx], "AYON: update publish context data"
+        ):
+            for i in range(attempts):
+                try:
+                    with open(op_ctx, "w+") as f:
+                        json.dump(data, f)
+                    break
+                except IOError as e:
+                    if i == attempts - 1:
+                        raise Exception(
+                            "Failed to write context data. Aborting.") from e
+                    unreal.log_warning(
+                        "Failed to write context data. Retrying...")
+                    time.sleep(3)
 
     def get_context_data(self):
         content_path = unreal.Paths.project_content_dir()
@@ -104,34 +107,59 @@ class UnrealHost(HostBase, ILoadHost, IPublishHost):
         return data
 
 
+_perforce_addon_discovered = False
+_perforce_addon = None
+
+
+def _get_perforce_addon():
+    """Get enabled Perforce addon, discovered once per process.
+
+    Returns:
+        Union[AYONAddon, None]: Perforce addon or None if not enabled.
+
+    """
+    global _perforce_addon_discovered, _perforce_addon
+    if not _perforce_addon_discovered:
+        _perforce_addon_discovered = True
+        _perforce_addon = AddonsManager().get_enabled_addon("perforce")
+    return _perforce_addon
+
+
+def track_file_changes(filepaths, description):
+    """Let version control addon handle files written by the integration.
+
+    Pipeline data stored in files inside the project (e.g. publish context
+    data) would otherwise show up as uncommitted changes in version control.
+    If the Perforce addon is enabled, it opens the files for edit before
+    the write and submits them after it.
+
+    Args:
+        filepaths (list[str]): Paths of files written in the block.
+        description (str): Description of the version control change.
+
+    Returns:
+        ContextManager: Context manager wrapping the write.
+
+    """
+    try:
+        perforce_addon = _get_perforce_addon()
+        # Older Perforce addon versions do not provide the method
+        if perforce_addon is None or not hasattr(
+            perforce_addon, "track_file_changes"
+        ):
+            return nullcontext()
+        return perforce_addon.track_file_changes(
+            get_current_project_name(), filepaths, description
+        )
+    except Exception:
+        logger.warning(
+            "Failed to get version control file tracking.", exc_info=True
+        )
+        return nullcontext()
+
+
 def install():
     """Install Unreal configuration for AYON."""
-    print("-=" * 40)
-    logo = '''.
-.
-                    ·
-                    │
-                   ·∙/
-                 ·-∙•∙-·
-              / \\  /∙·  / \\
-             ∙   \\  │  /   ∙
-              \\   \\ · /   /
-              \\\\   ∙ ∙  //
-                \\\\/   \\//
-                   ___
-                  │   │
-                  │   │
-                  │   │
-                  │___│
-                    -·
-
-         ·-─═─-∙ A Y O N ∙-─═─-·
-                by  YNPUT
-.
-'''
-    print(logo)
-    print("installing Ayon for Unreal ...")
-    print("-=" * 40)
     logger.info("installing Ayon for Unreal")
     pyblish.api.register_host("unreal")
     pyblish.api.register_plugin_path(str(PUBLISH_PATH))
@@ -310,6 +338,9 @@ def instantiate(root, name, data, assets=None, suffix="_INS"):
 
 
 def imprint(node, data):
+    if not data:
+        return
+
     loaded_asset = unreal.EditorAssetLibrary.load_asset(node)
     for key, value in data.items():
         # Support values evaluated at imprint

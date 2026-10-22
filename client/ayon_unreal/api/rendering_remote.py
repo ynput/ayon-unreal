@@ -29,8 +29,17 @@ class UE_MovieRenderExecutorWrapper(unreal.MoviePipelinePythonHostExecutor):
         mrq.delete_all_jobs()
         manifest_to_load = f"MovieRenderPipeline/{self.manifest_name}"
         mrq = unreal.MoviePipelineLibrary.load_manifest_file_from_string(manifest_to_load)
-        pipeline_subsystem.load_queue(mrq)
-        active_job = next(job for job in mrq.get_jobs() if job.is_enabled())
+        if hasattr(pipeline_subsystem, "load_queue"):
+            pipeline_subsystem.load_queue(mrq)
+        else:
+            # Unreal 5.0-5.2
+            pipeline_subsystem.get_queue().copy_from(mrq)
+        # jobs can't be disabled before Unreal 5.2, manifest contains only
+        # the job to render there
+        active_job = next(
+            job for job in mrq.get_jobs()
+            if not hasattr(job, "is_enabled") or job.is_enabled()
+        )
         map_package = unreal.MoviePipelineLibrary.get_map_package_name(active_job)
         unreal.EditorLoadingAndSavingUtils.load_map(map_package)
 

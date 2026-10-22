@@ -19,6 +19,19 @@ SUPPORTED_EXTENSION_MAP = {
     "jpg": unreal.MoviePipelineImageSequenceOutput_JPG,
     "bmp": unreal.MoviePipelineImageSequenceOutput_BMP,
 }
+RENDER_CONFIG_CLASS_NAMES = (
+    "MoviePipelinePrimaryConfig",
+    "MovieGraphConfig",
+)
+MOVIE_GRAPH_CONFIG_CLASS_NAME = "MovieGraphConfig"
+
+# Movie Render Graph variables AYON overrides per farm job to render to the
+# work directory, the graph asset itself is never modified. They must be
+# exposed on the graph and connected to promoted property pins:
+#   `OutputDirectory` - Global Output Settings node, Output Directory
+#   `FileNameFormat` - image sequence output nodes, File Name Format
+GRAPH_OUTPUT_DIRECTORY_VARIABLE = "OutputDirectory"
+GRAPH_FILE_NAME_FORMAT_VARIABLE = "FileNameFormat"
 
 
 def _queue_finish_callback(exec, success):
@@ -37,6 +50,141 @@ def _job_finish_callback(job, success):
     # edits in OnQueueFinishedCallback if you don't want to leak state changes
     # into the editor world.
     unreal.log("Individual job completed.")
+
+
+def is_movie_graph_config(config):
+    if not config:
+        return False
+    return config.get_class().get_name() == MOVIE_GRAPH_CONFIG_CLASS_NAME
+
+
+# Movie Render Graph Python API is incomplete in Unreal 5.4 and 5.5 (no
+# branch and variable lookups, no node titles), these helpers fall back to
+# API available since 5.4.
+def get_graph_variable(graph, variable_name):
+    """Get graph variable by its name (member name).
+
+    Returns:
+        Optional[unreal.MovieGraphVariable]: Variable or `None`.
+
+    """
+    if hasattr(graph, "get_variable_by_name"):
+        return graph.get_variable_by_name(variable_name)
+    for variable in graph.get_variables():
+        if variable.get_member_name() == variable_name:
+            return variable
+    return None
+
+
+def get_graph_branch_names(graph):
+    """Get branch names of the graph Output node, e.g. `Globals`.
+
+    Returns:
+        list[str]: Branch names.
+
+    """
+    if hasattr(graph, "get_branch_names"):
+        return [str(name) for name in graph.get_branch_names()]
+    return [str(output.get_member_name()) for output in graph.get_outputs()]
+
+
+def get_graph_branch_nodes(graph, node_class, branch_name):
+    """Get nodes of the class in the branch, closest to Output node first.
+
+    Fallback for Unreal 5.4/5.5 walks the branch from the Output node
+    through the main (unnamed) input pins only, nodes behind Branch/Select
+    nodes are not found there. Subgraphs are not traversed.
+
+    Returns:
+        list[unreal.MovieGraphNode]: Nodes of the class.
+
+    """
+    if hasattr(graph, "get_nodes_for_branch"):
+        return list(graph.get_nodes_for_branch(node_class, branch_name))
+
+    nodes = []
+    visited = set()
+    pin = graph.get_output_node().get_input_pin(branch_name)
+    pending = list(pin.get_connected_nodes()) if pin else []
+    while pending:
+        node = pending.pop(0)
+        node_path = node.get_path_name()
+        if node_path in visited:
+            continue
+        visited.add(node_path)
+        if isinstance(node, node_class):
+            nodes.append(node)
+        input_pin = node.get_input_pin("")
+        if input_pin:
+            pending.extend(input_pin.get_connected_nodes())
+    return nodes
+
+
+def get_graph_node_title(node):
+    """Get node title as shown in the graph, e.g. `.exr Sequence`.
+
+    Unreal 5.4 has no node titles in Python, class name is used there.
+
+    Returns:
+        str: Node title.
+
+    """
+    if hasattr(node, "get_node_title"):
+        return str(node.get_node_title())
+    return node.get_class().get_name()
+
+
+def get_render_preset_assets():
+    ar = unreal.AssetRegistryHelpers.get_asset_registry()
+    asset_filter = unreal.ARFilter(
+        class_names=list(RENDER_CONFIG_CLASS_NAMES),
+        recursive_paths=True,
+    )
+    return ar.get_assets(asset_filter)
+
+
+def get_render_preset_items():
+    items = {}
+
+    for preset in get_render_preset_assets():
+        config = preset.get_asset()
+        class_name = config.get_class().get_name()
+        label = config.get_name()
+        if class_name == MOVIE_GRAPH_CONFIG_CLASS_NAME:
+            label = f"{label} (Movie Render Graph)"
+
+        items[config.get_path_name()] = label
+
+    return items
+
+
+def get_render_preset(render_preset):
+    if not render_preset:
+        return None
+
+    if unreal.EditorAssetLibrary.does_asset_exist(render_preset):
+        return unreal.EditorAssetLibrary.load_asset(render_preset)
+
+    for preset in get_render_preset_assets():
+        config = preset.get_asset()
+        if config.get_name() == render_preset:
+            return config
+
+    return None
+
+
+def apply_render_config_to_job(job, config):
+    if is_movie_graph_config(config):
+        # `set_graph_preset` exists since 5.3, but job variable overrides
+        # used to set the output are available since 5.4
+        if not hasattr(job, "get_or_create_variable_overrides"):
+            raise RuntimeError(
+                "Movie Render Graph presets require Unreal 5.4 or newer."
+            )
+        job.set_graph_preset(config)
+        return
+
+    job.set_configuration(config)
 
 
 def get_render_config(
@@ -65,25 +213,19 @@ def get_render_config(
         RuntimeError if no path to config is set
 
     """
-    ar = unreal.AssetRegistryHelpers.get_asset_registry()
     config = None
     config_path = None
 
     if render_preset:
-        asset_filter = unreal.ARFilter(
-            class_names=["MoviePipelinePrimaryConfig"],
-            recursive_paths=True,
-        )
-        render_presets = ar.get_assets(asset_filter)
-        for preset in render_presets:
-            if preset.asset_name == render_preset:
-                config = preset.get_asset()
-                config_path = preset.package_path
-                break
+        config = get_render_preset(render_preset)
+        if config:
+            config_path = config.get_path_name()
 
     if config:
         unreal.log(f"Using render preset {render_preset}")
         return config_path, config
+
+    ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
     unreal.log(
         "No render preset found on instance, "
@@ -258,7 +400,14 @@ def start_rendering():
             job.map = unreal.SoftObjectPath(i["master_level"])
             job.author = "Ayon"
 
-            job.set_configuration(config)
+            apply_render_config_to_job(job, config)
+
+            if is_movie_graph_config(config):
+                unreal.log_warning(
+                    "Movie Render Graph presets use graph-defined output "
+                    "settings. AYON output overrides are skipped."
+                )
+                continue
 
             # If we have a saved configuration, copy it to the job.
             if config:

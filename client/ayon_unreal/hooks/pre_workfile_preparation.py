@@ -9,8 +9,6 @@ import platform
 import json
 from pathlib import Path
 
-from qtpy import QtCore, QtWidgets
-
 from ayon_core import resources
 from ayon_applications import (
     PreLaunchHook,
@@ -21,11 +19,6 @@ from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import get_current_project_name
 from ayon_core.pipeline.workfile import get_workfile_template_key
 import ayon_unreal.lib as unreal_lib
-from ayon_unreal.ue_workers import (
-    UEProjectGenerationWorker,
-    UEPluginInstallWorker
-)
-from ayon_unreal.ui import SplashScreen
 
 
 class UnrealPrelaunchHook(PreLaunchHook):
@@ -85,6 +78,12 @@ class UnrealPrelaunchHook(PreLaunchHook):
 
     def exec_plugin_install(self, engine_path: Path, env: dict = None):
         # set up the QThread and worker with necessary signals
+        from qtpy import QtCore, QtWidgets
+        from ayon_unreal.ue_workers import (
+            UEPluginInstallWorker
+        )
+        from ayon_unreal.ui import SplashScreen
+
         env = env or os.environ
         if not QtWidgets.QApplication.instance():
             QtWidgets.QApplication(sys.argv)
@@ -121,6 +120,13 @@ class UnrealPrelaunchHook(PreLaunchHook):
                             unreal_project_name: str,
                             engine_path: Path,
                             project_dir: Path):
+
+        from qtpy import QtCore, QtWidgets
+        from ayon_unreal.ue_workers import (
+            UEProjectGenerationWorker,
+        )
+        from ayon_unreal.ui import SplashScreen
+
         self.log.info((
             f"{self.signature} Creating unreal "
             f"project [ {unreal_project_name} ]"

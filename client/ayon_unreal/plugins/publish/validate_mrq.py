@@ -2,6 +2,8 @@ import pyblish.api
 
 import unreal
 
+from ayon_core.pipeline.publish import PublishValidationError
+
 
 class ValidateMRQ(pyblish.api.InstancePlugin):
     label = "Validate Media Render Queue"
@@ -18,6 +20,12 @@ class ValidateMRQ(pyblish.api.InstancePlugin):
 
     def validate_no_dirty_packages(self):
         # The user must save their work and check it in so that Deadline can sync it.
+        # NOTE: this only checks and reports - it must never save on the
+        # user's behalf. Forcing a save here would resave any dirty package
+        # found (including ones that became dirty for unrelated reasons,
+        # e.g. an engine/plugin version bump touching unrelated assets on
+        # load) as a side effect of merely running validation, which then
+        # shows up as an unwanted checkout/change in Perforce.
         dirty_packages = []
         dirty_packages.extend(
             unreal.EditorLoadingAndSavingUtils.get_dirty_content_packages()
@@ -26,23 +34,19 @@ class ValidateMRQ(pyblish.api.InstancePlugin):
             unreal.EditorLoadingAndSavingUtils.get_dirty_map_packages()
         )
 
-        # Sometimes the dialog will return `False` even when there are no packages to save. so we are
-        # being explict about the packages we need to save
         if dirty_packages:
-            if not unreal.EditorLoadingAndSavingUtils.save_dirty_packages_with_dialog(
-                True, True
-            ):
-                message = (
-                    "One or more jobs in the queue have an unsaved map/content. "
-                    "\n{packages}\n"
-                    "Please save and check-in all work before submission.".format(
-                        packages="\n".join(
-                            [item.get_name() for item in dirty_packages]
-                        )
+            message = (
+                "One or more jobs in the queue have unsaved map/content "
+                "changes:\n{packages}\n"
+                "Please save and check in all work before submission.".format(
+                    packages="\n".join(
+                        item.get_name() for item in dirty_packages
                     )
                 )
-
-                raise Exception(message)
+            )
+            raise PublishValidationError(
+                message, title="Unsaved changes in Media Render Queue"
+            )
 
     def validate_map(self):
         is_valid_map = (

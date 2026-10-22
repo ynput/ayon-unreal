@@ -43,8 +43,16 @@ class ExtractMRQAsManifest(publish.Extractor):
 
     def configure_mrq(self, instance):
         self.mrq = instance.context.data["mrq"]
+        instance_job = instance.data["mrq_job"]
+        if not hasattr(instance_job, "set_is_enabled"):
+            # Unreal 5.0/5.1 can't disable jobs, serialize a queue with
+            # only the instance job instead
+            self.mrq = unreal.MoviePipelineQueue()
+            self.mrq.duplicate_job(instance_job)
+            return
+
         for job in self.mrq.get_jobs():
-            if job is instance.data["mrq_job"]:
+            if job is instance_job:
                 job.set_is_enabled(True)
                 continue
             job.set_is_enabled(False)
