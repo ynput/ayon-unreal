@@ -11,7 +11,6 @@ from ayon_core.lib import StringTemplate
 from ayon_unreal.api.rendering import (
     GRAPH_FILE_NAME_FORMAT_VARIABLE,
     GRAPH_OUTPUT_DIRECTORY_VARIABLE,
-    SUPPORTED_EXTENSION_MAP,
     get_graph_variable,
 )
 
