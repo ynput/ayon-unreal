@@ -11,6 +11,7 @@ from ayon_core.lib import StringTemplate
 from ayon_unreal.api.rendering import (
     GRAPH_FILE_NAME_FORMAT_VARIABLE,
     GRAPH_OUTPUT_DIRECTORY_VARIABLE,
+    SUPPORTED_EXTENSION_MAP,
     get_graph_variable,
 )
 
@@ -19,7 +20,7 @@ class CollectRemoteRenderFiles(pyblish.api.InstancePlugin):
     order = pyblish.api.CollectorOrder + 0.497
     label = "Collect Remote Render Files"
     hosts = ["unreal"]
-    families = ["render", "render.farm"]
+    families = ["render.farm"]
 
     def process(self, instance):
         if not instance.context.data.get("auto_handle_mrq"):
@@ -29,7 +30,10 @@ class CollectRemoteRenderFiles(pyblish.api.InstancePlugin):
             return
 
         self.job = instance.data["mrq_job"]
-        self.mrq = instance.context.data["mrq"]
+        self.render_format = (
+            instance.context.data["project_settings"]["unreal"]
+            ["render_setup"]["render_format"]
+        )
         self.anatomy_data = deepcopy(instance.data["anatomyData"])
         self.project_data = deepcopy(instance.data["projectEntity"])
 
@@ -115,11 +119,14 @@ class CollectRemoteRenderFiles(pyblish.api.InstancePlugin):
 
     def get_path_overrides(self):
         # build output directory
-        exr_settings = self.job_config.find_setting_by_class(
-            unreal.MoviePipelineImageSequenceOutput_EXR
-        )
-        if not exr_settings:
-            raise Exception("No EXR settings found in the job configuration.")
+        output_cls = SUPPORTED_EXTENSION_MAP.get(self.render_format.lower())
+        if not output_cls:
+            raise PublishError(
+                f"Unsupported render format '{self.render_format}'.")
+        if not self.job_config.find_setting_by_class(output_cls):
+            raise PublishError(
+                f"No '{self.render_format}' output found in the job "
+                "configuration.")
 
         return self._get_work_paths()
 
@@ -136,7 +143,7 @@ class CollectRemoteRenderFiles(pyblish.api.InstancePlugin):
         anatomy = Anatomy(self.project_data["name"])
         template_data = self.anatomy_data
         template_data["root"] = anatomy.roots
-        template_data["ext"] = "exr"
+        template_data["ext"] = self.render_format
 
         # format the publish path
         project_templates = self.project_data["config"]["templates"]

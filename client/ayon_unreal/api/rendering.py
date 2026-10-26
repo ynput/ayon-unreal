@@ -13,11 +13,17 @@ from ayon_core.tools.utils import show_message_dialog
 queue = None
 executor = None
 
+# output classes are looked up lazily, some aren't available in every
+# Unreal version (or before the Movie Render Queue plugin is loaded)
 SUPPORTED_EXTENSION_MAP = {
-    "png": unreal.MoviePipelineImageSequenceOutput_PNG,
-    "exr": unreal.MoviePipelineImageSequenceOutput_EXR,
-    "jpg": unreal.MoviePipelineImageSequenceOutput_JPG,
-    "bmp": unreal.MoviePipelineImageSequenceOutput_BMP,
+    ext: cls
+    for ext, cls in (
+        ("png", getattr(unreal, "MoviePipelineImageSequenceOutput_PNG", None)),
+        ("exr", getattr(unreal, "MoviePipelineImageSequenceOutput_EXR", None)),
+        ("jpg", getattr(unreal, "MoviePipelineImageSequenceOutput_JPG", None)),
+        ("bmp", getattr(unreal, "MoviePipelineImageSequenceOutput_BMP", None)),
+    )
+    if cls is not None
 }
 RENDER_CONFIG_CLASS_NAMES = (
     "MoviePipelinePrimaryConfig",

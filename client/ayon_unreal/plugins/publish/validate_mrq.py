@@ -9,10 +9,10 @@ class ValidateMRQ(pyblish.api.InstancePlugin):
     label = "Validate Media Render Queue"
     order = pyblish.api.ValidatorOrder
     hosts = ["unreal"]
-    families = ["render", "render.farm"]
+    families = ["render.farm"]
 
     def process(self, instance):
-        self.curr_mrq = instance.context.data["mrq"]
+        self.curr_mrq = instance.data["mrq"]
 
         self.validate_no_dirty_packages()
         self.validate_map()
@@ -55,13 +55,12 @@ class ValidateMRQ(pyblish.api.InstancePlugin):
             )
         )
         if not is_valid_map:
-            unreal.EditorDialog.show_message(
-                "Unsaved Maps",
-                "One or more jobs in the queue have an unsaved map as their target map. These unsaved maps cannot be loaded by an external process, and the render has been aborted.",
-                unreal.AppMsgType.OK,
+            raise PublishValidationError(
+                "One or more jobs in the queue have an unsaved map as their "
+                "target map. These unsaved maps cannot be loaded by an "
+                "external process. Please save the map and try again.",
+                title="Unsaved Maps",
             )
-            self.on_executor_finished_impl()
-            return
 
     def validate_instance_in_mrq(self, instance):
         instance_in_mrq = False

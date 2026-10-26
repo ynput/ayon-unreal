@@ -29,6 +29,7 @@ class UnrealRenderInstance(RenderInstance):
     publish_attributes = attr.ib(default={})
     file_names = attr.ib(default=[])
     master_level = attr.ib(default=None)
+    mrq = attr.ib(default=None)
     mrq_job = attr.ib(default=None)
     config_path = attr.ib(default=None)
     app_version = attr.ib(default=None)
@@ -199,12 +200,16 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
                     resolution_width = resolution.x
                     resolution_height = resolution.y
 
-                    output_fps = output_settings.output_frame_rate
-                    fps = f"{output_fps.denominator}.{output_fps.numerator}"
+                    fps = None
+                    if output_settings.use_custom_frame_rate:
+                        output_fps = output_settings.output_frame_rate
+                        fps = round(
+                            output_fps.numerator / output_fps.denominator, 3
+                        )
                 else:
                     resolution_width = 1920
                     resolution_height = 1080
-                    fps = 0
+                    fps = None
 
             render_queue_path = render_settings["render_queue_path"]
             # Always build a transient, in-memory queue. The queue is only
@@ -232,9 +237,12 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
             job = mrq.allocate_new_job()
             job.map = unreal.SoftObjectPath(inst.data["master_level"])
             job.sequence = unreal.SoftObjectPath(inst.data["sequence"])
-            sequence_uasset = unreal.EditorAssetLibrary.load_asset(inst.data["sequence"])
-            display_rate = sequence_uasset.get_display_rate()
-            fps = round(display_rate.numerator / display_rate.denominator, 3)
+            if not fps:
+                # no custom frame rate in render config, sequence rate is used
+                display_rate = sequence.get_display_rate()
+                fps = round(
+                    display_rate.numerator / display_rate.denominator, 3
+                )
 
             render_preset = inst.data['creator_attributes'].get("render_preset")
             if render_preset:
@@ -335,13 +343,13 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
                     master_level=inst.data["master_level"],
                     render_queue_path=render_queue_path,
                     render_config_is_graph=is_graph_config,
+                    mrq=mrq,
                     mrq_job=job,
                     deadline=inst.data.get("deadline"),
                 )
             except ValueError as e:
                 self.log.exception(f"Failed to create UnrealRenderInstance: {e}")
                 raise PublishError(f"Failed to create UnrealRenderInstance: {e}") from e
-            context.data["mrq"] = mrq
             new_instance.farm = True
 
             instances.append(new_instance)

@@ -1,5 +1,6 @@
 import os
 import shutil
+import time
 import requests
 from pathlib import Path
 from copy import deepcopy
@@ -11,6 +12,11 @@ pipeline_subsystem = unreal.get_editor_subsystem(
 )
 
 pie_executor = None
+
+# Deadline Web Service request settings
+REPORT_ATTEMPTS = 3
+REPORT_TIMEOUT = 30
+REPORT_RETRY_DELAY = 5
 
 @unreal.uclass()
 class UE_MovieRenderExecutorWrapper(unreal.MoviePipelinePythonHostExecutor):
@@ -29,6 +35,10 @@ class UE_MovieRenderExecutorWrapper(unreal.MoviePipelinePythonHostExecutor):
         mrq.delete_all_jobs()
         manifest_to_load = f"MovieRenderPipeline/{self.manifest_name}"
         mrq = unreal.MoviePipelineLibrary.load_manifest_file_from_string(manifest_to_load)
+        if mrq is None:
+            unreal.log_error(f"Failed to load MRQ manifest: {manifest_to_load}")
+            self.on_job_finished(None, False)
+            return
         if hasattr(pipeline_subsystem, "load_queue"):
             pipeline_subsystem.load_queue(mrq)
         else:
@@ -37,24 +47,51 @@ class UE_MovieRenderExecutorWrapper(unreal.MoviePipelinePythonHostExecutor):
         # jobs can't be disabled before Unreal 5.2, manifest contains only
         # the job to render there
         active_job = next(
-            job for job in mrq.get_jobs()
-            if not hasattr(job, "is_enabled") or job.is_enabled()
+            (
+                job for job in mrq.get_jobs()
+                if not hasattr(job, "is_enabled") or job.is_enabled()
+            ),
+            None,
         )
+        if active_job is None:
+            unreal.log_error("No enabled job found in MRQ manifest.")
+            self.on_job_finished(None, False)
+            return
         map_package = unreal.MoviePipelineLibrary.get_map_package_name(active_job)
         unreal.EditorLoadingAndSavingUtils.load_map(map_package)
 
         pipeline_subsystem.render_queue_with_executor_instance(pie_executor)
 
     def on_job_finished(self, executor, success):
+        try:
+            self._report_job_status(success)
+        finally:
+            # editor would keep running and Deadline task would time out
+            unreal.SystemLibrary.quit_editor()
+
+    def _report_job_status(self, success):
         payload = {
             "Command": "complete" if success else "fail",
             "JobID": self.job_id,
         }
-        resp = requests.put(
-            f"{self.dl_server_url}/api/jobs",
-            json=payload,
-        )
-        unreal.log(f"{resp.text = }")
+        for attempt in range(1, REPORT_ATTEMPTS + 1):
+            try:
+                resp = requests.put(
+                    f"{self.dl_server_url}/api/jobs",
+                    json=payload,
+                    timeout=REPORT_TIMEOUT,
+                )
+                resp.raise_for_status()
+                unreal.log(f"{resp.text = }")
+                return
+            except requests.RequestException as exc:
+                unreal.log_warning(
+                    f"Failed to report job status to Deadline "
+                    f"(attempt {attempt}/{REPORT_ATTEMPTS}): {exc}"
+                )
+                if attempt < REPORT_ATTEMPTS:
+                    time.sleep(REPORT_RETRY_DELAY)
+        unreal.log_error("Job status was not reported to Deadline.")
 
 
 def main():
