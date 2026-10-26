@@ -16,7 +16,6 @@ class ValidateMRQ(pyblish.api.InstancePlugin):
 
         self.validate_no_dirty_packages()
         self.validate_map()
-        self.validate_instance_in_mrq(instance)
 
     def validate_no_dirty_packages(self):
         # The user must save their work and check it in so that Deadline can sync it.
@@ -60,14 +59,4 @@ class ValidateMRQ(pyblish.api.InstancePlugin):
                 "target map. These unsaved maps cannot be loaded by an "
                 "external process. Please save the map and try again.",
                 title="Unsaved Maps",
-            )
-
-    def validate_instance_in_mrq(self, instance):
-        instance_in_mrq = False
-        for job in self.curr_mrq.get_jobs():
-            if job is instance.data["mrq_job"]:
-                instance_in_mrq = True
-        if not instance_in_mrq:
-            raise Exception(
-                "Instance not found in Media Render Queue. Try to clear your current MRQ and try again."
             )

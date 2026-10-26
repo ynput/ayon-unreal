@@ -33,7 +33,7 @@ class ExtractMRQAsManifest(publish.Extractor):
         # NOTE: i should get a separate template for ue manifests
         #       _file_template is rather the ue project name template
         folder_name = self.anatomy_data["folder"]["name"]
-        product_name = self.anatomy_data["product"]["name"]
+        product_name = f"{self.anatomy_data['product']['name']}Manifest"
         _file_template = project_templates["work"]["unreal"]["file"]
         _file_template_parts = _file_template.split(".")
         _file_template = f"{_file_template_parts[0]}_{folder_name}_{product_name}.{_file_template_parts[1]}"
@@ -60,7 +60,10 @@ class ExtractMRQAsManifest(publish.Extractor):
         instance.data["mrq_manifest"] = (
             manifest_string  # save manifest string for potential submission via string
         )
-        self.manifest_to_publish = Path(manifest).resolve()
+        # manifest path is relative to engine, not to Python cwd
+        self.manifest_to_publish = Path(
+            unreal.Paths.convert_relative_path_to_full(manifest)
+        )
 
     def copy_manifest_to_publish(self, instance):
         # NOTE: we could also add the manifest to p4
@@ -71,8 +74,6 @@ class ExtractMRQAsManifest(publish.Extractor):
         template_data = self.anatomy_data
         template_data["root"] = anatomy.roots
 
-        # get current product name and append manifest, set ext to .utxt
-        template_data["product"]["name"] += "Manifest"
         template_data["ext"] = "utxt"
 
         work_dir = Path(self.dir_template.format_strict(template_data))

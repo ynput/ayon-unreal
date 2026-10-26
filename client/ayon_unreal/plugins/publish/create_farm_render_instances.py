@@ -135,7 +135,7 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
         instances_to_remove = []
 
         current_file = context.data["currentFile"]
-        version = 1  # TODO where to get this without change list
+        default_version = 1  # TODO where to get this without change list
 
         project_name = context.data["projectName"]
         project_settings = context.data['project_settings']
@@ -276,7 +276,7 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
                 output_settings = GraphRenderOutputSettings(
                     output_directory=f"{inst.data['output']}",
                     file_name_format=f"{shot_name}.{{frame_number}}",
-                    version_number=version,
+                    version_number=default_version,
                 )
                 display_rate = sequence.get_display_rate()
                 fps = round(
@@ -286,7 +286,7 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
 
             frame_placeholder = "#" * output_settings.zero_pad_frame_numbers
             version = (
-                version
+                default_version
                 if output_settings.auto_version
                 else output_settings.version_number
             )

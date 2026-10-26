@@ -1,4 +1,3 @@
-import os
 import pyblish.api
 from pathlib import Path
 from copy import deepcopy
@@ -9,10 +8,8 @@ from ayon_core.pipeline import Anatomy, PublishError
 from ayon_core.lib import StringTemplate
 
 from ayon_unreal.api.rendering import (
-    GRAPH_FILE_NAME_FORMAT_VARIABLE,
-    GRAPH_OUTPUT_DIRECTORY_VARIABLE,
     SUPPORTED_EXTENSION_MAP,
-    get_graph_variable,
+    set_graph_output_overrides,
 )
 
 
@@ -56,17 +53,21 @@ class CollectRemoteRenderFiles(pyblish.api.InstancePlugin):
 
         # override expected files, `<name>.<frame>.<ext>`
         exp_files_override = []
+        file_names_override = []
         for exp_file in instance.data["expectedFiles"]:
             _, frame, ext = Path(exp_file).name.rsplit(".", 2)
             exp_file_override = work_dir / f"{work_file}.{frame}.{ext}"
             exp_files_override.append(exp_file_override.as_posix())
+            file_name = f"{work_file}.{'#' * len(frame)}.{ext}"
+            if file_name not in file_names_override:
+                file_names_override.append(file_name)
         instance.data["expectedFiles"] = exp_files_override
+        # used by Deadline submission for job output path
+        instance.data["file_names"] = file_names_override
 
     def _set_graph_output_overrides(self, work_dir, work_file):
         """Point Movie Render Graph job output to the AYON work directory.
 
-        Uses job variable overrides, which are stored in the job (and so in
-        the MRQ manifest sent to farm). The graph asset is not modified.
         Missing variables are reported by `ValidateMovieGraphOutput`.
 
         Args:
@@ -74,48 +75,19 @@ class CollectRemoteRenderFiles(pyblish.api.InstancePlugin):
             work_file (str): Output file name without frame and extension.
 
         """
-        graph = self.job.get_graph_preset()
-        overrides = self.job.get_or_create_variable_overrides(graph)
-        values = {
-            GRAPH_OUTPUT_DIRECTORY_VARIABLE: Path(work_dir).as_posix(),
-            GRAPH_FILE_NAME_FORMAT_VARIABLE: f"{work_file}.{{frame_number}}",
-        }
-        for variable_name, value in values.items():
-            variable = get_graph_variable(graph, variable_name)
-            if not variable:
-                self.log.warning(
-                    f"Movie Render Graph '{graph.get_name()}' doesn't expose "
-                    f"'{variable_name}' variable."
-                )
-                continue
-            self._set_graph_variable(overrides, variable, value)
-            self.log.debug(f"Graph variable '{variable_name}': {value}")
-
-    @staticmethod
-    def _set_graph_variable(overrides, variable, value):
-        """Set and enable job override of a graph variable.
-
-        Supports `String` and `DirectoryPath` (struct) variables.
-
-        Raises:
-            PublishError: For unsupported variable types.
-
-        """
-        value_type = overrides.get_value_type(variable)
-        if value_type == unreal.MovieGraphValueType.STRING:
-            overrides.set_value_string(variable, value)
-        elif value_type == unreal.MovieGraphValueType.STRUCT:
-            directory_path = unreal.DirectoryPath()
-            directory_path.path = value
-            overrides.set_value_serialized_string(
-                variable, directory_path.export_text())
-        else:
-            raise PublishError(
-                f"Movie Render Graph variable '{variable.get_member_name()}' "
-                f"has unsupported type {value_type}, use String or "
-                "DirectoryPath."
+        try:
+            missing = set_graph_output_overrides(
+                self.job,
+                Path(work_dir).as_posix(),
+                f"{work_file}.{{frame_number}}",
             )
-        overrides.set_variable_assignment_enable_state(variable, True)
+        except ValueError as exc:
+            raise PublishError(str(exc)) from exc
+        for variable_name in missing:
+            self.log.warning(
+                f"Movie Render Graph '{self.job.get_graph_preset().get_name()}'"
+                f" doesn't expose '{variable_name}' variable."
+            )
 
     def get_path_overrides(self):
         # build output directory
@@ -161,7 +133,8 @@ class CollectRemoteRenderFiles(pyblish.api.InstancePlugin):
         project_templates = self.project_data["config"]["templates"]
         _dir_template = project_templates["work"]["default"]["directory"]
         _dir_template_parts = []
-        for part in _dir_template.split(os.path.sep):
+        # AYON templates always use forward slashes
+        for part in _dir_template.split("/"):
             if "version" in part:
                 continue
             _dir_template_parts.append(part)
