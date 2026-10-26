@@ -82,6 +82,67 @@ def get_graph_variable(graph, variable_name):
     return None
 
 
+def set_graph_output_overrides(job, output_directory, file_name_format):
+    """Point Movie Render Graph job output to given directory and file name.
+
+    Uses job variable overrides (`GRAPH_OUTPUT_DIRECTORY_VARIABLE`,
+    `GRAPH_FILE_NAME_FORMAT_VARIABLE`), which are stored in the job (and so
+    in the MRQ manifest). The graph asset is not modified.
+
+    Args:
+        job (unreal.MoviePipelineExecutorJob): Job with graph preset.
+        output_directory (str): Output directory.
+        file_name_format (str): File name format, e.g. `shot.{frame_number}`.
+
+    Returns:
+        list[str]: Names of variables the graph doesn't expose.
+
+    Raises:
+        ValueError: For unsupported variable types.
+
+    """
+    graph = job.get_graph_preset()
+    overrides = job.get_or_create_variable_overrides(graph)
+    values = {
+        GRAPH_OUTPUT_DIRECTORY_VARIABLE: output_directory,
+        GRAPH_FILE_NAME_FORMAT_VARIABLE: file_name_format,
+    }
+    missing = []
+    for variable_name, value in values.items():
+        variable = get_graph_variable(graph, variable_name)
+        if not variable:
+            missing.append(variable_name)
+            continue
+        _set_graph_variable(overrides, variable, value)
+    return missing
+
+
+def _set_graph_variable(overrides, variable, value):
+    """Set and enable job override of a graph variable.
+
+    Supports `String` and `DirectoryPath` (struct) variables.
+
+    Raises:
+        ValueError: For unsupported variable types.
+
+    """
+    value_type = overrides.get_value_type(variable)
+    if value_type == unreal.MovieGraphValueType.STRING:
+        overrides.set_value_string(variable, value)
+    elif value_type == unreal.MovieGraphValueType.STRUCT:
+        directory_path = unreal.DirectoryPath()
+        directory_path.path = value
+        overrides.set_value_serialized_string(
+            variable, directory_path.export_text())
+    else:
+        raise ValueError(
+            f"Movie Render Graph variable '{variable.get_member_name()}' "
+            f"has unsupported type {value_type}, use String or "
+            "DirectoryPath."
+        )
+    overrides.set_variable_assignment_enable_state(variable, True)
+
+
 def get_graph_branch_names(graph):
     """Get branch names of the graph Output node, e.g. `Globals`.
 
@@ -408,11 +469,23 @@ def start_rendering():
 
             apply_render_config_to_job(job, config)
 
+            output_dir = render_setting.get('output')
+            shot_name = render_setting.get('sequence').get_name()
+
             if is_movie_graph_config(config):
-                unreal.log_warning(
-                    "Movie Render Graph presets use graph-defined output "
-                    "settings. AYON output overrides are skipped."
+                # graph defines resolution, frame range and format, only
+                # output path is overridden
+                missing = set_graph_output_overrides(
+                    job,
+                    f"{render_dir}/{output_dir}",
+                    f"{shot_name}" + ".{frame_number}",
                 )
+                if missing:
+                    unreal.log_warning(
+                        f"Movie Render Graph '{config.get_name()}' doesn't "
+                        f"expose {', '.join(missing)} variable(s), rendered "
+                        "files won't be found by publish. See README."
+                    )
                 continue
 
             # If we have a saved configuration, copy it to the job.
@@ -424,9 +497,6 @@ def start_rendering():
             # read in the job's OnJobFinished callback. We could,
             # for instance, pass the AyonPublishInstance's path to the job.
             # job.user_data = ""
-
-            output_dir = render_setting.get('output')
-            shot_name = render_setting.get('sequence').get_name()
 
             settings = job_config.find_or_add_setting_by_class(
                 unreal.MoviePipelineOutputSetting)
