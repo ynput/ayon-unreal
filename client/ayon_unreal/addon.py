@@ -1,6 +1,7 @@
 import os
 import re
 from ayon_core.addon import AYONAddon, IHostAddon
+from ayon_core.lib import is_headless_mode_enabled
 
 from .version import __version__
 
@@ -25,8 +26,6 @@ class UnrealAddon(AYONAddon, IHostAddon):
 
         from .lib import get_compatible_integration
 
-        from ayon_core.tools.utils import show_message_dialog
-
         pattern = re.compile(r'^\d+-\d+$')
 
         if not pattern.match(app.name):
@@ -34,11 +33,13 @@ class UnrealAddon(AYONAddon, IHostAddon):
                 "Unreal application key in the settings must be in format"
                 "'5-0' or '5-1'"
             )
-            show_message_dialog(
-                parent=None,
-                title="Unreal application name format",
-                message=msg,
-                level="critical")
+            if not is_headless_mode_enabled():
+                from ayon_core.tools.utils import show_message_dialog
+                show_message_dialog(
+                    parent=None,
+                    title="Unreal application name format",
+                    message=msg,
+                    level="critical")
             raise ValueError(msg)
 
         ue_version = app.name.replace("-", ".")
@@ -60,6 +61,9 @@ class UnrealAddon(AYONAddon, IHostAddon):
         defaults = {
             "AYON_LOG_NO_COLORS": "1",
             "UE_PYTHONPATH": os.environ.get("PYTHONPATH", ""),
+            # required by `ayon_unreal.api`, also for launches without
+            # the workfile preparation hook (e.g. farm)
+            "AYON_UNREAL_VERSION": ue_version,
         }
         for key, value in defaults.items():
             if not env.get(key):
