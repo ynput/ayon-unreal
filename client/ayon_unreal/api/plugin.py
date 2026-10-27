@@ -107,6 +107,9 @@ class UnrealCreateLogic:
 
     def _default_update_instances(self, update_list):
         for created_inst, changes in update_list:
+            if not changes.changed_keys:
+                continue
+
             instance_node = created_inst.get("instance_path", "")
 
             if not instance_node:
@@ -134,7 +137,8 @@ class UnrealCreateLogic:
 
     def create_unreal(self, product_name, instance_data, pre_create_data):
         try:
-            instance_name = f"{product_name}{self.suffix}"
+            folder_leaf = instance_data["folderPath"].split("/")[-1]
+            instance_name = f"{folder_leaf}_{product_name}{self.suffix}"
             pub_instance = create_publish_instance(instance_name, self.root)
 
             instance_data["product_name"] = product_name

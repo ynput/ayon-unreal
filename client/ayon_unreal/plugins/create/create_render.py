@@ -21,6 +21,7 @@ from ayon_core.lib import (
     NumberDef,
     EnumDef
 )
+from ayon_unreal.api.rendering import get_render_preset_items
 
 
 class CreateRender(UnrealAssetCreator):
@@ -326,32 +327,19 @@ class CreateRender(UnrealAssetCreator):
             BoolDef("review", label="Generate review", default=True),
         ]
 
-    def get_render_presets(self) -> list[str]:
+    def get_render_presets(self) -> dict[str, str]:
         """Get the available render presets in the project.
 
         Returns:
-            list: List of render preset names.
+            dict: Render preset paths keyed to display names.
         """
-        all_assets = unreal.EditorAssetLibrary.list_assets(
-            "/Game/Ayon",
-            recursive=True,
-            include_folder=True,
-        )
-        render_presets = []
-        for uasset in all_assets:
-            asset_data = unreal.EditorAssetLibrary.find_asset_data(uasset)
-            _uasset = asset_data.get_asset()
-            if not _uasset:
-                continue
-
-            if isinstance(_uasset, unreal.MoviePipelinePrimaryConfig):
-                render_presets.append(_uasset.get_name())
+        render_presets = get_render_preset_items()
 
         if not render_presets:
             raise CreatorError("No render presets found in the project")
 
         self.log.debug("Adding the following render presets:")
-        for preset in render_presets:
+        for preset in render_presets.values():
             self.log.debug(f" - {preset}")
         return render_presets
 
