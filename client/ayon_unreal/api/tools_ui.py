@@ -24,6 +24,7 @@ import unreal
 from ayon_core.tools.console_interpreter.ui.window import (
     ConsoleInterpreterWindow
 )
+from ayon_core.tools.console_interpreter import InterpreterController
 
 class ToolsBtnsWidget(QtWidgets.QWidget):
     """Widget containing buttons which are clickable."""
@@ -75,17 +76,11 @@ class ToolsBtnsWidget(QtWidgets.QWidget):
 
     def _show_console(self):
         if self._console is not None:
-            if self._console.isVisible():
-                # Closing also saves the scripts directly.
-                # Thus we prefer to close instead of hide here
-                self._console.close()
-                return
-            else:
-                self._console.show()
-                self._console.raise_()
-                return
-
-        widget = ConsoleInterpreterWindow(parent=self)
+            self._console.show()
+            self._console.raise_()
+            return
+        controller = InterpreterController(name="unreal")
+        widget = ConsoleInterpreterWindow(controller, parent=self)
         widget.setWindowTitle("Python Script Editor - Unreal Engine")
         widget.setWindowFlags(widget.windowFlags() |
                               QtCore.Qt.Dialog |
@@ -93,7 +88,7 @@ class ToolsBtnsWidget(QtWidgets.QWidget):
         widget.show()
         widget.raise_()
 
-        self._widget = widget
+        self._console = widget
         unreal.parent_external_window_to_slate(widget.winId())
 
     def _on_create(self):
