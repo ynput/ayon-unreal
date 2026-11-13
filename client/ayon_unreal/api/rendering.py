@@ -503,7 +503,10 @@ def start_rendering():
         render_dir = get_render_dir_by_names(
             project_name,
             i["folderPath"],
-            i.get("task") or os.environ.get("AYON_TASK_NAME"),
+            # `task_name` for backward compatibility with older instances
+            i.get("task")
+            or i.get("task_name")
+            or os.environ.get("AYON_TASK_NAME"),
         )
 
         sequence = ar.get_asset_by_object_path(i["sequence"]).get_asset()

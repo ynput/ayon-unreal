@@ -122,8 +122,10 @@ class CollectRenderFiles(pyblish.api.InstancePlugin):
 
         """
         project_name = get_current_project_name()
+        # `task_name` for backward compatibility with older instances
         task_name = (
             instance.data.get("task")
+            or instance.data.get("task_name")
             or instance.context.data.get("task")
             or os.environ.get("AYON_TASK_NAME")
         )
