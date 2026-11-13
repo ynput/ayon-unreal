@@ -9,6 +9,7 @@ from ayon_core.lib import StringTemplate
 
 from ayon_unreal.api.rendering import (
     SUPPORTED_EXTENSION_MAP,
+    get_render_dir,
     set_graph_output_overrides,
 )
 
@@ -122,7 +123,7 @@ class CollectRemoteRenderFiles(pyblish.api.InstancePlugin):
         template_data["version"] = (
             f"v{template_data['version']:0{project_templates['common']['version_padding']}d}"
         )
-        work_dir = self.dir_template.format_strict(template_data)
+        work_dir = get_render_dir(self.project_data, template_data, anatomy)
         work_file = self.file_template.format_strict(template_data)
 
         return (Path(work_dir), Path(work_file).stem)
@@ -131,20 +132,12 @@ class CollectRemoteRenderFiles(pyblish.api.InstancePlugin):
         # get work file template
         #   how can i build a @token?
         project_templates = self.project_data["config"]["templates"]
-        _dir_template = project_templates["work"]["default"]["directory"]
-        _dir_template_parts = []
-        # AYON templates always use forward slashes
-        for part in _dir_template.split("/"):
-            if "version" in part:
-                continue
-            _dir_template_parts.append(part)
 
         # NOTE: i should get a separate template for ue renders
         #       _file_template is rather the ue project name template
         _file_template = project_templates["work"]["unreal"]["file"]
         _file_template_parts = _file_template.split(".")
 
-        self.dir_template = StringTemplate(Path(*_dir_template_parts).as_posix())
         folder_name = self.anatomy_data["folder"]["name"]
         product_name = self.anatomy_data["product"]["name"]
         self.file_template = StringTemplate(

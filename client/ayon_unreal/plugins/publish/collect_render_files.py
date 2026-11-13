@@ -2,9 +2,9 @@ from pathlib import Path
 import os
 import unreal
 
-from ayon_core.pipeline import get_current_project_name, Anatomy
+from ayon_core.pipeline import get_current_project_name
 from ayon_core.pipeline.publish import PublishError
-from ayon_unreal.api import pipeline
+from ayon_unreal.api import pipeline, rendering
 import pyblish.api
 
 
@@ -29,6 +29,8 @@ class CollectRenderFiles(pyblish.api.InstancePlugin):
 
         sequence = ar.get_asset_by_object_path(
             data.get('sequence')).get_asset()
+
+        render_dirs = self._get_render_dirs(instance)
 
         sequences = [{
             "sequence": sequence,
@@ -85,24 +87,9 @@ class CollectRenderFiles(pyblish.api.InstancePlugin):
 
                 self.log.debug(f"new instance data: {new_data}")
 
-                try:
-                    project = get_current_project_name()
-                    anatomy = Anatomy(project)
-                    root = anatomy.roots['renders']
-                except Exception as e:
-                    raise Exception((
-                        "Could not find render root "
-                        "in anatomy settings.")) from e
-
-                render_dir = f"{root}/{project}/{s.get('output')}"
+                render_dir = self._find_render_dir(
+                    render_dirs, s.get('output'))
                 render_path = Path(render_dir)
-                if not os.path.exists(render_path):
-                    msg = (
-                        f"Render directory {render_path} not found."
-                        " Please render with the render instance"
-                    )
-                    self.log.error(msg)
-                    raise PublishError(msg, title="Render directory not found.")
 
                 self.log.debug(f"Collecting render path: {render_path}")
                 frames = [str(x) for x in render_path.iterdir() if x.is_file()]
@@ -123,3 +110,47 @@ class CollectRenderFiles(pyblish.api.InstancePlugin):
                     'tags': ['review']
                 }
                 new_instance.data["representations"].append(repr)
+
+    def _get_render_dirs(self, instance):
+        """Get base directories local renders can be found in.
+
+        Work directory (same as farm renders) first, legacy
+        `{root[renders]}/{project}` second when project has `renders` root.
+
+        Returns:
+            list[str]: Base render directories.
+
+        """
+        project_name = get_current_project_name()
+        task_name = (
+            instance.data.get("task")
+            or instance.context.data.get("task")
+            or os.environ.get("AYON_TASK_NAME")
+        )
+        render_dirs = [
+            rendering.get_render_dir_by_names(
+                project_name, instance.data["folderPath"], task_name)
+        ]
+        legacy_dir = rendering.get_legacy_render_dir(project_name)
+        if legacy_dir:
+            render_dirs.append(legacy_dir)
+        return render_dirs
+
+    def _find_render_dir(self, render_dirs, output):
+        """Find first existing render directory for sequence output.
+
+        Raises:
+            PublishError: When no directory exists.
+
+        """
+        candidates = [f"{base}/{output}" for base in render_dirs]
+        for candidate in candidates:
+            if os.path.isdir(candidate):
+                return candidate
+
+        msg = (
+            "Render directory not found, searched: "
+            f"{', '.join(candidates)}. Please render with the render instance."
+        )
+        self.log.error(msg)
+        raise PublishError(msg, title="Render directory not found.")

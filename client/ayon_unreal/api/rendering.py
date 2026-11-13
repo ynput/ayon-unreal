@@ -1,11 +1,16 @@
 import os
 import ast
+import copy
+from pathlib import Path
 from typing import Optional
 
+import ayon_api
 import unreal
 
+from ayon_core.lib import StringTemplate
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import Anatomy
+from ayon_core.pipeline.template_data import get_template_data_with_names
 from ayon_unreal.api import pipeline
 from ayon_core.tools.utils import show_message_dialog
 
@@ -56,6 +61,92 @@ def _job_finish_callback(job, success):
     # edits in OnQueueFinishedCallback if you don't want to leak state changes
     # into the editor world.
     unreal.log("Individual job completed.")
+
+
+def get_render_dir_template(project_entity):
+    """Get template of directory renders are written to.
+
+    It is the project work directory template (`work/default/directory`)
+    without parts containing version. Used for both local and farm renders.
+
+    Args:
+        project_entity (dict): Project entity.
+
+    Returns:
+        StringTemplate: Directory template.
+
+    """
+    project_templates = project_entity["config"]["templates"]
+    dir_template = project_templates["work"]["default"]["directory"]
+    # AYON templates always use forward slashes
+    parts = [
+        part for part in dir_template.split("/")
+        if "version" not in part
+    ]
+    return StringTemplate("/".join(parts))
+
+
+def get_render_dir(project_entity, template_data, anatomy=None):
+    """Get directory renders are written to.
+
+    Args:
+        project_entity (dict): Project entity.
+        template_data (dict): Template data, e.g. instance `anatomyData`.
+            Not modified.
+        anatomy (Optional[Anatomy]): Project anatomy, used for roots.
+
+    Returns:
+        str: Render directory with forward slashes.
+
+    """
+    if anatomy is None:
+        anatomy = Anatomy(
+            project_entity["name"], project_entity=project_entity)
+    template_data = copy.deepcopy(template_data)
+    template_data["root"] = anatomy.roots
+    render_dir = get_render_dir_template(project_entity).format_strict(
+        template_data)
+    return Path(render_dir).as_posix()
+
+
+def get_render_dir_by_names(project_name, folder_path, task_name):
+    """Get directory renders are written to, from entity names.
+
+    Local render variant of `get_render_dir`, used when no publish anatomy
+    data is available.
+
+    Args:
+        project_name (str): Project name.
+        folder_path (str): Folder path.
+        task_name (Optional[str]): Task name.
+
+    Returns:
+        str: Render directory with forward slashes.
+
+    """
+    project_entity = ayon_api.get_project(project_name)
+    template_data = get_template_data_with_names(
+        project_name, folder_path, task_name, host_name="unreal")
+    return get_render_dir(project_entity, template_data)
+
+
+def get_legacy_render_dir(project_name, anatomy=None):
+    """Get legacy local render directory `{root[renders]}/{project}`.
+
+    Local renders were written there before they moved to the work
+    directory. Kept to collect renders made with older versions.
+
+    Returns:
+        Optional[str]: Directory or `None` when project has no `renders`
+            root.
+
+    """
+    if anatomy is None:
+        anatomy = Anatomy(project_name)
+    root = anatomy.roots.get("renders")
+    if root is None:
+        return None
+    return f"{root}/{project_name}"
 
 
 def is_movie_graph_config(config):
@@ -381,15 +472,7 @@ def start_rendering():
         if data["productType"] == "render":
             inst_data.append(data)
 
-    try:
-        project_name = os.environ.get("AYON_PROJECT_NAME")
-        anatomy = Anatomy(project_name)
-        root = anatomy.roots['renders']
-    except Exception as e:
-        raise Exception(
-            "Could not find render root in anatomy settings.") from e
-
-    render_dir = f"{root}/{project_name}"
+    project_name = os.environ.get("AYON_PROJECT_NAME")
 
     # subsystem = unreal.get_editor_subsystem(
     #     unreal.MoviePipelineQueueSubsystem)
@@ -417,6 +500,11 @@ def start_rendering():
         _, config = get_render_config(
             project_name, render_preset, render_settings)
 
+        render_dir = get_render_dir_by_names(
+            project_name,
+            i["folderPath"],
+            i.get("task") or os.environ.get("AYON_TASK_NAME"),
+        )
 
         sequence = ar.get_asset_by_object_path(i["sequence"]).get_asset()
 
