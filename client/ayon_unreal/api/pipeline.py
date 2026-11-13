@@ -539,8 +539,11 @@ def get_subsequences(sequence: unreal.LevelSequence):
     Args:
         sequence (unreal.LevelSequence): Sequence
 
+    Sections without an assigned sequence (empty sections or sections
+    pointing to a deleted/unloaded asset) are skipped.
+
     Returns:
-        list(unreal.LevelSequence): List of subsequences
+        list(unreal.MovieSceneSubSection): List of subsequence sections
 
     """
     tracks = get_tracks(sequence)
@@ -552,9 +555,18 @@ def get_subsequences(sequence: unreal.LevelSequence):
         ),
         None,
     )
-    if subscene_track is not None and subscene_track.get_sections():
-        return subscene_track.get_sections()
-    return []
+    if subscene_track is None:
+        return []
+    sections = []
+    for section in subscene_track.get_sections():
+        if section.get_sequence() is None:
+            unreal.log_warning(
+                f"Skipping subsequence section in {sequence.get_name()} "
+                "with no sequence assigned."
+            )
+            continue
+        sections.append(section)
+    return sections
 
 
 def set_sequence_hierarchy(
