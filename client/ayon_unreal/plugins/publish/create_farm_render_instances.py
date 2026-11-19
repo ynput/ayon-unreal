@@ -144,17 +144,6 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
         output_ext_from_settings = render_settings["render_format"]
 
         for inst in context:
-            render_preset =inst.data.get("creator_attributes", {}).get(
-                "render_preset"
-            )
-            config_path, config = get_render_config(
-                project_name, render_preset, render_settings
-            )
-            if not config:
-                raise RuntimeError(
-                    "Please provide stored render config at path "
-                    "set in `ayon+settings://unreal/render_setup/render_config_path`"
-                )
             instance_families = inst.data.get("families", [])
             product_name = inst.data["productName"]
 
@@ -172,6 +161,18 @@ class CreateFarmRenderInstances(publish.AbstractCollectRender):
             if not inst.data.get("farm", False):
                 self.log.info("Skipping local render instance")
                 continue
+
+            render_preset = inst.data.get("creator_attributes", {}).get(
+                "render_preset"
+            )
+            config_path, config = get_render_config(
+                project_name, render_preset, render_settings
+            )
+            if not config:
+                raise RuntimeError(
+                    "Please provide stored render config at path "
+                    "set in `ayon+settings://unreal/render_setup/render_config_path`"
+                )
 
             is_graph_config = is_movie_graph_config(config)
 
