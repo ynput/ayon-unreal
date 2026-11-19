@@ -10,5 +10,5 @@ ayon_required_addons = {
 ayon_server_version = ">1.10.0"
 ayon_compatible_addons = {
     "ayon_maya": ">=0.2.13",
-    "ayon_deadline": ">=0.7.0",
+    "ayon_deadline": ">=0.7.6",
 }
